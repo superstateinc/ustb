@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-// import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 // TODO: Convert to OZ TUP
 contract Allowlist {
@@ -38,37 +38,100 @@ contract Allowlist {
     }
 
     function setAllowed(address addr, bool allowed) public {
-        require(msg.sender == permissionAdmin, "Not authorized");
+        require(msg.sender == permissionAdmin, "Not authorized to set allowed addresses");
         permissions[addr].allowed = allowed;
 
         emit SetAllowed(addr, allowed);
     }
 
     function setForbidden(address addr, bool forbidden) public {
-        require(msg.sender == permissionAdmin, "Not authorized");
+        require(msg.sender == permissionAdmin, "Not authorized to set forbidden addresses");
         permissions[addr].forbidden = forbidden;
 
         emit SetForbidden(addr, forbidden);
     }
 
-    // TODO
-    // function setAllowedBySig(address addr, bool allowed, bytes32 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) public {
-    // }
+    function setAllowedBySig(address addr, bool allowed, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) public {
+        require(block.timestamp <= expiry, "Signature expired");
+        require(!checkNonce(nonce), "Nonce already used");
 
-    // TODO
-    // function setForbiddenBySig(address addr, bool forbidden, bytes32 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) public {
-    // }
+        bytes32 structHash = keccak256(abi.encode(SET_ALLOWED_TYPEHASH, addr, allowed, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        require(isValidSignature(permissionAdmin, digest, v, r, s), "Invalid signature");
+
+        markNonce(nonce);
+        permissions[addr].allowed = allowed;
+        emit SetAllowed(addr, allowed);
+    }
+
+
+    function setForbiddenBySig(address addr, bool forbidden, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s) public {
+        require(block.timestamp <= expiry, "Signature expired");
+        require(!checkNonce(nonce), "Nonce already used");
+
+        bytes32 structHash = keccak256(abi.encode(SET_FORBIDDEN_TYPEHASH, addr, forbidden, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        require(isValidSignature(permissionAdmin, digest, v, r, s), "Invalid signature");
+
+        markNonce(nonce);
+        permissions[addr].forbidden = forbidden;
+        emit SetForbidden(addr, forbidden);
+    }
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return keccak256(abi.encode(DOMAIN_TYPEHASH, keccak256(bytes(name)), keccak256(bytes(VERSION)), block.chainid, address(this)));
     }
 
-    // TODO
-    // function checkNonce(uint256 nonce) internal view returns (bool) {
-    // }
+    function checkNonce(uint256 nonce) public view returns (bool) {
+        uint256 bucket = knownNonces[nonce / 256];
+        uint256 position = nonce % 256;
+        uint256 mask = 1 << position;
+        return (bucket & mask) != 0;
+    }
 
-    // TODO
-    // function markNonce(uint256 nonce) internal view returns (bool) {
-    // }
+    function markNonce(uint256 nonce) internal {
+        require(msg.sender == address(this), "Not authorized to set nonces");
+        uint256 bucket = knownNonces[nonce / 256];
+        uint256 position = nonce % 256;
+        uint256 mask = 1 << position;
+        knownNonces[nonce / 256] = bucket ^ mask;
+    }
 
+    function getNextNonce() public view returns (uint256) {
+        uint256 bucketNumber = 0;
+        uint256 maxBuckets = 100000;
+
+
+        while (knownNonces[bucketNumber] == type(uint256).max && bucketNumber < maxBuckets) {
+            bucketNumber++;
+        }
+
+        if (bucketNumber == maxBuckets) {
+            revert("All nonces in the range are used up");
+        }
+
+        uint256 bucketValue = knownNonces[bucketNumber];
+        uint256 position = 0;
+
+        while (position < 256 && (bucketValue & (1 << position)) != 0) {
+            position++;
+        }
+
+        return (bucketNumber * 256) + position;
+    }
+
+    function isValidSignature(
+        address signer,
+        bytes32 digest,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal view returns (bool) {
+        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        require(recoverError != ECDSA.RecoverError.InvalidSignatureS, "Invalid value s");
+        require(recoverError != ECDSA.RecoverError.InvalidSignature, "Bad signatory");
+        require(recoveredSigner == signer, "Bad signatory");
+        return true;
+    }
+ 
 }
