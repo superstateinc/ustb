@@ -211,12 +211,14 @@ contract USTB is ERC20, IERC7246 {
         override
     {
         require(block.timestamp <= expiry, "Signature expired");
-        require(!nonceUsed(nonce));
+        uint256 bucketValue = knownNonces[nonce / 256];
+        require(!nonceUsed(nonce, bucketValue), "Nonce already used");
 
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
         if (isValidSignature(owner, digest, v, r, s)) {
-            markNonce(nonce);
+            uint256 newBucketValue = markNonce(nonce, bucketValue);
+            knownNonces[nonce / 256] = newBucketValue;
             _approve(owner, spender, amount);
         } else {
             revert("Bad signatory");
@@ -256,7 +258,7 @@ contract USTB is ERC20, IERC7246 {
      * NOTE: The conditions are subject to changes in the `Permissions` struct
      */
     function isTransferAllowed(address dst) public view returns (bool) {
-        bool dstPermissions = permissionlist.getPermissions(dst);
+        bool dstPermissions = permissionlist.getPermission(dst);
         return dstPermissions.allowed && !dstPermissions.forbidden;
     }
 
@@ -306,12 +308,14 @@ contract USTB is ERC20, IERC7246 {
         external
     {
         require(block.timestamp < expiry, "Signature expired");
-        require(!nonceUsed(nonce));
+        uint256 bucketValue = knownNonces[nonce / 256];
+        require(!nonceUsed(nonce, bucketValue), "Nonce already used");
 
         bytes32 structHash = keccak256(abi.encode(TRANSFER_TYPEHASH, src, dst, amount, nonce, expiry));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
         if (isValidSignature(src, digest, v, r, s)) {
-            markNonce(nonce);
+            uint256 newBucketValue = markNonce(nonce, bucketValue);
+            knownNonces[nonce / 256] = newBucketValue;
             _transfer(src, dst, amount);
         } else {
             revert("Bad signatory");
@@ -321,25 +325,26 @@ contract USTB is ERC20, IERC7246 {
     /**
      * @notice Checks if a nonce has been used
      * @param nonce The nonce to check
+     * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
      * @return bool True if nonce has been used, false otherwise
      */
-    function nonceUsed(uint256 nonce) public view returns (bool) {
-        uint256 bucket = knownNonces[nonce / 256];
+    function nonceUsed(uint256 nonce, uint256 bucketValue) public view returns (bool) {
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
-        return (bucket & mask) != 0;
+        return (bucketValue & mask) != 0;
     }
 
     /**
      * @dev Marks a nonce as used. This function ensures that a nonce is not reused, preventing replay attacks. Can only be called internally by this contract
      * @param nonce The nonce to mark as used
+     * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
+     * @return uint256 The new (bitwise-or)'ed value to set for the bucket
      */
-    function markNonce(uint256 nonce) internal {
+    function markNonce(uint256 nonce, uint256 bucketValue) internal returns (uint256) {
         require(msg.sender == address(this), "Not authorized to set nonces");
-        uint256 bucket = knownNonces[nonce / 256];
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
-        knownNonces[nonce / 256] = bucket ^ mask;
+        return bucketValue ^ mask;
     }
 
     /**
