@@ -1,0 +1,413 @@
+// SPDX-License-Identifier: BSD-3-Clause
+pragma solidity ^0.8.20;
+
+import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import {IERC7246} from "./interfaces/IERC7246.sol";
+import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
+
+/**
+ * @title USTB
+ * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
+ * @author Compound
+ */
+contract USTB is ERC20, IERC7246 {
+    /// @notice The major version of this contract
+    string public constant VERSION = "1";
+
+    /// @dev The EIP-712 typehash for authorization via permit
+    bytes32 internal constant AUTHORIZATION_TYPEHASH =
+        keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
+
+    /// @dev The EIP-712 typehash for transfer
+    bytes32 internal constant TRANSFER_TYPEHASH =
+        keccak256("Transfer(address src,address dst,uint256 shares,uint256 nonce,uint256 expiry)");
+
+    /// @dev The EIP-712 typehash for encumber via encumberBySig
+    bytes32 internal constant ENCUMBER_TYPEHASH =
+        keccak256("Encumber(address owner,address taker,uint256 amount,uint256 nonce,uint256 expiry)");
+
+    /// @dev The EIP-712 typehash for the contract's domain
+    bytes32 internal constant DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
+    /// @notice Admin address with exclusive privileges for minting and burning
+    address public immutable admin;
+
+    /// @notice Address of the Permissionlist contract which determines permissions for transfers
+    address public immutable permissionlist;
+
+    /// @notice Tracking used nonces based on bucketing to ensure unique nonces are utilized
+    mapping(uint256 => uint256) public knownNonces;
+
+    /// @notice The next expected nonce for an address, for validating authorizations via signature
+    mapping(address => uint256) public nonces;
+
+    /// @notice Amount of an address's token balance that is encumbered
+    mapping(address => uint256) public encumberedBalanceOf;
+
+    /// @notice Amount encumbered from owner to taker (owner => taker => balance)
+    mapping(address => mapping(address => uint256)) public encumbrances;
+
+    /// @notice Number of decimals used for the user representation of the token
+    uint8 private immutable _decimals;
+
+    /**
+     * @notice Construct a new ERC20 token instance with the given admin and permissionlist
+     * @param _admin The address designated as the admin with special privileges
+     * @param _permissionlist Address of the Permissionlist contract to use for permission checking
+     *
+     */
+    constructor(address _admin, address _permissionlist) ERC20("Superstate US Treasury Bill Contract", "USTB") {
+        _decimals = 6;
+        admin = _admin;
+        permissionlist = _permissionlist;
+    }
+
+    /**
+     * @notice Number of decimals used for the user represenation of the token
+     */
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+
+    /**
+     * @notice Retrieve the encumbered balance for a given address
+     * @param owner Address to check the encumbered balance of
+     * @return uint256 Amount of encumbered tokens for the address
+     */
+    function encumberedBalanceOf(address owner) public view returns (uint256) {
+        return encumberedBalanceOf[owner];
+    }
+
+    /**
+     * @notice Retrieve the encumbered balance from an owner to a taker
+     * @param owner The address of the token owner
+     * @param taker The address of the token taker
+     * @return uint256 Amount of tokens encumbered
+     */
+    function encumbrances(address owner, address taker) public view returns (uint256) {
+        return encumbrances[owner][taker];
+    }
+
+    /**
+     * @notice Amount of an address's token balance that is not encumbered
+     * @param owner Address to check the available balance of
+     * @return uint256 Unencumbered balance
+     */
+    function availableBalanceOf(address owner) public view returns (uint256) {
+        return balanceOf(owner) - encumberedBalanceOf(owner);
+    }
+
+    /**
+     * @notice Moves `amount` tokens from the caller's account to `dst`
+     * @dev Confirms the available balance of the caller is sufficient to cover
+     * transfer
+     * @param dst Address to transfer tokens to
+     * @param amount Amount of token to transfer
+     * @return bool Whether the operation was successful
+     */
+    function transfer(address dst, uint256 amount) public override returns (bool) {
+        require(isTransferAllowed(dst), "Transfer now allowed");
+        // check but dont spend encumbrance
+        require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
+        _transfer(msg.sender, dst, amount);
+        return true;
+    }
+
+    /**
+     * @notice Moves `amount` tokens from `src` to `dst` using the encumbrance
+     * and allowance of the caller
+     * @dev Spends the caller's encumbrance from `src` first, then their
+     * allowance from `src` (if necessary)
+     * @param src Address to transfer tokens from
+     * @param dst Address to transfer tokens to
+     * @param amount Amount of token to transfer
+     * @return bool Whether the operation was successful
+     */
+    function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
+        require(isTransferAllowed(dst), "Transfer now allowed");
+        uint256 encumberedToTaker = encumbrances(src, dst);
+        if (amount > encumberedToTaker) {
+            uint256 excess = amount - encumberedToTaker;
+
+            // Exceeds Encumbrance, so spend all of it
+            _spendEncumbrance(src, msg.sender, encumberedToTaker);
+
+            // Having spent all the tokens encumbered to the mover,
+            // We are now moving only "available" tokens and must check
+            // to not unfairly move tokens encumbered to others
+
+            require(availableBalanceOf(src) >= excessAmount, "ERC7246: insufficient available balance");
+
+            _spendAllowance(src, msg.sender, excessAmount);
+        } else {
+            _spendEncumbrance(src, msg.sender, amount);
+        }
+
+        _transfer(src, dst, amount);
+        return true;
+    }
+
+    /**
+     * @notice Increases the amount of tokens that the caller has encumbered to
+     * `taker` by `amount`
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance by
+     */
+    function encumber(address taker, uint256 amount) external {
+        _encumber(msg.sender, taker, amount);
+    }
+
+    /**
+     * @notice Increases the amount of tokens that `owner` has encumbered to
+     * `taker` by `amount`.
+     * @dev Spends the caller's `allowance`
+     * @param owner Address to increase encumbrance from
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance to `taker` by
+     */
+    function encumberFrom(address owner, address taker, uint256 amount) external {
+        require(allowance(owner, msg.sender) >= amount, "ERC7246: insufficient allowance");
+        // spend caller's allowance
+        _spendAllowance(owner, msg.sender, amount);
+        _encumber(owner, taker, amount);
+    }
+
+    /**
+     * @notice Reduces amount of tokens encumbered from `owner` to caller by
+     * `amount`
+     * @dev Spends all of the encumbrance if `amount` is greater than `owner`'s
+     * current encumbrance to caller
+     * @param owner Address to decrease encumbrance from
+     * @param amount Amount of tokens to decrease the encumbrance by
+     */
+    function release(address owner, uint256 amount) external {
+        _release(owner, msg.sender, amount);
+    }
+
+    /**
+     * @notice Sets approval amount for a spender via signature from signatory
+     * @param owner The address that signed the signature
+     * @param spender The address to authorize (or rescind authorization from)
+     * @param amount Amount that `owner` is approving for `spender`
+     * @param nonce  Unique value to prevent replay attacks
+     * @param expiry Expiration time for the signature
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function permit(
+        address owner,
+        address spender,
+        uint256 amount,
+        uint256 nonce,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+        public
+        virtual
+        override
+    {
+        require(block.timestamp <= expiry, "Signature expired");
+        require(!nonceUsed(nonce));
+
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        if (isValidSignature(owner, digest, v, r, s)) {
+            markNonce(nonce);
+            _approve(owner, spender, amount);
+        } else {
+            revert("Bad signatory");
+        }
+    }
+
+    /**
+     * @notice Sets an encumbrance from owner to taker via signature from signatory
+     * @param owner The address that signed the signature
+     * @param taker The address to create an encumbrance to
+     * @param amount Amount that owner is encumbering to taker
+     * @param expiry Expiration time for the signature
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function encumberBySig(address owner, address taker, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
+        require(block.timestamp < expiry, "Signature expired");
+        uint256 nonce = nonces[owner];
+        bytes32 structHash = keccak256(abi.encode(ENCUMBER_TYPEHASH, owner, taker, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        if (isValidSignature(owner, digest, v, r, s)) {
+            nonces[owner]++;
+            _encumber(owner, taker, amount);
+        } else {
+            revert("Bad signatory");
+        }
+    }
+
+    /**
+     * @notice Check if a transfer is allowed to a destination address based on its permissions
+     * @param dst Destination address for the transfer
+     * @return bool True if the destination address has permission, false otherwise
+     *
+     * NOTE: The conditions are subject to changes in the `Permissions` struct
+     */
+    function isTransferAllowed(address dst) public view returns (bool) {
+        bool dstPermissions = permissionlist.getPermissions(dst);
+        return dstPermissions.allowed && !dstPermissions.forbidden;
+    }
+
+    /**
+     * @notice Mint new tokens to a recipient
+     * @dev Only callable by the admin
+     * @param dst Recipient of the minted tokens
+     * @param amount Amount of tokens to mint
+     */
+    function mint(address dst, uint256 amount) external {
+        require(msg.sender == admin, "Bad caller; only admin can mint");
+        _mint(dst, amount);
+    }
+
+    /**
+     * @notice Burn tokens from a given source address
+     * @dev Only callable by the admin
+     * @param src Source address from which tokens will be burned
+     * @param amount Amount of tokens to burn
+     */
+    function burn(address src, uint256 amount) external {
+        require(msg.sender == admin, "Bad caller, only admin can burn");
+        _burn(src, amount);
+    }
+
+    /**
+     * @notice Transfer tokens between two addresses using a signature for authorization
+     * @param src Source address from which tokens will be transferred
+     * @param dst Destination address to which tokens will be transferred
+     * @param amount Amount of tokens to transfer
+     * @param nonce Unique nonce to prevent replay attacks
+     * @param expiry Expiry time for the signature
+     * @param v Recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     */
+    function transferBySig(
+        address src,
+        address dst,
+        uint256 amount,
+        uint256 nonce,
+        uint256 expiry,
+        bytes8 v,
+        bytes32 r,
+        bytes32 s
+    )
+        external
+    {
+        require(block.timestamp < expiry, "Signature expired");
+        require(!nonceUsed(nonce));
+
+        bytes32 structHash = keccak256(abi.encode(TRANSFER_TYPEHASH, src, dst, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
+        if (isValidSignature(src, digest, v, r, s)) {
+            markNonce(nonce);
+            _transfer(src, dst, amount);
+        } else {
+            revert("Bad signatory");
+        }
+    }
+
+    /**
+     * @notice Checks if a nonce has been used
+     * @param nonce The nonce to check
+     * @return bool True if nonce has been used, false otherwise
+     */
+    function nonceUsed(uint256 nonce) public view returns (bool) {
+        uint256 bucket = knownNonces[nonce / 256];
+        uint256 position = nonce % 256;
+        uint256 mask = 1 << position;
+        return (bucket & mask) != 0;
+    }
+
+    /**
+     * @dev Marks a nonce as used. This function ensures that a nonce is not reused, preventing replay attacks. Can only be called internally by this contract
+     * @param nonce The nonce to mark as used
+     */
+    function markNonce(uint256 nonce) internal {
+        require(msg.sender == address(this), "Not authorized to set nonces");
+        uint256 bucket = knownNonces[nonce / 256];
+        uint256 position = nonce % 256;
+        uint256 mask = 1 << position;
+        knownNonces[nonce / 256] = bucket ^ mask;
+    }
+
+    /**
+     * @dev Increase `owner`'s encumbrance to `taker` by `amount`
+     */
+    function _encumber(address owner, address taker, uint256 amount) private {
+        require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
+        uint256 currentEncumbrance = encumbrances(owner, taker);
+        encumbrances[owner][taker] += amount;
+        encumberedBalanceOf[owner] += amount;
+        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance + amount);
+    }
+
+    /**
+     * @dev Spend `amount` of `owner`'s encumbrance to `taker`
+     */
+    function _spendEncumbrance(address owner, address taker, uint256 amount) {
+        uint256 currentEncumbrance = encumbrances(owner, taker);
+        require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
+        uint256 newEncumbrance = currentEncumbrance - amount;
+        encumbrances[owner][taker] = newEncumbrance;
+        encumberedBalanceOf[owner] -= amount;
+        emit Encumbrance(owner, taker, currentEncumbrance, newEncumbrance);
+    }
+
+    /**
+     * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
+     */
+    function _release(address owner, address taker, uint256 amount) private {
+        uint256 currentEncumbrance = encumbrances(owner, taker);
+        require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
+        encumbrances[owner][taker] -= amount;
+        encumberedBalanceOf[owner] -= amount;
+        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance - amount);
+    }
+
+    /**
+     * @notice Returns the domain separator used in the encoding of the
+     * signature for permit
+     * @return bytes32 The domain separator
+     */
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                DOMAIN_TYPEHASH, keccak256(bytes(name())), keccak256(bytes(VERSION)), block.chainid, address(this)
+            )
+        );
+    }
+
+    /**
+     * @notice Checks if a signature is valid
+     * @dev Supports EIP-1271 signatures for smart contracts
+     * @param signer The address that signed the signature
+     * @param digest The hashed message that is signed
+     * @param v The recovery byte of the signature
+     * @param r Half of the ECDSA signature pair
+     * @param s Half of the ECDSA signature pair
+     * @return bool Whether the signature is valid
+     */
+    function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
+        internal
+        view
+        returns (bool)
+    {
+        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        require(recoverError != ECDSA.RecoverError.InvalidSignatureS, "Invalid value s");
+        require(recoverError != ECDSA.RecoverError.InvalidSignature, "Bad signatory");
+        require(recoveredSigner == signer, "Bad signatory");
+        return true;
+    }
+}
