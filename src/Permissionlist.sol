@@ -95,10 +95,10 @@ contract Permissionlist {
         bytes32 s
     ) public {
         require(block.timestamp <= expiry, "Signature expired");
+        require(userNonces[addr] <= nonce, "Nonce already used");
+
         uint256 bucketValue = knownNonces[nonce / 256];
         require(!nonceUsed(nonce, bucketValue), "Nonce already used");
-        // TODO: Double-check if same nonce can be used
-        // require(userNonces[addr] <= nonce, "Nonce already used");
 
         bytes32 structHash = keccak256(abi.encode(SET_PERMISSION_TYPEHASH, addr, permission, nonce, expiry));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
@@ -106,8 +106,7 @@ contract Permissionlist {
 
         uint256 newBucketValue = markNonce(nonce, bucketValue);
         knownNonces[nonce / 256] = newBucketValue;
-        // [TODO]
-        // userNonces[addr] = nonce + 1
+        userNonces[addr] = nonce + 1;
         permissions[addr] = permission;
         emit PermissionSet(addr, permission);
     }
