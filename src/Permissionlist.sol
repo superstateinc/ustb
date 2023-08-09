@@ -68,7 +68,7 @@ contract Permissionlist {
      * @param addr The address to be updated
      * @param permission The permission status to set
      */
-    function setPermission(address addr, Permission permission) public {
+    function setPermission(address addr, Permission memory permission) public {
         require(msg.sender == permissionAdmin, "Not authorized to set permissions");
         permissions[addr] = permission;
 
@@ -87,15 +87,13 @@ contract Permissionlist {
      */
     function setPermissionBySig(
         address addr,
-        Permission permission,
+        Permission memory permission,
         uint256 nonce,
         uint256 expiry,
         uint8 v,
         bytes32 r,
         bytes32 s
-    )
-        public
-    {
+    ) public {
         require(block.timestamp <= expiry, "Signature expired");
         uint256 bucketValue = knownNonces[nonce / 256];
         require(!nonceUsed(nonce, bucketValue), "Nonce already used");
@@ -131,7 +129,7 @@ contract Permissionlist {
      * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
      * @return bool True if nonce has been used, false otherwise
      */
-    function nonceUsed(uint256 nonce, uint256 bucketValue) public view returns (bool) {
+    function nonceUsed(uint256 nonce, uint256 bucketValue) public pure returns (bool) {
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
         return (bucketValue & mask) != 0;
@@ -143,7 +141,7 @@ contract Permissionlist {
      * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
      * @return uint256 The new (bitwise-or)'ed value to set for the bucket
      */
-    function markNonce(uint256 nonce, uint256 bucketValue) internal returns (uint256) {
+    function markNonce(uint256 nonce, uint256 bucketValue) internal view returns (uint256) {
         require(msg.sender == address(this), "Not authorized to set nonces");
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
@@ -161,10 +159,10 @@ contract Permissionlist {
      */
     function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
         internal
-        view
+        pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
         require(recoverError != ECDSA.RecoverError.InvalidSignatureS, "Invalid value s");
         require(recoverError != ECDSA.RecoverError.InvalidSignature, "Bad signatory");
         require(recoveredSigner == signer, "Bad signatory");

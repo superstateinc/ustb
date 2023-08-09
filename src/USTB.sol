@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
+import {Permissionlist} from "./Permissionlist.sol";
+
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC7246} from "./interfaces/IERC7246.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
@@ -34,7 +36,7 @@ contract USTB is ERC20, IERC7246 {
     address public immutable admin;
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    address public immutable permissionlist;
+    Permissionlist public immutable permissionlist;
 
     /// @notice Tracking used nonces based on bucketing to ensure unique nonces are utilized
     mapping(uint256 => uint256) public knownNonces;
@@ -57,7 +59,7 @@ contract USTB is ERC20, IERC7246 {
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
      *
      */
-    constructor(address _admin, address _permissionlist) ERC20("Superstate US Treasury Bill Contract", "USTB") {
+    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate US Treasury Bill Contract", "USTB") {
         _decimals = 6;
         admin = _admin;
         permissionlist = _permissionlist;
@@ -71,31 +73,12 @@ contract USTB is ERC20, IERC7246 {
     }
 
     /**
-     * @notice Retrieve the encumbered balance for a given address
-     * @param owner Address to check the encumbered balance of
-     * @return uint256 Amount of encumbered tokens for the address
-     */
-    function encumberedBalanceOf(address owner) public view returns (uint256) {
-        return encumberedBalanceOf[owner];
-    }
-
-    /**
-     * @notice Retrieve the encumbered balance from an owner to a taker
-     * @param owner The address of the token owner
-     * @param taker The address of the token taker
-     * @return uint256 Amount of tokens encumbered
-     */
-    function encumbrances(address owner, address taker) public view returns (uint256) {
-        return encumbrances[owner][taker];
-    }
-
-    /**
      * @notice Amount of an address's token balance that is not encumbered
      * @param owner Address to check the available balance of
      * @return uint256 Unencumbered balance
      */
     function availableBalanceOf(address owner) public view returns (uint256) {
-        return balanceOf(owner) - encumberedBalanceOf(owner);
+        return balanceOf(owner) - encumberedBalanceOf[owner];
     }
 
     /**
@@ -126,9 +109,9 @@ contract USTB is ERC20, IERC7246 {
      */
     function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
         require(isTransferAllowed(dst), "Transfer now allowed");
-        uint256 encumberedToTaker = encumbrances(src, dst);
+        uint256 encumberedToTaker = encumbrances[src][dst];
         if (amount > encumberedToTaker) {
-            uint256 excess = amount - encumberedToTaker;
+            uint256 excessAmount = amount - encumberedToTaker;
 
             // Exceeds Encumbrance, so spend all of it
             _spendEncumbrance(src, msg.sender, encumberedToTaker);
@@ -205,11 +188,7 @@ contract USTB is ERC20, IERC7246 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    )
-        public
-        virtual
-        override
-    {
+    ) external {
         require(block.timestamp <= expiry, "Signature expired");
         uint256 bucketValue = knownNonces[nonce / 256];
         require(!nonceUsed(nonce, bucketValue), "Nonce already used");
@@ -258,7 +237,7 @@ contract USTB is ERC20, IERC7246 {
      * NOTE: The conditions are subject to changes in the `Permissions` struct
      */
     function isTransferAllowed(address dst) public view returns (bool) {
-        bool dstPermissions = permissionlist.getPermission(dst);
+        Permissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
         return dstPermissions.allowed && !dstPermissions.forbidden;
     }
 
@@ -301,12 +280,10 @@ contract USTB is ERC20, IERC7246 {
         uint256 amount,
         uint256 nonce,
         uint256 expiry,
-        bytes8 v,
+        uint8 v,
         bytes32 r,
         bytes32 s
-    )
-        external
-    {
+    ) external {
         require(block.timestamp < expiry, "Signature expired");
         uint256 bucketValue = knownNonces[nonce / 256];
         require(!nonceUsed(nonce, bucketValue), "Nonce already used");
@@ -328,7 +305,7 @@ contract USTB is ERC20, IERC7246 {
      * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
      * @return bool True if nonce has been used, false otherwise
      */
-    function nonceUsed(uint256 nonce, uint256 bucketValue) public view returns (bool) {
+    function nonceUsed(uint256 nonce, uint256 bucketValue) public pure returns (bool) {
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
         return (bucketValue & mask) != 0;
@@ -340,7 +317,7 @@ contract USTB is ERC20, IERC7246 {
      * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
      * @return uint256 The new (bitwise-or)'ed value to set for the bucket
      */
-    function markNonce(uint256 nonce, uint256 bucketValue) internal returns (uint256) {
+    function markNonce(uint256 nonce, uint256 bucketValue) internal view returns (uint256) {
         require(msg.sender == address(this), "Not authorized to set nonces");
         uint256 position = nonce % 256;
         uint256 mask = 1 << position;
@@ -352,7 +329,7 @@ contract USTB is ERC20, IERC7246 {
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
-        uint256 currentEncumbrance = encumbrances(owner, taker);
+        uint256 currentEncumbrance = encumbrances[owner][taker];
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
         emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance + amount);
@@ -361,8 +338,8 @@ contract USTB is ERC20, IERC7246 {
     /**
      * @dev Spend `amount` of `owner`'s encumbrance to `taker`
      */
-    function _spendEncumbrance(address owner, address taker, uint256 amount) {
-        uint256 currentEncumbrance = encumbrances(owner, taker);
+    function _spendEncumbrance(address owner, address taker, uint256 amount) internal {
+        uint256 currentEncumbrance = encumbrances[owner][taker];
         require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
         uint256 newEncumbrance = currentEncumbrance - amount;
         encumbrances[owner][taker] = newEncumbrance;
@@ -374,7 +351,7 @@ contract USTB is ERC20, IERC7246 {
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
     function _release(address owner, address taker, uint256 amount) private {
-        uint256 currentEncumbrance = encumbrances(owner, taker);
+        uint256 currentEncumbrance = encumbrances[owner][taker];
         require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
@@ -406,10 +383,10 @@ contract USTB is ERC20, IERC7246 {
      */
     function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
         internal
-        view
+        pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
         require(recoverError != ECDSA.RecoverError.InvalidSignatureS, "Invalid value s");
         require(recoverError != ECDSA.RecoverError.InvalidSignature, "Bad signatory");
         require(recoveredSigner == signer, "Bad signatory");
