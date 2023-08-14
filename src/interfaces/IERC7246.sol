@@ -6,10 +6,21 @@ pragma solidity ^0.8.20;
  */
 interface IERC7246 {
     /**
-     * @dev Emitted when the tokens encumbered by `owner` to `taker` change from `oldEncumbrance` to `newEncumbrance`. 
-     * Covers encumbering, spending, and releasing tokens.
+     * @dev Emitted when `amount` tokens are encumbered from `owner` to `taker`.
      */
-    event Encumbrance(address indexed owner, address indexed taker, uint256 oldEncumbrance, uint256 newEncumbrance);
+    event Encumber(address indexed owner, address indexed taker, uint256 amount);
+
+    /**
+     * @dev Emitted when the encumbrance of an `owner` to a `taker` is reduced
+     * by `amount`.
+     */
+    event Release(address indexed owner, address indexed taker, uint256 amount);
+
+    /**
+     * @dev Emitted when `amount` of encumbrance of an `owner` to a `taker` is
+     * spent.
+     */
+    event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
 
     /**
      * @dev Returns the total amount of tokens owned by `owner` that are

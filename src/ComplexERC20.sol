@@ -8,25 +8,17 @@ import {IERC7246} from "./interfaces/IERC7246.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 /**
- * @title USTB
+ * @title ---
  * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
- * @author Compound
+ * @author ---
  */
-contract USTB is ERC20, IERC7246 {
+contract ComplexERC20 is ERC20, IERC7246 {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
-
-    /// @dev The EIP-712 typehash for transfer
-    bytes32 internal constant TRANSFER_TYPEHASH =
-        keccak256("Transfer(address src,address dst,uint256 shares,uint256 nonce,uint256 expiry)");
-
-    /// @dev The EIP-712 typehash for encumber via encumberBySig
-    bytes32 internal constant ENCUMBER_TYPEHASH =
-        keccak256("Encumber(address owner,address taker,uint256 amount,uint256 nonce,uint256 expiry)");
 
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
@@ -37,9 +29,6 @@ contract USTB is ERC20, IERC7246 {
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
     Permissionlist public immutable permissionlist;
-
-    /// @notice Tracking used nonces based on bucketing to ensure unique nonces are utilized
-    mapping(uint256 => uint256) public knownNonces;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -59,7 +48,7 @@ contract USTB is ERC20, IERC7246 {
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
      *
      */
-    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate US Treasury Bill Contract", "USTB") {
+    constructor(address _admin, Permissionlist _permissionlist) ERC20("Complex ERC20", "CERC20") {
         _decimals = 6;
         admin = _admin;
         permissionlist = _permissionlist;
@@ -90,7 +79,7 @@ contract USTB is ERC20, IERC7246 {
      * @return bool Whether the operation was successful
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
-        require(isTransferAllowed(dst), "Transfer now allowed");
+        require(isTransferAllowed(dst), "Transfer not allowed");
         // check but dont spend encumbrance
         require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
         _transfer(msg.sender, dst, amount);
@@ -173,31 +162,21 @@ contract USTB is ERC20, IERC7246 {
      * @param owner The address that signed the signature
      * @param spender The address to authorize (or rescind authorization from)
      * @param amount Amount that `owner` is approving for `spender`
-     * @param nonce  Unique value to prevent replay attacks
      * @param expiry Expiration time for the signature
      * @param v The recovery byte of the signature
      * @param r Half of the ECDSA signature pair
      * @param s Half of the ECDSA signature pair
      */
-    function permit(
-        address owner,
-        address spender,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
+    function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
         require(block.timestamp <= expiry, "Signature expired");
-        uint256 bucketValue = knownNonces[nonce / 256];
-        require(!nonceUsed(nonce, bucketValue), "Nonce already used");
+        uint256 nonce = nonces[owner];
 
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
         if (isValidSignature(owner, digest, v, r, s)) {
-            uint256 newBucketValue = markNonce(nonce, bucketValue);
-            knownNonces[nonce / 256] = newBucketValue;
+            nonces[owner]++;
             _approve(owner, spender, amount);
         } else {
             revert("Bad signatory");
@@ -205,36 +184,10 @@ contract USTB is ERC20, IERC7246 {
     }
 
     /**
-     * @notice Sets an encumbrance from owner to taker via signature from signatory
-     * @param owner The address that signed the signature
-     * @param taker The address to create an encumbrance to
-     * @param amount Amount that owner is encumbering to taker
-     * @param expiry Expiration time for the signature
-     * @param v The recovery byte of the signature
-     * @param r Half of the ECDSA signature pair
-     * @param s Half of the ECDSA signature pair
-     */
-    function encumberBySig(address owner, address taker, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
-        external
-    {
-        require(block.timestamp < expiry, "Signature expired");
-        uint256 nonce = nonces[owner];
-        bytes32 structHash = keccak256(abi.encode(ENCUMBER_TYPEHASH, owner, taker, amount, nonce, expiry));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
-        if (isValidSignature(owner, digest, v, r, s)) {
-            nonces[owner]++;
-            _encumber(owner, taker, amount);
-        } else {
-            revert("Bad signatory");
-        }
-    }
-
-    /**
      * @notice Check if a transfer is allowed to a destination address based on its permissions
+     * @dev The transfer conditions are subject to changes in the `Permissions` struct
      * @param dst Destination address for the transfer
      * @return bool True if the destination address has permission, false otherwise
-     *
-     * NOTE: The conditions are subject to changes in the `Permissions` struct
      */
     function isTransferAllowed(address dst) public view returns (bool) {
         Permissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
@@ -259,69 +212,9 @@ contract USTB is ERC20, IERC7246 {
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        require(msg.sender == admin, "Bad caller, only admin can burn");
+        require(msg.sender == admin, "Bad caller; only admin can burn");
+        require(availableBalanceOf(src) >= amount, "ERC7246: insufficient available balance");
         _burn(src, amount);
-    }
-
-    /**
-     * @notice Transfer tokens between two addresses using a signature for authorization
-     * @param src Source address from which tokens will be transferred
-     * @param dst Destination address to which tokens will be transferred
-     * @param amount Amount of tokens to transfer
-     * @param nonce Unique nonce to prevent replay attacks
-     * @param expiry Expiry time for the signature
-     * @param v Recovery byte of the signature
-     * @param r Half of the ECDSA signature pair
-     * @param s Half of the ECDSA signature pair
-     */
-    function transferBySig(
-        address src,
-        address dst,
-        uint256 amount,
-        uint256 nonce,
-        uint256 expiry,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        require(block.timestamp < expiry, "Signature expired");
-        uint256 bucketValue = knownNonces[nonce / 256];
-        require(!nonceUsed(nonce, bucketValue), "Nonce already used");
-
-        bytes32 structHash = keccak256(abi.encode(TRANSFER_TYPEHASH, src, dst, amount, nonce, expiry));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
-        if (isValidSignature(src, digest, v, r, s)) {
-            uint256 newBucketValue = markNonce(nonce, bucketValue);
-            knownNonces[nonce / 256] = newBucketValue;
-            _transfer(src, dst, amount);
-        } else {
-            revert("Bad signatory");
-        }
-    }
-
-    /**
-     * @notice Checks if a nonce has been used
-     * @param nonce The nonce to check
-     * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
-     * @return bool True if nonce has been used, false otherwise
-     */
-    function nonceUsed(uint256 nonce, uint256 bucketValue) public pure returns (bool) {
-        uint256 position = nonce % 256;
-        uint256 mask = 1 << position;
-        return (bucketValue & mask) != 0;
-    }
-
-    /**
-     * @dev Marks a nonce as used. This function ensures that a nonce is not reused, preventing replay attacks. Can only be called internally by this contract
-     * @param nonce The nonce to mark as used
-     * @param bucketValue The value of the bucket `nonce` is located it. Each bucket groups nonces in chunks of 256.
-     * @return uint256 The new (bitwise-or)'ed value to set for the bucket
-     */
-    function markNonce(uint256 nonce, uint256 bucketValue) internal view returns (uint256) {
-        require(msg.sender == address(this), "Not authorized to set nonces");
-        uint256 position = nonce % 256;
-        uint256 mask = 1 << position;
-        return bucketValue ^ mask;
     }
 
     /**
