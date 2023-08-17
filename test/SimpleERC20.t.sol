@@ -12,7 +12,7 @@ contract SimpleERC20Test is Test {
     uint256 initialSupply;
 
     function setUp() public {
-        perms = new SimplePermissionlist();
+        perms = new SimplePermissionlist(address(this));
 
         initialSupply = 1000000000;
         vm.prank(address(1));
@@ -28,19 +28,19 @@ contract SimpleERC20Test is Test {
     }
 
     function testCannotTransferTokensUnlessWhitelisted() public {
-        vm.startPrank(address(1));
-
         // Cannot transfer to address(2)...
-
+        vm.prank(address(1));
         vm.expectRevert(SimpleERC20.TransferNotAllowed.selector);
         simpleToken.transfer(address(2), 100000);
 
         // ... until we whitelist them
         assertEq(simpleToken.balanceOf(address(2)), 0);
-        perms.setPermissions(address(2), true);
+
+        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true, false);
+        perms.setPermission(address(2), newPerms);
+
+        vm.prank(address(1));
         simpleToken.transfer(address(2), 100000);
         assertEq(simpleToken.balanceOf(address(2)), 100000);
-
-        vm.stopPrank();
     }
 }

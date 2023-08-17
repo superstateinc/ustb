@@ -2,18 +2,29 @@
 pragma solidity ^0.8.20;
 
 contract SimplePermissionlist {
-    mapping(address => bool) public permissions;
+    address public immutable permissionAdmin;
 
-    event PermissionSet(address indexed addr, bool value);
-
-    constructor() {}
-
-    function getPermissions(address addr) public view returns (bool) {
-        return permissions[addr];
+    struct Permission {
+        bool allowed;
+        bool forbidden;
     }
 
-    function setPermissions(address addr, bool value) external {
-        permissions[addr] = value;
-        emit PermissionSet(addr, value);
+    mapping(address => Permission) public permissions;
+
+    event PermissionSet(address indexed addr, Permission permission);
+
+    constructor(address _permissionAdmin) {
+        permissionAdmin = _permissionAdmin;
+    }
+
+    function getPermission(address receiver) public view returns (Permission memory) {
+        return permissions[receiver];
+    }
+
+    function setPermission(address addr, Permission memory permission) external {
+        if (msg.sender != permissionAdmin) revert("Not admin");
+
+        permissions[addr] = permission;
+        emit PermissionSet(addr, permission);
     }
 }

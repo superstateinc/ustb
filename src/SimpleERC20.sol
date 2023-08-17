@@ -16,7 +16,7 @@ contract SimpleERC20 is ERC20 {
 
     // For this dummy contract we only check permissions for the transfer-to function
     function transfer(address to, uint256 value) public override returns (bool) {
-        if (list.getPermissions(to) == false) {
+        if (list.getPermission(to).forbidden || !list.getPermission(to).allowed) {
             revert TransferNotAllowed();
         }
 

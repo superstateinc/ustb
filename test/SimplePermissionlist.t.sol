@@ -7,16 +7,18 @@ contract SimplePermissionlistTest is Test {
     SimplePermissionlist perms;
 
     function setUp() public {
-        perms = new SimplePermissionlist();
+        perms = new SimplePermissionlist(address(this));
     }
 
     function testShouldSetPermsCorrectly() public {
         address alice = address(0);
 
-        assertEq(perms.getPermissions(alice), false);
+        assertEq(perms.getPermission(alice).allowed, false);
 
-        perms.setPermissions(alice, true);
+        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true, false);
 
-        assertEq(perms.getPermissions(alice), true);
+        perms.setPermission(alice, newPerms);
+
+        assertEq(perms.getPermission(alice).allowed, true);
     }
 }
