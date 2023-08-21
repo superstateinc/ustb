@@ -79,10 +79,18 @@ contract SUPTB is ERC20, IERC7246 {
      * @return bool Whether the operation was successful
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
-        require(hasSufficientPermissions(msg.sender), "Insufficient Permissions");
-        require(hasSufficientPermissions(dst), "Insufficient Permissions");
         // check but dont spend encumbrance
         require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
+
+        require(hasSufficientPermissions(msg.sender), "Insufficient Permissions");
+
+        if (dst == address(this)) {
+            _burn(msg.sender, amount);
+            return true;
+        }
+
+        require(hasSufficientPermissions(dst), "Insufficient Permissions");
+
         _transfer(msg.sender, dst, amount);
         return true;
     }

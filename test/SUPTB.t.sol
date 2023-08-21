@@ -11,6 +11,7 @@ contract SUPTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
     Permissionlist public perms;
     SUPTB public token;
@@ -348,6 +349,22 @@ contract SUPTBTest is Test {
 
         token.burn(alice, 100e6);
         assertEq(token.balanceOf(alice), 0);
+    }
+
+    function testSelfBurnUsingTransfer() public {
+        deal(address(token), alice, 100e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
+
+        // emits Transfer event
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 50e6);
+
+        // alice calls transfer(contract_address, amount) to self-burn
+        vm.prank(alice);
+        token.transfer(address(token), 50e6);
+
+        assertEq(token.balanceOf(alice), 50e6);
     }
 
     function testBurnRevertBadCaller() public {
