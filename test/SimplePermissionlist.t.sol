@@ -15,7 +15,7 @@ contract SimplePermissionlistTest is Test {
 
         assertEq(perms.getPermission(alice).allowed, false);
 
-        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true, false);
+        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true);
 
         perms.setPermission(alice, newPerms);
 

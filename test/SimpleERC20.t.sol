@@ -36,7 +36,7 @@ contract SimpleERC20Test is Test {
         // ... until we whitelist them
         assertEq(simpleToken.balanceOf(address(2)), 0);
 
-        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true, false);
+        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true);
         perms.setPermission(address(2), newPerms);
 
         vm.prank(address(1));

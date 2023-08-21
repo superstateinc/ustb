@@ -329,10 +329,9 @@ contract USTB is ERC20, IERC7246 {
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
-        uint256 currentEncumbrance = encumbrances[owner][taker];
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance + amount);
+        emit Encumber(owner, taker, amount);
     }
 
     /**
@@ -344,18 +343,17 @@ contract USTB is ERC20, IERC7246 {
         uint256 newEncumbrance = currentEncumbrance - amount;
         encumbrances[owner][taker] = newEncumbrance;
         encumberedBalanceOf[owner] -= amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, newEncumbrance);
+        emit EncumbranceSpend(owner, taker, amount);
     }
 
     /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
     function _release(address owner, address taker, uint256 amount) private {
-        uint256 currentEncumbrance = encumbrances[owner][taker];
-        require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
+        require(encumbrances[owner][taker] >= amount, "ERC7246: insufficient encumbrance");
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance - amount);
+        emit Release(owner, taker, amount);
     }
 
     /**

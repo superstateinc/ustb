@@ -6,7 +6,6 @@ contract SimplePermissionlist {
 
     struct Permission {
         bool allowed;
-        bool forbidden;
     }
 
     mapping(address => Permission) public permissions;

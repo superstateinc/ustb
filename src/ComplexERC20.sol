@@ -79,7 +79,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
      * @return bool Whether the operation was successful
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
-        require(isTransferAllowed(dst), "Transfer now allowed");
+        require(isTransferAllowed(dst), "Transfer not allowed");
         // check but dont spend encumbrance
         require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
         _transfer(msg.sender, dst, amount);
@@ -185,14 +185,13 @@ contract ComplexERC20 is ERC20, IERC7246 {
 
     /**
      * @notice Check if a transfer is allowed to a destination address based on its permissions
+     * @dev The transfer conditions are subject to changes in the `Permissions` struct
      * @param dst Destination address for the transfer
      * @return bool True if the destination address has permission, false otherwise
-     *
-     * NOTE: The conditions are subject to changes in the `Permissions` struct
      */
     function isTransferAllowed(address dst) public view returns (bool) {
         SimplePermissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
-        return dstPermissions.allowed && !dstPermissions.forbidden;
+        return dstPermissions.allowed;
     }
 
     /**
@@ -213,7 +212,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        require(msg.sender == admin, "Bad caller, only admin can burn");
+        require(msg.sender == admin, "Bad caller; only admin can burn");
         _burn(src, amount);
     }
 
@@ -222,10 +221,9 @@ contract ComplexERC20 is ERC20, IERC7246 {
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
-        uint256 currentEncumbrance = encumbrances[owner][taker];
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance + amount);
+        emit Encumber(owner, taker, amount);
     }
 
     /**
@@ -237,18 +235,17 @@ contract ComplexERC20 is ERC20, IERC7246 {
         uint256 newEncumbrance = currentEncumbrance - amount;
         encumbrances[owner][taker] = newEncumbrance;
         encumberedBalanceOf[owner] -= amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, newEncumbrance);
+        emit EncumbranceSpend(owner, taker, amount);
     }
 
     /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
     function _release(address owner, address taker, uint256 amount) private {
-        uint256 currentEncumbrance = encumbrances[owner][taker];
-        require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
+        require(encumbrances[owner][taker] >= amount, "ERC7246: insufficient encumbrance");
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
-        emit Encumbrance(owner, taker, currentEncumbrance, currentEncumbrance - amount);
+        emit Release(owner, taker, amount);
     }
 
     /**
