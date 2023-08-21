@@ -2,9 +2,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "src/Permissionlist.sol";
-import "src/ComplexERC20.sol";
+import "src/SUPTB.sol";
 
-contract SimpleContractsDeployScript is Script {
+contract DeployScript is Script {
     function run() external {
         vm.startBroadcast();
 
@@ -12,7 +12,7 @@ contract SimpleContractsDeployScript is Script {
 
         Permissionlist perms = new Permissionlist(admin);
 
-        ComplexERC20 token = new ComplexERC20(admin, perms);
+        SUPTB token = new SUPTB(admin, perms);
 
         vm.stopBroadcast();
     }
