@@ -27,4 +27,4 @@ forge script \
     $etherscan_args \
     --broadcast \
     $@ \
-    script/goerli/SimpleContractsDeployScript.s.sol:SimpleContractsDeployScript
+    script/goerli/DeployScript.s.sol:DeployScript
