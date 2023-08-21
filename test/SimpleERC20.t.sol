@@ -3,16 +3,16 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import "src/SimpleERC20.sol";
-import "src/SimplePermissionlist.sol";
+import "src/Permissionlist.sol";
 
 contract SimpleERC20Test is Test {
     SimpleERC20 simpleToken;
-    SimplePermissionlist perms;
+    Permissionlist perms;
 
     uint256 initialSupply;
 
     function setUp() public {
-        perms = new SimplePermissionlist(address(this));
+        perms = new Permissionlist(address(this));
 
         initialSupply = 1000000000;
         vm.prank(address(1));
@@ -36,7 +36,7 @@ contract SimpleERC20Test is Test {
         // ... until we whitelist them
         assertEq(simpleToken.balanceOf(address(2)), 0);
 
-        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true);
+        Permissionlist.Permission memory newPerms = Permissionlist.Permission(true);
         perms.setPermission(address(2), newPerms);
 
         vm.prank(address(1));

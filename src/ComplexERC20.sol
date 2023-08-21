@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
-import {SimplePermissionlist} from "./SimplePermissionlist.sol";
+import {Permissionlist} from "./Permissionlist.sol";
 
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC7246} from "./interfaces/IERC7246.sol";
@@ -9,7 +9,7 @@ import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title ---
- * @notice An upgradeable ERC7246 token contract that interacts with the SimplePermissionlist contract to check if transfers are allowed.
+ * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
  * @author ---
  */
 contract ComplexERC20 is ERC20, IERC7246 {
@@ -28,7 +28,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
     address public immutable admin;
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    SimplePermissionlist public immutable permissionlist;
+    Permissionlist public immutable permissionlist;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -48,7 +48,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
      *
      */
-    constructor(address _admin, SimplePermissionlist _permissionlist) ERC20("Complex ERC20", "CERC20") {
+    constructor(address _admin, Permissionlist _permissionlist) ERC20("Complex ERC20", "CERC20") {
         _decimals = 6;
         admin = _admin;
         permissionlist = _permissionlist;
@@ -190,7 +190,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
      * @return bool True if the destination address has permission, false otherwise
      */
     function isTransferAllowed(address dst) public view returns (bool) {
-        SimplePermissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
+        Permissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
         return dstPermissions.allowed;
     }
 
@@ -213,6 +213,7 @@ contract ComplexERC20 is ERC20, IERC7246 {
      */
     function burn(address src, uint256 amount) external {
         require(msg.sender == admin, "Bad caller; only admin can burn");
+        require(availableBalanceOf(src) >= amount, "ERC7246: insufficient available balance");
         _burn(src, amount);
     }
 

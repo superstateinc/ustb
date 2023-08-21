@@ -238,7 +238,7 @@ contract USTB is ERC20, IERC7246 {
      */
     function isTransferAllowed(address dst) public view returns (bool) {
         Permissionlist.Permission memory dstPermissions = permissionlist.getPermission(dst);
-        return dstPermissions.allowed && !dstPermissions.forbidden;
+        return dstPermissions.allowed;
     }
 
     /**

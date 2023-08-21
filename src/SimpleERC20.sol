@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import {SimplePermissionlist} from "src/SimplePermissionlist.sol";
+import {Permissionlist} from "src/Permissionlist.sol";
 
 contract SimpleERC20 is ERC20 {
-    SimplePermissionlist public immutable list;
+    Permissionlist public immutable list;
 
     error TransferNotAllowed();
 
-    constructor(uint256 initialSupply, SimplePermissionlist _list) ERC20("SimpleERC20", "SERC20") {
+    constructor(uint256 initialSupply, Permissionlist _list) ERC20("SimpleERC20", "SERC20") {
         list = _list;
         _mint(msg.sender, initialSupply);
     }

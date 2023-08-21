@@ -1,13 +1,13 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "src/SimplePermissionlist.sol";
+import "src/Permissionlist.sol";
 
-contract SimplePermissionlistTest is Test {
-    SimplePermissionlist perms;
+contract PermissionlistTest is Test {
+    Permissionlist perms;
 
     function setUp() public {
-        perms = new SimplePermissionlist(address(this));
+        perms = new Permissionlist(address(this));
     }
 
     function testShouldSetPermsCorrectly() public {
@@ -15,7 +15,7 @@ contract SimplePermissionlistTest is Test {
 
         assertEq(perms.getPermission(alice).allowed, false);
 
-        SimplePermissionlist.Permission memory newPerms = SimplePermissionlist.Permission(true);
+        Permissionlist.Permission memory newPerms = Permissionlist.Permission(true);
 
         perms.setPermission(alice, newPerms);
 
