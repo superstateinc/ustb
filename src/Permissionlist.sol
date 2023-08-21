@@ -5,8 +5,7 @@ pragma solidity ^0.8.20;
  * @title Permissionlist
  * @notice A contract that provides allowlist functionalities
  * @author Compound
- *
- * TODO: Convert to OZ Transparent Upgradeable Proxy
+ * TODO: Make upgradeable
  */
 contract Permissionlist {
     /// @dev Address of the administrator with permissions to update the allowlist
