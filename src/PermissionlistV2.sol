@@ -6,17 +6,19 @@ import "openzeppelin/access/OwnableUpgradeable.sol";
 import "openzeppelin/proxy/utils/Initializable.sol";
 
 /**
- * @title Permissionlist
- * @notice A contract that provides allowlist functionalities
+ * @title PermissionlistV2
+ * @notice A contract that provides allowlist and other permission functionalities
  * @author Compound
  */
-contract Permissionlist is Initializable, PausableUpgradeable, OwnableUpgradeable {
+contract PermissionlistV2 is Initializable, PausableUpgradeable, OwnableUpgradeable {
     /// @dev Address of the administrator with permissions to update the allowlist
     address public permissionAdmin;
 
     /// @dev Mapping of addresses to their permissions
     struct Permission {
         bool allowed;
+        bool isKyc;
+        bool isAccredited;
     }
 
     /// @notice A record of permissions for each address determining if they are allowed
@@ -32,12 +34,10 @@ contract Permissionlist is Initializable, PausableUpgradeable, OwnableUpgradeabl
 
     /**
      * @notice Initialize a new Permissionlist instance
-     * @param _permissionAdmin Address of the permission administrator
      */
-    function initialize(address _permissionAdmin) public initializer {
+    function initialize() public initializer {
         __Pausable_init();
         __Ownable_init();
-        permissionAdmin = _permissionAdmin;
     }
 
     function pause() public onlyOwner {
