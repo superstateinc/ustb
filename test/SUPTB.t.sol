@@ -4,6 +4,9 @@ import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
+import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+
 import {SUPTB} from "src/SUPTB.sol";
 import {Permissionlist} from "src/Permissionlist.sol";
 
@@ -13,6 +16,10 @@ contract SUPTBTest is Test {
     event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
+    TransparentUpgradeableProxy proxy;
+    ProxyAdmin admin;
+
+    Permissionlist public permsImplementation;
     Permissionlist public perms;
     SUPTB public token;
 
@@ -22,7 +29,16 @@ contract SUPTBTest is Test {
     address mallory = address(13);
 
     function setUp() public {
-        perms = new Permissionlist(address(this));
+        admin = new ProxyAdmin(address(this));
+        permsImplementation = new Permissionlist();
+
+        // deploy proxy contract and point it to implementation
+        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+
+        // wrap in ABI to support easier calls
+        perms = Permissionlist(address(proxy));
+        perms.initialize(address(this));
+
         token = new SUPTB(address(this), perms);
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
