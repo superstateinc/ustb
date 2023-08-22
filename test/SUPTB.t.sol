@@ -201,7 +201,6 @@ contract SUPTBTest is Test {
         assertEq(token.balanceOf(charlie), 40e6);
     }
 
-    // TODO: Test failing (Error != expected error)
     function testTransferFromInsufficientAllowance() public {
         deal(address(token), alice, 100e6);
 

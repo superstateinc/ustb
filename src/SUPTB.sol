@@ -11,6 +11,7 @@ import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
  * @title SUPTB
  * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
  * @author Compound
+ * TODO: Make upgradeable
  */
 contract SUPTB is ERC20, IERC7246 {
     /// @notice The major version of this contract
