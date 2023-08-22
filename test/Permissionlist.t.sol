@@ -1,6 +1,9 @@
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import "forge-std/StdUtils.sol";
+import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
+
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -23,7 +26,7 @@ contract PermissionlistTest is Test {
 
         implementation = new Permissionlist();
         // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        proxy = new TransparentUpgradeableProxy(address(implementation), address(admin), "");
 
         // wrap in ABI to support easier calls
         wrappedProxy = Permissionlist(address(proxy));
@@ -72,7 +75,6 @@ contract PermissionlistTest is Test {
         assertEq(wrappedProxy.getPermission(alice).allowed, false);
     }
 
-    // TODO: Test upgrading struct preserves permissions
     function testUpgradePermissions() public {
         PermissionlistV2 implementationV2 = new PermissionlistV2();
 
