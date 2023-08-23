@@ -4,6 +4,7 @@ import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
+
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -16,12 +17,20 @@ contract SUPTBTest is Test {
     event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    TransparentUpgradeableProxy proxy;
-    ProxyAdmin admin;
+    TransparentUpgradeableProxy permsProxy;
+    ProxyAdmin permsAdmin;
 
     Permissionlist public permsImplementation;
     Permissionlist public perms;
+
+    TransparentUpgradeableProxy tokenProxy;
+    ProxyAdmin tokenAdmin;
+
+    SUPTB public tokenImplementation;
     SUPTB public token;
+
+    // Storage slot with the admin of the contract.
+    bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     address alice = address(10);
     address bob = address(11);
@@ -29,17 +38,30 @@ contract SUPTBTest is Test {
     address mallory = address(13);
 
     function setUp() public {
-        admin = new ProxyAdmin(address(this));
         permsImplementation = new Permissionlist();
 
         // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+
+        bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
+        permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
+
+        tokenImplementation = new SUPTB();
+
+        // repeat for the token contract
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
+
+        bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
+        tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
 
         // wrap in ABI to support easier calls
-        perms = Permissionlist(address(proxy));
+        perms = Permissionlist(address(permsProxy));
         perms.initialize(address(this));
 
-        token = new SUPTB(address(this), perms);
+        token = SUPTB(address(tokenProxy));
+        // TODO: check if you should pass in implementation or wrapped proxy as second arg
+        // right now it's wrapped proxy
+        token.initialize(address(this), perms);
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         Permissionlist.Permission memory allowPerms = Permissionlist.Permission(true);

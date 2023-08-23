@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
-import {Permissionlist} from "./Permissionlist.sol";
-
-import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC7246} from "./interfaces/IERC7246.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
+
+import "openzeppelin/token/ERC20/ERC20Upgradeable.sol";
+import "openzeppelin/security/PausableUpgradeable.sol";
+import "openzeppelin/access/OwnableUpgradeable.sol";
+import "openzeppelin/proxy/utils/Initializable.sol";
+
+import {Permissionlist} from "./Permissionlist.sol";
 
 /**
  * @title SUPTB
  * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
  * @author Compound
- * TODO: Make upgradeable
  */
-contract SUPTB is ERC20, IERC7246 {
+contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -26,10 +29,10 @@ contract SUPTB is ERC20, IERC7246 {
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
-    address public immutable admin;
+    address public admin;
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    Permissionlist public immutable permissionlist;
+    Permissionlist public permissionlist;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -41,18 +44,25 @@ contract SUPTB is ERC20, IERC7246 {
     mapping(address => mapping(address => uint256)) public encumbrances;
 
     /// @notice Number of decimals used for the user representation of the token
-    uint8 private immutable _decimals;
+    uint8 private _decimals;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
-     * @notice Construct a new ERC20 token instance with the given admin and permissionlist
+     * @notice Initialize a new ERC20 token instance with the given admin and permissionlist
      * @param _admin The address designated as the admin with special privileges
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
-     *
      */
-    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
-        _decimals = 6;
+    function initialize(address _admin, Permissionlist _permissionlist) public initializer {
+        __ERC20_init("Superstate Treasuries Blockchain", "SUPTB");
+        __Pausable_init();
+        __Ownable_init();
         admin = _admin;
         permissionlist = _permissionlist;
+        _decimals = 6;
     }
 
     /**
