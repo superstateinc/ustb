@@ -9,6 +9,7 @@ import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SUPTB} from "src/SUPTB.sol";
+import {SUPTBv2} from "src/SUPTBv2.sol";
 import {Permissionlist} from "src/Permissionlist.sol";
 
 contract SUPTBTest is Test {
@@ -59,8 +60,6 @@ contract SUPTBTest is Test {
         perms.initialize(address(this));
 
         token = SUPTB(address(tokenProxy));
-        // TODO: check if you should pass in implementation or wrapped proxy as second arg
-        // right now it's wrapped proxy
         token.initialize(address(this), perms);
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
@@ -517,5 +516,33 @@ contract SUPTBTest is Test {
         vm.prank(bob);
         vm.expectRevert("Insufficient Permissions");
         token.encumberFrom(alice, charlie, 30e6);
+    }
+
+    function testSUPTBUpgrade() public {
+        SUPTBv2 tokenImplementationV2 = new SUPTBv2();
+
+        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementationV2), "");
+
+        // re-wrap proxy
+        SUPTBv2 tokenv2 = SUPTBv2(address(tokenProxy));
+
+        // check admin and permissionlist contract didn't change
+        assertEq(tokenv2.admin(), address(this));
+        assertEq(address(tokenv2.permissionlist()), address(perms));
+
+        // set new token admin
+        tokenv2.setAdmin(charlie);
+        assertEq(tokenv2.admin(), charlie);
+
+        // set new permissionlist contract (for this test, we just use an uninitialized contract)
+        Permissionlist newPerms = new Permissionlist();
+
+        // check only new admin can upgrade perms contract
+        vm.expectRevert("Not authorized to upgrade permissionlist");
+        tokenv2.setPermissionlist(newPerms);
+
+        vm.prank(charlie);
+        tokenv2.setPermissionlist(newPerms);
+        assertEq(address(tokenv2.permissionlist()), address(newPerms));
     }
 }

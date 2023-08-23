@@ -103,5 +103,9 @@ contract PermissionlistTest is Test {
         assertEq(wrappedProxyV2.getPermission(bob).allowed, true);
         assertEq(wrappedProxyV2.getPermission(bob).isKyc, true);
         assertEq(wrappedProxyV2.getPermission(bob).isAccredited, false);
+
+        // set new perms admin
+        wrappedProxyV2.setAdmin(alice);
+        assertEq(wrappedProxyV2.permissionAdmin(), alice);
     }
 }
