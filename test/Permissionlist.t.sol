@@ -11,7 +11,7 @@ import "src/PermissionlistV2.sol";
 
 contract PermissionlistTest is Test {
     TransparentUpgradeableProxy proxy;
-    ProxyAdmin admin;
+    ProxyAdmin proxyAdmin;
 
     Permissionlist public implementation;
     Permissionlist public wrappedProxy;
@@ -29,7 +29,7 @@ contract PermissionlistTest is Test {
         proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
 
         bytes32 proxyAdminAddress = vm.load(address(proxy), ADMIN_SLOT);
-        admin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
+        proxyAdmin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
 
         // wrap in ABI to support easier calls
         wrappedProxy = Permissionlist(address(proxy));
@@ -81,7 +81,7 @@ contract PermissionlistTest is Test {
     function testUpgradePermissions() public {
         PermissionlistV2 implementationV2 = new PermissionlistV2();
 
-        admin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(implementationV2), "");
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(implementationV2), "");
 
         // re-wrap proxy
         wrappedProxyV2 = PermissionlistV2(address(proxy));
@@ -103,5 +103,9 @@ contract PermissionlistTest is Test {
         assertEq(wrappedProxyV2.getPermission(bob).allowed, true);
         assertEq(wrappedProxyV2.getPermission(bob).isKyc, true);
         assertEq(wrappedProxyV2.getPermission(bob).isAccredited, false);
+
+        // set new perms admin
+        wrappedProxyV2.setAdmin(alice);
+        assertEq(wrappedProxyV2.permissionAdmin(), alice);
     }
 }

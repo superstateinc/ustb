@@ -74,6 +74,7 @@ contract PermissionlistV2 is Initializable, PausableUpgradeable, OwnableUpgradea
      * @param newAdmin Address of the new admin
      */
     function setAdmin(address newAdmin) external {
+        require(msg.sender == permissionAdmin, "Not authorized to upgrade admin");
         permissionAdmin = newAdmin;
     }
 }
