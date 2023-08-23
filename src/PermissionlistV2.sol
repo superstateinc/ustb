@@ -68,4 +68,12 @@ contract PermissionlistV2 is Initializable, PausableUpgradeable, OwnableUpgradea
 
         emit PermissionSet(addr, permission);
     }
+
+    /**
+     * @notice Setter for a new permission admin
+     * @param newAdmin Address of the new admin
+     */
+    function setAdmin(address newAdmin) external {
+        permissionAdmin = newAdmin;
+    }
 }
