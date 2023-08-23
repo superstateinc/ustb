@@ -2,7 +2,6 @@ pragma solidity ^0.8.20;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import {Vm} from "forge-std/Vm.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
@@ -18,15 +17,19 @@ contract PermissionlistTest is Test {
     Permissionlist public wrappedProxy;
     PermissionlistV2 public wrappedProxyV2;
 
+    // Storage slot with the admin of the contract.
+    bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
     address alice = address(10);
     address bob = address(11);
 
     function setUp() public {
-        admin = new ProxyAdmin(address(this));
-
         implementation = new Permissionlist();
         // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(implementation), address(admin), "");
+        proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+
+        bytes32 proxyAdminAddress = vm.load(address(proxy), ADMIN_SLOT);
+        admin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
 
         // wrap in ABI to support easier calls
         wrappedProxy = Permissionlist(address(proxy));
@@ -81,14 +84,24 @@ contract PermissionlistTest is Test {
         admin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(implementationV2), "");
 
         // re-wrap proxy
-        wrappedProxyV2 = PermissionlistV2(address(implementationV2));
+        wrappedProxyV2 = PermissionlistV2(address(proxy));
 
-        // check permission admin hasn't changed
+        // check permission admin didn't change
         assertEq(wrappedProxyV2.permissionAdmin(), address(this));
 
-        // TODO: check bob's whitelisting hasn't changed
-        // assertEq(wrappedProxyV2.getPermission(bob).allowed, true);
+        // check bob's whitelisting hasn't changed
+        assertEq(wrappedProxyV2.getPermission(bob).allowed, true);
 
-        // and test setting new Permission struct...
+        // check bob's new statuses are at default false values
+        assertEq(wrappedProxyV2.getPermission(bob).isKyc, false);
+        assertEq(wrappedProxyV2.getPermission(bob).isAccredited, false);
+
+        // set new multi-permission values for bob
+        PermissionlistV2.Permission memory multiPerms = PermissionlistV2.Permission(true, true, false);
+        wrappedProxyV2.setPermission(bob, multiPerms);
+
+        assertEq(wrappedProxyV2.getPermission(bob).allowed, true);
+        assertEq(wrappedProxyV2.getPermission(bob).isKyc, true);
+        assertEq(wrappedProxyV2.getPermission(bob).isAccredited, false);
     }
 }

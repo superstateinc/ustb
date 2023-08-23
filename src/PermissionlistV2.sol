@@ -34,12 +34,10 @@ contract PermissionlistV2 is Initializable, PausableUpgradeable, OwnableUpgradea
 
     /**
      * @notice Initialize a new Permissionlist instance
-     * @param _permissionAdmin Address of the permission administrator
      */
-    function initialize(address _permissionAdmin) public initializer {
+    function initialize() public initializer {
         __Pausable_init();
         __Ownable_init();
-        permissionAdmin = _permissionAdmin;
     }
 
     function pause() public onlyOwner {
