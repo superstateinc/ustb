@@ -25,26 +25,21 @@ contract DeployScript is Script {
     function run() external {
         vm.startBroadcast();
 
-        permsImplementation = new Permissionlist();
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        // admin allowed to set permissions and mint / burn tokens
+        // TODO: Configure before running
+        address fireblocksAdmin = address(0x9825df3dc587BCc86b1365DA2E4EF07B0Cabfb9B);
+
+        perms = new Permissionlist(fireblocksAdmin);
+        permsProxy = new TransparentUpgradeableProxy(address(perms), address(this), "");
 
         bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
-        tokenImplementation = new SUPTB();
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
+        token = new SUPTB(fireblocksAdmin, perms);
+        tokenProxy = new TransparentUpgradeableProxy(address(token), address(this), "");
 
         bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
         tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
-
-        // admin allowed to set permissions and mint / burn tokens
-        address fireblocksAdmin = address(0x9825df3dc587BCc86b1365DA2E4EF07B0Cabfb9B);
-
-        perms = Permissionlist(address(permsProxy));
-        perms.initialize(fireblocksAdmin);
-
-        token = SUPTB(address(tokenProxy));
-        token.initialize(fireblocksAdmin, perms);
 
         vm.stopBroadcast();
     }

@@ -1,15 +1,14 @@
-// TODO: Decide contract license
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
 /**
- * @title Permissionlist
- * @notice A contract that provides allowlist functionalities
+ * @title PermissionlistV2
+ * @notice A contract that provides allowlist and other permission functionalities
  * @author Compound
  */
-contract Permissionlist {
+contract PermissionlistV2 {
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
+    string public constant VERSION = "2";
 
     /// @dev Address of the administrator with permissions to update the allowlist
     address public immutable permissionAdmin;
@@ -17,6 +16,8 @@ contract Permissionlist {
     /// @dev Mapping of addresses to their permissions
     struct Permission {
         bool allowed;
+        bool isKyc;
+        bool isAccredited;
     }
 
     /// @notice A record of permissions for each address determining if they are allowed
