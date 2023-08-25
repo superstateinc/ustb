@@ -12,12 +12,14 @@ contract DeployScript is Script {
 
     Permissionlist public permsImplementation;
     Permissionlist public perms;
+    Permissionlist wrappedPerms;
 
     TransparentUpgradeableProxy tokenProxy;
     ProxyAdmin tokenAdmin;
 
     SUPTB public tokenImplementation;
     SUPTB public token;
+    SUPTB public wrappedToken;
 
     // Storage slot with the admin of the contract.
     bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
@@ -35,11 +37,17 @@ contract DeployScript is Script {
         bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
-        token = new SUPTB(fireblocksAdmin, perms);
+        // wrap in ABI to support easier calls
+        wrappedPerms = Permissionlist(address(permsProxy));
+
+        token = new SUPTB(fireblocksAdmin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(token), address(this), "");
 
         bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
         tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
+
+        // wrap in ABI to support easier calls
+        wrappedToken = SUPTB(address(tokenProxy));
 
         vm.stopBroadcast();
     }

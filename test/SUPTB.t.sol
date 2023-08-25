@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -129,7 +130,7 @@ contract SUPTBTest is Test {
         wrappedToken.encumber(charlie, 50e6);
 
         // alice attempts to transfer her entire balance
-        vm.expectRevert("ERC7246: insufficient available balance");
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
         wrappedToken.transfer(bob, 100e6);
 
         vm.stopPrank();
@@ -143,7 +144,7 @@ contract SUPTBTest is Test {
         wrappedToken.encumber(bob, 50e6);
 
         // alice attempts to encumber more than her remaining available balance
-        vm.expectRevert("ERC7246: insufficient available balance");
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
         wrappedToken.encumber(charlie, 60e6);
 
         vm.stopPrank();
@@ -276,7 +277,7 @@ contract SUPTBTest is Test {
 
         // but bob tries to encumber more than his allowance
         vm.prank(bob);
-        vm.expectRevert("ERC7246: insufficient allowance");
+        vm.expectRevert(SUPTB.InsufficientAllowance.selector);
         wrappedToken.encumberFrom(alice, charlie, 60e6);
     }
 
@@ -355,7 +356,7 @@ contract SUPTBTest is Test {
 
         // bob releases a greater amount than is encumbered to him
         vm.prank(bob);
-        vm.expectRevert("ERC7246: insufficient encumbrance");
+        vm.expectRevert(SUPTB.InsufficientEncumbrance.selector);
         wrappedToken.release(alice, 200e6);
 
         assertEq(wrappedToken.balanceOf(alice), 100e6);
@@ -421,7 +422,7 @@ contract SUPTBTest is Test {
         assertEq(wrappedToken.encumbrances(alice, bob), 50e6);
 
         // alice tries to burn more than her available balance
-        vm.expectRevert("ERC7246: insufficient available balance");
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
         wrappedToken.burn(alice, 60e6);
     }
 
@@ -530,5 +531,44 @@ contract SUPTBTest is Test {
 
         // check token admin changed
         assertEq(wrappedTokenV2.admin(), charlie);
+    }
+
+    function testPauseAndUnpauseRevertIfUnauthorized() public {
+        // try pausing contract from unauthorized sender
+        vm.prank(charlie);
+        vm.expectRevert(SUPTB.Unauthorized.selector);
+        wrappedToken.pause();
+
+        // admin pauses the contract
+        wrappedToken.pause();
+
+        // try unpausing contract from unauthorized sender
+        vm.prank(charlie);
+        vm.expectRevert(SUPTB.Unauthorized.selector);
+        wrappedToken.unpause();
+    }
+
+    function testCannotUpdateBalancesIfTokenPaused() public {
+        wrappedToken.mint(alice, 100e6);
+
+        wrappedToken.pause();
+
+        assertEq(wrappedToken.balanceOf(alice), 100e6);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        wrappedToken.mint(alice, 100e6);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        wrappedToken.burn(alice, 100e6);
+
+        vm.prank(alice);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        wrappedToken.transfer(bob, 50e6);
+
+        vm.prank(alice);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        wrappedToken.encumber(bob, 50e6);
+
+        assertEq(wrappedToken.balanceOf(alice), 100e6);
     }
 }
