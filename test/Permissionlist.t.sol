@@ -14,6 +14,7 @@ contract PermissionlistTest is Test {
     ProxyAdmin proxyAdmin;
 
     Permissionlist public perms;
+    Permissionlist public wrappedPerms;
 
     // Storage slot with the admin of the contract.
     bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
@@ -29,23 +30,26 @@ contract PermissionlistTest is Test {
         bytes32 proxyAdminAddress = vm.load(address(proxy), ADMIN_SLOT);
         proxyAdmin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
 
+        // wrap in ABI to support easier calls
+        wrappedPerms = Permissionlist(address(proxy));
+
         // whitelist bob
         Permissionlist.Permission memory allowPerms = Permissionlist.Permission(true);
-        perms.setPermission(bob, allowPerms);
+        wrappedPerms.setPermission(bob, allowPerms);
     }
 
     function testInitialize() public {
-        assertEq(perms.permissionAdmin(), address(this));
+        assertEq(wrappedPerms.permissionAdmin(), address(this));
     }
 
     function testSetAllowPerms() public {
-        assertEq(perms.getPermission(alice).allowed, false);
+        assertEq(wrappedPerms.getPermission(alice).allowed, false);
 
         // allow alice
         Permissionlist.Permission memory newPerms = Permissionlist.Permission(true);
-        perms.setPermission(alice, newPerms);
+        wrappedPerms.setPermission(alice, newPerms);
 
-        assertEq(perms.getPermission(alice).allowed, true);
+        assertEq(wrappedPerms.getPermission(alice).allowed, true);
     }
 
     function testSetPermissonsRevertsUnauthorized() public {
@@ -54,31 +58,31 @@ contract PermissionlistTest is Test {
         // should revert, since alice is not the permission admin
         vm.expectRevert(Permissionlist.Unauthorized.selector);
         Permissionlist.Permission memory newPerms = Permissionlist.Permission(true);
-        perms.setPermission(alice, newPerms);
+        wrappedPerms.setPermission(alice, newPerms);
     }
 
     function testSetDisallowPerms() public {
-        assertEq(perms.getPermission(bob).allowed, true);
+        assertEq(wrappedPerms.getPermission(bob).allowed, true);
 
         // disallow bob
         Permissionlist.Permission memory disallowPerms = Permissionlist.Permission(false);
-        perms.setPermission(bob, disallowPerms);
+        wrappedPerms.setPermission(bob, disallowPerms);
 
-        assertEq(perms.getPermission(bob).allowed, false);
+        assertEq(wrappedPerms.getPermission(bob).allowed, false);
     }
 
     function testUndoAllowPerms() public {
-        assertEq(perms.getPermission(alice).allowed, false);
+        assertEq(wrappedPerms.getPermission(alice).allowed, false);
 
         // allow alice
         Permissionlist.Permission memory allowPerms = Permissionlist.Permission(true);
-        perms.setPermission(alice, allowPerms);
-        assertEq(perms.getPermission(alice).allowed, true);
+        wrappedPerms.setPermission(alice, allowPerms);
+        assertEq(wrappedPerms.getPermission(alice).allowed, true);
 
         // now disallow alice
         Permissionlist.Permission memory disallowPerms = Permissionlist.Permission(false);
-        perms.setPermission(alice, disallowPerms);
-        assertEq(perms.getPermission(alice).allowed, false);
+        wrappedPerms.setPermission(alice, disallowPerms);
+        assertEq(wrappedPerms.getPermission(alice).allowed, false);
     }
 
     function testUpgradePermissions() public {
@@ -86,22 +90,24 @@ contract PermissionlistTest is Test {
 
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2), "");
 
+        PermissionlistV2 wrappedPermsV2 = PermissionlistV2(address(proxy));
+
         // check permission admin didn't change
-        assertEq(permsV2.permissionAdmin(), address(this));
+        assertEq(wrappedPermsV2.permissionAdmin(), address(this));
 
         // check bob's whitelisting hasn't changed
-        assertEq(permsV2.getPermission(bob).allowed, true);
+        assertEq(wrappedPermsV2.getPermission(bob).allowed, true);
 
         // check bob's new statuses are at default false values
-        assertEq(permsV2.getPermission(bob).isKyc, false);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(wrappedPermsV2.getPermission(bob).isKyc, false);
+        assertEq(wrappedPermsV2.getPermission(bob).isAccredited, false);
 
         // set new multi-permission values for bob
         PermissionlistV2.Permission memory multiPerms = PermissionlistV2.Permission(true, true, false);
-        permsV2.setPermission(bob, multiPerms);
+        wrappedPermsV2.setPermission(bob, multiPerms);
 
-        assertEq(permsV2.getPermission(bob).allowed, true);
-        assertEq(permsV2.getPermission(bob).isKyc, true);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(wrappedPermsV2.getPermission(bob).allowed, true);
+        assertEq(wrappedPermsV2.getPermission(bob).isKyc, true);
+        assertEq(wrappedPermsV2.getPermission(bob).isAccredited, false);
     }
 }
