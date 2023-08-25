@@ -1,22 +1,19 @@
+// TODO: Decide contract license
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
+import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import {IERC7246} from "./interfaces/IERC7246.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
-
-import "openzeppelin/token/ERC20/ERC20Upgradeable.sol";
-import "openzeppelin/security/PausableUpgradeable.sol";
-import "openzeppelin/access/OwnableUpgradeable.sol";
-import "openzeppelin/proxy/utils/Initializable.sol";
 
 import {Permissionlist} from "./Permissionlist.sol";
 
 /**
  * @title SUPTB
- * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
+ * @notice An ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgradeable {
+contract SUPTB is ERC20, IERC7246 {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -29,10 +26,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
-    address public admin;
+    address public immutable admin;
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    Permissionlist public permissionlist;
+    Permissionlist public immutable permissionlist;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -44,31 +41,32 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
     mapping(address => mapping(address => uint256)) public encumbrances;
 
     /// @notice Number of decimals used for the user representation of the token
-    uint8 private _decimals;
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+    uint8 private constant _decimals = 6;
 
     /**
-     * @notice Initialize a new ERC20 token instance with the given admin and permissionlist
+     * @dev Thrown when a request is not sent by the authorized admin
+     */
+    error Unauthorized();
+
+    /**
+     * @dev Thrown when an address does not have sufficient permissions, as dicatated by the Permissionlist
+     */
+    error InsufficientPermissions();
+
+    /**
+     * @notice Construct a new ERC20 token instance with the given admin and permissionlist
      * @param _admin The address designated as the admin with special privileges
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
      */
-    function initialize(address _admin, Permissionlist _permissionlist) public initializer {
-        __ERC20_init("Superstate Treasuries Blockchain", "SUPTB");
-        __Pausable_init();
-        __Ownable_init();
+    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
         admin = _admin;
         permissionlist = _permissionlist;
-        _decimals = 6;
     }
 
     /**
      * @notice Number of decimals used for the user representation of the token
      */
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return _decimals;
     }
 
@@ -85,6 +83,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
+     * @dev Includes extra functionality to burn tokens `dst` is the contract address
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
@@ -93,14 +92,18 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
         // check but dont spend encumbrance
         require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
 
-        require(hasSufficientPermissions(msg.sender), "Insufficient Permissions");
+        if (!hasSufficientPermissions(msg.sender)) {
+            revert InsufficientPermissions();
+        }
 
         if (dst == address(this)) {
             _burn(msg.sender, amount);
             return true;
         }
 
-        require(hasSufficientPermissions(dst), "Insufficient Permissions");
+        if (!hasSufficientPermissions(dst)) {
+            revert InsufficientPermissions();
+        }
 
         _transfer(msg.sender, dst, amount);
         return true;
@@ -117,7 +120,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
      * @return bool Whether the operation was successful
      */
     function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
-        require(hasSufficientPermissions(dst), "Insufficient Permissions");
+        if (!hasSufficientPermissions(dst)) {
+            revert InsufficientPermissions();
+        }
+
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         if (amount > encumberedToTaker) {
             uint256 excessAmount = amount - encumberedToTaker;
@@ -190,7 +196,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
     function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         external
     {
-        require(block.timestamp <= expiry, "Signature expired");
+        require(block.timestamp < expiry, "Signature expired");
         uint256 nonce = nonces[owner];
 
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
@@ -204,8 +210,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
     }
 
     /**
-     * @notice Check permissions of an address for transferrring / encumbering
-     * @dev The permission conditions are subject to changes in the `Permissions` struct
+     * @notice Check permissions of an address for transferring / encumbering
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
@@ -221,7 +226,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        require(msg.sender == admin, "Bad caller; only admin can mint");
+        if (msg.sender != admin) {
+            revert Unauthorized();
+        }
         _mint(dst, amount);
     }
 
@@ -232,7 +239,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        require(msg.sender == admin, "Bad caller; only admin can burn");
+        if (msg.sender != admin) {
+            revert Unauthorized();
+        }
         require(availableBalanceOf(src) >= amount, "ERC7246: insufficient available balance");
         _burn(src, amount);
     }
@@ -242,7 +251,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgrad
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
-        require(hasSufficientPermissions(owner), "Insufficient Permissions");
+
+        if (!hasSufficientPermissions(owner)) {
+            revert InsufficientPermissions();
+        }
 
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;

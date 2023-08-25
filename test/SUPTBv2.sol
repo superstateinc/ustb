@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
-import {IERC7246} from "./interfaces/IERC7246.sol";
+import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
-import "openzeppelin/token/ERC20/ERC20Upgradeable.sol";
-import "openzeppelin/security/PausableUpgradeable.sol";
-import "openzeppelin/access/OwnableUpgradeable.sol";
-import "openzeppelin/proxy/utils/Initializable.sol";
-
-import {Permissionlist} from "./Permissionlist.sol";
+import {Permissionlist} from "src/Permissionlist.sol";
 
 /**
  * @title SUPTBv2
- * @notice An upgradeable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed.
+ * @notice An ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTBv2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgradeable {
+contract SUPTBv2 is ERC20, IERC7246 {
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
+    string public constant VERSION = "2";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
@@ -29,10 +25,10 @@ contract SUPTBv2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgr
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
-    address public admin;
+    address public immutable admin;
 
     /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    Permissionlist public permissionlist;
+    Permissionlist public immutable permissionlist;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -44,26 +40,22 @@ contract SUPTBv2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgr
     mapping(address => mapping(address => uint256)) public encumbrances;
 
     /// @notice Number of decimals used for the user representation of the token
-    uint8 private _decimals;
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+    uint8 private constant _decimals = 6;
 
     /**
-     * @notice Initialize a new ERC20 token instance with the given admin and permissionlist
+     * @notice Construct a new ERC20 token instance with the given admin and permissionlist
+     * @param _admin The address designated as the admin with special privileges
+     * @param _permissionlist Address of the Permissionlist contract to use for permission checking
      */
-    function initialize() public initializer {
-        __ERC20_init("Superstate Treasuries Blockchain", "SUPTB");
-        __Pausable_init();
-        __Ownable_init();
+    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
+        admin = _admin;
+        permissionlist = _permissionlist;
     }
 
     /**
      * @notice Number of decimals used for the user representation of the token
      */
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return _decimals;
     }
 
@@ -207,24 +199,6 @@ contract SUPTBv2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, OwnableUpgr
     function hasSufficientPermissions(address addr) public view returns (bool) {
         Permissionlist.Permission memory permissions = permissionlist.getPermission(addr);
         return permissions.allowed;
-    }
-
-    /**
-     * @notice Setter for a new contract admin
-     * @param newAdmin Address of the new admin
-     */
-    function setAdmin(address newAdmin) external {
-        require(msg.sender == admin, "Not authorized to upgrade admin");
-        admin = newAdmin;
-    }
-
-    /**
-     * @notice Setter for a new permissionlist contract
-     * @param newPermissionlist The new contract
-     */
-    function setPermissionlist(Permissionlist newPermissionlist) external {
-        require(msg.sender == admin, "Not authorized to upgrade permissionlist");
-        permissionlist = newPermissionlist;
     }
 
     /**

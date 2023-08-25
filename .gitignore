@@ -11,4 +11,4 @@ out/
 # Dotenv file
 .env
 
-/script/goerli/*.key
+/script/*.key

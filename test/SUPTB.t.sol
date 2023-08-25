@@ -9,7 +9,7 @@ import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SUPTB} from "src/SUPTB.sol";
-import {SUPTBv2} from "src/SUPTBv2.sol";
+import {SUPTBv2} from "test/SUPTBv2.sol";
 import {Permissionlist} from "src/Permissionlist.sol";
 
 contract SUPTBTest is Test {
@@ -21,13 +21,11 @@ contract SUPTBTest is Test {
     TransparentUpgradeableProxy permsProxy;
     ProxyAdmin permsAdmin;
 
-    Permissionlist public permsImplementation;
     Permissionlist public perms;
 
     TransparentUpgradeableProxy tokenProxy;
     ProxyAdmin tokenAdmin;
 
-    SUPTB public tokenImplementation;
     SUPTB public token;
 
     // Storage slot with the admin of the contract.
@@ -39,28 +37,21 @@ contract SUPTBTest is Test {
     address mallory = address(13);
 
     function setUp() public {
-        permsImplementation = new Permissionlist();
+        perms = new Permissionlist(address(this));
 
         // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        permsProxy = new TransparentUpgradeableProxy(address(perms), address(this), "");
 
         bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
-        tokenImplementation = new SUPTB();
+        token = new SUPTB(address(this), perms);
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(token), address(this), "");
 
         bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
         tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
-
-        // wrap in ABI to support easier calls
-        perms = Permissionlist(address(permsProxy));
-        perms.initialize(address(this));
-
-        token = SUPTB(address(tokenProxy));
-        token.initialize(address(this), perms);
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         Permissionlist.Permission memory allowPerms = Permissionlist.Permission(true);
@@ -372,7 +363,7 @@ contract SUPTBTest is Test {
 
     function testMintRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert("Bad caller; only admin can mint");
+        vm.expectRevert(SUPTB.Unauthorized.selector);
         token.mint(bob, 100e6);
 
         assertEq(token.balanceOf(bob), 0);
@@ -405,7 +396,7 @@ contract SUPTBTest is Test {
 
     function testBurnRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert("Bad caller; only admin can burn");
+        vm.expectRevert(SUPTB.Unauthorized.selector);
         token.burn(bob, 100e6);
     }
 
@@ -431,7 +422,7 @@ contract SUPTBTest is Test {
         vm.startPrank(mallory);
 
         // mallory tries to encumber to bob, without being whitelisted
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumber(bob, 50e6);
 
         vm.stopPrank();
@@ -446,7 +437,7 @@ contract SUPTBTest is Test {
 
         // bob tries to encumber to charlie on behalf of mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
     }
 
@@ -455,7 +446,7 @@ contract SUPTBTest is Test {
 
         // mallory tries to transfer tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transfer(charlie, 30e6);
     }
 
@@ -464,7 +455,7 @@ contract SUPTBTest is Test {
 
         // alice tries to transfer tokens to mallory, but mallory isn't whitelisted
         vm.prank(alice);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
     }
 
@@ -477,7 +468,7 @@ contract SUPTBTest is Test {
 
         // bob tries to transfer alice's tokens to mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transferFrom(alice, mallory, 50e6);
     }
 
@@ -491,58 +482,43 @@ contract SUPTBTest is Test {
 
         // alice can't transfer tokens to a whitelisted address
         vm.prank(alice);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transfer(bob, 30e6);
 
         // whitelisted addresses can't transfer tokens to alice
         vm.prank(bob);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transfer(alice, 30e6);
 
         vm.prank(bob);
         token.approve(charlie, 50e6);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         vm.prank(charlie);
         token.transferFrom(bob, alice, 30e6);
 
         // alice can't encumber tokens to anyone
         vm.prank(alice);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumber(bob, 30e6);
 
         // others can't encumber alice's tokens, even if she's approved them
         vm.prank(alice);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert("Insufficient Permissions");
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumberFrom(alice, charlie, 30e6);
     }
 
     function testSUPTBUpgrade() public {
-        SUPTBv2 tokenImplementationV2 = new SUPTBv2();
-
-        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementationV2), "");
-
-        // re-wrap proxy
-        SUPTBv2 tokenv2 = SUPTBv2(address(tokenProxy));
-
-        // check admin and permissionlist contract didn't change
-        assertEq(tokenv2.admin(), address(this));
-        assertEq(address(tokenv2.permissionlist()), address(perms));
-
         // set new token admin
-        tokenv2.setAdmin(charlie);
-        assertEq(tokenv2.admin(), charlie);
+        SUPTBv2 tokenV2 = new SUPTBv2(charlie, perms);
 
-        // set new permissionlist contract (for this test, we just use an uninitialized contract)
-        Permissionlist newPerms = new Permissionlist();
+        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2), "");
 
-        // check only new admin can upgrade perms contract
-        vm.expectRevert("Not authorized to upgrade permissionlist");
-        tokenv2.setPermissionlist(newPerms);
+        // check permissionlist reference didn't change
+        assertEq(address(tokenV2.permissionlist()), address(perms));
 
-        vm.prank(charlie);
-        tokenv2.setPermissionlist(newPerms);
-        assertEq(address(tokenv2.permissionlist()), address(newPerms));
+        // check token admin changed
+        assertEq(tokenV2.admin(), charlie);
     }
 }
