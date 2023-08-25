@@ -75,6 +75,16 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     error SignatureExpired();
 
     /**
+     * @dev Thrown if the signature has an S value that is in the upper half order.
+     */
+    error InvalidSignatureS();
+
+    /**
+     * @dev Thrown if the signature is invalid or its signer does not match the expected singer
+     */
+    error BadSignatory();
+
+    /**
      * @notice Construct a new ERC20 token instance with the given admin and permissionlist
      * @param _admin The address designated as the admin with special privileges
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
@@ -89,9 +99,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @dev Can only be called by the admin
      */
     function pause() public {
-        if (msg.sender != admin) {
-            revert Unauthorized();
-        }
+        if (msg.sender != admin) revert Unauthorized();
 
         _pause();
     }
@@ -101,9 +109,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @dev Can only be called by the admin
      */
     function unpause() public {
-        if (msg.sender != admin) {
-            revert Unauthorized();
-        }
+        if (msg.sender != admin) revert Unauthorized();
 
         _unpause();
     }
@@ -135,22 +141,16 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
         // check but dont spend encumbrance
-        if (availableBalanceOf(msg.sender) < amount) {
-            revert InsufficientAvailableBalance();
-        }
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
 
-        if (!hasSufficientPermissions(msg.sender)) {
-            revert InsufficientPermissions();
-        }
+        if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
 
         if (dst == address(this)) {
             _burn(msg.sender, amount);
             return true;
         }
 
-        if (!hasSufficientPermissions(dst)) {
-            revert InsufficientPermissions();
-        }
+        if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
 
         _transfer(msg.sender, dst, amount);
         return true;
@@ -167,9 +167,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @return bool Whether the operation was successful
      */
     function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
-        if (!hasSufficientPermissions(dst)) {
-            revert InsufficientPermissions();
-        }
+        if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
 
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         if (amount > encumberedToTaker) {
@@ -182,9 +180,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             // We are now moving only "available" tokens and must check
             // to not unfairly move tokens encumbered to others
 
-            if (availableBalanceOf(src) < excessAmount) {
-                revert InsufficientAvailableBalance();
-            }
+            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
@@ -214,9 +210,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param amount Amount of tokens to increase the encumbrance to `taker` by
      */
     function encumberFrom(address owner, address taker, uint256 amount) external {
-        if (allowance(owner, msg.sender) < amount) {
-            revert InsufficientAllowance();
-        }
+        if (allowance(owner, msg.sender) < amount) revert InsufficientAllowance();
 
         // spend caller's allowance
         _spendAllowance(owner, msg.sender, amount);
@@ -248,9 +242,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         external
     {
-        if (block.timestamp >= expiry) {
-            revert SignatureExpired();
-        }
+        if (block.timestamp >= expiry) revert SignatureExpired();
 
         uint256 nonce = nonces[owner];
 
@@ -260,7 +252,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             nonces[owner]++;
             _approve(owner, spender, amount);
         } else {
-            revert("Bad signatory");
+            revert BadSignatory();
         }
     }
 
@@ -281,9 +273,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        if (msg.sender != admin) {
-            revert Unauthorized();
-        }
+        if (msg.sender != admin) revert Unauthorized();
         _mint(dst, amount);
     }
 
@@ -294,13 +284,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        if (msg.sender != admin) {
-            revert Unauthorized();
-        }
+        if (msg.sender != admin) revert Unauthorized();
 
-        if (availableBalanceOf(src) < amount) {
-            revert InsufficientAvailableBalance();
-        }
+        if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
     }
@@ -309,13 +295,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
     function _encumber(address owner, address taker, uint256 amount) private whenNotPaused {
-        if (availableBalanceOf(owner) < amount) {
-            revert InsufficientAvailableBalance();
-        }
+        if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
 
-        if (!hasSufficientPermissions(owner)) {
-            revert InsufficientPermissions();
-        }
+        if (!hasSufficientPermissions(owner)) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
@@ -328,9 +310,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     function _spendEncumbrance(address owner, address taker, uint256 amount) internal {
         uint256 currentEncumbrance = encumbrances[owner][taker];
 
-        if (currentEncumbrance < amount) {
-            revert InsufficientEncumbrance();
-        }
+        if (currentEncumbrance < amount) revert InsufficientEncumbrance();
 
         uint256 newEncumbrance = currentEncumbrance - amount;
         encumbrances[owner][taker] = newEncumbrance;
@@ -342,9 +322,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
     function _release(address owner, address taker, uint256 amount) private {
-        if (encumbrances[owner][taker] < amount) {
-            revert InsufficientEncumbrance();
-        }
+        if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
 
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
@@ -391,9 +369,11 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         returns (bool)
     {
         (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
-        require(recoverError != ECDSA.RecoverError.InvalidSignatureS, "Invalid value s");
-        require(recoverError != ECDSA.RecoverError.InvalidSignature, "Bad signatory");
-        require(recoveredSigner == signer, "Bad signatory");
+
+        if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
+        if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();
+        if (recoveredSigner != signer) revert BadSignatory();
+
         return true;
     }
 }
