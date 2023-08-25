@@ -3,17 +3,18 @@
 pragma solidity ^0.8.20;
 
 import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import {IERC7246} from "./interfaces/IERC7246.sol";
+import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
-import {Permissionlist} from "./Permissionlist.sol";
+import {IERC7246} from "src/interfaces/IERC7246.sol";
+import {Permissionlist} from "src/Permissionlist.sol";
 
 /**
  * @title SUPTB
- * @notice An ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed
+ * @notice A Pausable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTB is ERC20, IERC7246 {
+contract SUPTB is ERC20, IERC7246, Pausable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -54,6 +55,26 @@ contract SUPTB is ERC20, IERC7246 {
     error InsufficientPermissions();
 
     /**
+     * @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
+     */
+    error InsufficientAvailableBalance();
+
+    /**
+     * @dev Thrown when the amount of tokens to spend or release exceeds the amount encumbered to the taker
+     */
+    error InsufficientEncumbrance();
+
+    /**
+     * @dev Thrown when the amount of tokens an address is encumbering exceeds the amount they're approved to spend
+     */
+    error InsufficientAllowance();
+
+    /**
+     * @dev Thrown when the current timestamp has surpassed the expiration time for a signature
+     */
+    error SignatureExpired();
+
+    /**
      * @notice Construct a new ERC20 token instance with the given admin and permissionlist
      * @param _admin The address designated as the admin with special privileges
      * @param _permissionlist Address of the Permissionlist contract to use for permission checking
@@ -61,6 +82,30 @@ contract SUPTB is ERC20, IERC7246 {
     constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
         admin = _admin;
         permissionlist = _permissionlist;
+    }
+
+    /**
+     * @notice Invokes the {Pausable-_pause} internal function
+     * @dev Can only be called by the admin
+     */
+    function pause() public {
+        if (msg.sender != admin) {
+            revert Unauthorized();
+        }
+
+        _pause();
+    }
+
+    /**
+     * @notice Invokes the {Pausable-_unpause} internal function
+     * @dev Can only be called by the admin
+     */
+    function unpause() public {
+        if (msg.sender != admin) {
+            revert Unauthorized();
+        }
+
+        _unpause();
     }
 
     /**
@@ -90,7 +135,9 @@ contract SUPTB is ERC20, IERC7246 {
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
         // check but dont spend encumbrance
-        require(availableBalanceOf(msg.sender) >= amount, "ERC7246: insufficient available balance");
+        if (availableBalanceOf(msg.sender) < amount) {
+            revert InsufficientAvailableBalance();
+        }
 
         if (!hasSufficientPermissions(msg.sender)) {
             revert InsufficientPermissions();
@@ -135,7 +182,9 @@ contract SUPTB is ERC20, IERC7246 {
             // We are now moving only "available" tokens and must check
             // to not unfairly move tokens encumbered to others
 
-            require(availableBalanceOf(src) >= excessAmount, "ERC7246: insufficient available balance");
+            if (availableBalanceOf(src) < excessAmount) {
+                revert InsufficientAvailableBalance();
+            }
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
@@ -165,7 +214,10 @@ contract SUPTB is ERC20, IERC7246 {
      * @param amount Amount of tokens to increase the encumbrance to `taker` by
      */
     function encumberFrom(address owner, address taker, uint256 amount) external {
-        require(allowance(owner, msg.sender) >= amount, "ERC7246: insufficient allowance");
+        if (allowance(owner, msg.sender) < amount) {
+            revert InsufficientAllowance();
+        }
+
         // spend caller's allowance
         _spendAllowance(owner, msg.sender, amount);
         _encumber(owner, taker, amount);
@@ -196,7 +248,10 @@ contract SUPTB is ERC20, IERC7246 {
     function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
         external
     {
-        require(block.timestamp < expiry, "Signature expired");
+        if (block.timestamp >= expiry) {
+            revert SignatureExpired();
+        }
+
         uint256 nonce = nonces[owner];
 
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
@@ -242,15 +297,21 @@ contract SUPTB is ERC20, IERC7246 {
         if (msg.sender != admin) {
             revert Unauthorized();
         }
-        require(availableBalanceOf(src) >= amount, "ERC7246: insufficient available balance");
+
+        if (availableBalanceOf(src) < amount) {
+            revert InsufficientAvailableBalance();
+        }
+
         _burn(src, amount);
     }
 
     /**
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
-    function _encumber(address owner, address taker, uint256 amount) private {
-        require(availableBalanceOf(owner) >= amount, "ERC7246: insufficient available balance");
+    function _encumber(address owner, address taker, uint256 amount) private whenNotPaused {
+        if (availableBalanceOf(owner) < amount) {
+            revert InsufficientAvailableBalance();
+        }
 
         if (!hasSufficientPermissions(owner)) {
             revert InsufficientPermissions();
@@ -266,7 +327,11 @@ contract SUPTB is ERC20, IERC7246 {
      */
     function _spendEncumbrance(address owner, address taker, uint256 amount) internal {
         uint256 currentEncumbrance = encumbrances[owner][taker];
-        require(currentEncumbrance >= amount, "ERC7246: insufficient encumbrance");
+
+        if (currentEncumbrance < amount) {
+            revert InsufficientEncumbrance();
+        }
+
         uint256 newEncumbrance = currentEncumbrance - amount;
         encumbrances[owner][taker] = newEncumbrance;
         encumberedBalanceOf[owner] -= amount;
@@ -277,10 +342,24 @@ contract SUPTB is ERC20, IERC7246 {
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
     function _release(address owner, address taker, uint256 amount) private {
-        require(encumbrances[owner][taker] >= amount, "ERC7246: insufficient encumbrance");
+        if (encumbrances[owner][taker] < amount) {
+            revert InsufficientEncumbrance();
+        }
+
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
         emit Release(owner, taker, amount);
+    }
+
+    /**
+     * @dev See {ERC20-_update}.
+     *
+     * Requirements:
+     *
+     * - the contract must not be paused.
+     */
+    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused {
+        super._update(from, to, value);
     }
 
     /**
