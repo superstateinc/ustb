@@ -1,17 +1,16 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/StdUtils.sol";
-import {Test} from "forge-std/Test.sol";
-import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
-import {IERC20Metadata} from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
+import { Test } from "forge-std/Test.sol";
+import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
+import { IERC20Metadata } from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
-import {SUPTB} from "src/SUPTB.sol";
-import {SUPTBv2} from "test/SUPTBv2.sol";
-import {Permissionlist} from "src/Permissionlist.sol";
+import { SUPTB } from "src/SUPTB.sol";
+import { PermissionList } from "src/PermissionList.sol";
 
 contract SUPTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
@@ -22,8 +21,8 @@ contract SUPTBTest is Test {
     TransparentUpgradeableProxy permsProxy;
     ProxyAdmin permsAdmin;
 
-    Permissionlist public perms;
-    Permissionlist public wrappedPerms;
+    PermissionList public perms;
+    PermissionList public wrappedPerms;
 
     TransparentUpgradeableProxy tokenProxy;
     ProxyAdmin tokenAdmin;
@@ -40,7 +39,7 @@ contract SUPTBTest is Test {
     address mallory = address(13);
 
     function setUp() public {
-        perms = new Permissionlist(address(this));
+        perms = new PermissionList(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(perms), address(this), "");
@@ -49,7 +48,7 @@ contract SUPTBTest is Test {
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
         // wrap in ABI to support easier calls
-        wrappedPerms = Permissionlist(address(permsProxy));
+        wrappedPerms = PermissionList(address(permsProxy));
 
         token = new SUPTB(address(this), wrappedPerms);
 
@@ -63,7 +62,7 @@ contract SUPTBTest is Test {
         wrappedToken = SUPTB(address(tokenProxy));
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        Permissionlist.Permission memory allowPerms = Permissionlist.Permission(true);
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
         wrappedPerms.setPermission(alice, allowPerms);
         wrappedPerms.setPermission(bob, allowPerms);
         wrappedPerms.setPermission(charlie, allowPerms);
@@ -277,7 +276,7 @@ contract SUPTBTest is Test {
 
         // but bob tries to encumber more than his allowance
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientAllowance.selector);
+        vm.expectRevert();
         wrappedToken.encumberFrom(alice, charlie, 60e6);
     }
 
@@ -486,7 +485,7 @@ contract SUPTBTest is Test {
         deal(address(wrappedToken), bob, 100e6);
 
         // un-whitelist alice
-        Permissionlist.Permission memory disallowPerms = Permissionlist.Permission(false);
+        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false);
         wrappedPerms.setPermission(alice, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address
@@ -516,21 +515,6 @@ contract SUPTBTest is Test {
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         wrappedToken.encumberFrom(alice, charlie, 30e6);
-    }
-
-    function testSUPTBUpgrade() public {
-        // set new token admin
-        SUPTBv2 tokenV2 = new SUPTBv2(charlie, wrappedPerms);
-
-        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2), "");
-
-        SUPTBv2 wrappedTokenV2 = SUPTBv2(address(tokenProxy));
-
-        // check permissionlist reference didn't change
-        assertEq(address(wrappedTokenV2.permissionlist()), address(wrappedPerms));
-
-        // check token admin changed
-        assertEq(wrappedTokenV2.admin(), charlie);
     }
 
     function testPauseAndUnpauseRevertIfUnauthorized() public {

@@ -3,16 +3,16 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/Permissionlist.sol";
+import "src/PermissionList.sol";
 import "src/SUPTB.sol";
 
 contract DeployScript is Script {
     TransparentUpgradeableProxy permsProxy;
     ProxyAdmin permsAdmin;
 
-    Permissionlist public permsImplementation;
-    Permissionlist public perms;
-    Permissionlist wrappedPerms;
+    PermissionList public permsImplementation;
+    PermissionList public perms;
+    PermissionList wrappedPerms;
 
     TransparentUpgradeableProxy tokenProxy;
     ProxyAdmin tokenAdmin;
@@ -31,14 +31,14 @@ contract DeployScript is Script {
         // TODO: Configure before running
         address fireblocksAdmin = address(0x9825df3dc587BCc86b1365DA2E4EF07B0Cabfb9B);
 
-        perms = new Permissionlist(fireblocksAdmin);
+        perms = new PermissionList(fireblocksAdmin);
         permsProxy = new TransparentUpgradeableProxy(address(perms), address(this), "");
 
         bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
         // wrap in ABI to support easier calls
-        wrappedPerms = Permissionlist(address(permsProxy));
+        wrappedPerms = PermissionList(address(permsProxy));
 
         token = new SUPTB(fireblocksAdmin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(token), address(this), "");

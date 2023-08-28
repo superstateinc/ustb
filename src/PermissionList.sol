@@ -1,23 +1,22 @@
+// TODO: Decide contract license
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
 /**
- * @title PermissionlistV2
- * @notice A contract that provides allowlist and other permission functionalities
+ * @title PermissionList
+ * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract PermissionlistV2 {
+contract PermissionList {
     /// @notice The major version of this contract
-    string public constant VERSION = "2";
+    string public constant VERSION = "1";
 
     /// @dev Address of the administrator with permissions to update the allowlist
     address public immutable permissionAdmin;
 
     /// @dev Mapping of addresses to their permissions
     struct Permission {
-        bool allowed;
-        bool isKyc;
-        bool isAccredited;
+        bool isAllowed;
     }
 
     /// @notice A record of permissions for each address determining if they are allowed
@@ -26,13 +25,11 @@ contract PermissionlistV2 {
     /// @notice An event emitted when an address's permission status is changed
     event PermissionSet(address indexed addr, Permission permission);
 
-    /**
-     * @dev Thrown when a request is not sent by the authorized admin
-     */
+    /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
 
     /**
-     * @notice Construct a new Permissionlist instance
+     * @notice Construct a new PermissionList instance
      * @param _permissionAdmin Address of the permission administrator
      */
     constructor(address _permissionAdmin) {
@@ -54,9 +51,7 @@ contract PermissionlistV2 {
      * @param permission The permission status to set
      */
     function setPermission(address addr, Permission memory permission) external {
-        if (msg.sender != permissionAdmin) {
-            revert Unauthorized();
-        }
+        if (msg.sender != permissionAdmin) revert Unauthorized();
 
         permissions[addr] = permission;
 

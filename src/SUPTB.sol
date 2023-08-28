@@ -2,16 +2,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.20;
 
-import {ERC20} from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import {Pausable} from "openzeppelin-contracts/security/Pausable.sol";
-import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
+import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
+import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
-import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {Permissionlist} from "src/Permissionlist.sol";
+import { IERC7246 } from "src/interfaces/IERC7246.sol";
+import { PermissionList } from "src/PermissionList.sol";
 
 /**
  * @title SUPTB
- * @notice A Pausable ERC7246 token contract that interacts with the Permissionlist contract to check if transfers are allowed
+ * @notice A Pausable ERC7246 token contract that interacts with the PermissionList contract to check if transfers are allowed
  * @author Compound
  */
 contract SUPTB is ERC20, IERC7246, Pausable {
@@ -29,8 +29,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /// @notice Admin address with exclusive privileges for minting and burning
     address public immutable admin;
 
-    /// @notice Address of the Permissionlist contract which determines permissions for transfers
-    Permissionlist public immutable permissionlist;
+    /// @notice Address of the PermissionList contract which determines permissions for transfers
+    PermissionList public immutable permissionList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -42,63 +42,44 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     mapping(address => mapping(address => uint256)) public encumbrances;
 
     /// @notice Number of decimals used for the user representation of the token
-    uint8 private constant _decimals = 6;
+    uint8 private constant DECIMALS = 6;
 
-    /**
-     * @dev Thrown when a request is not sent by the authorized admin
-     */
+    /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
 
-    /**
-     * @dev Thrown when an address does not have sufficient permissions, as dicatated by the Permissionlist
-     */
+    /// @dev Thrown when an address does not have sufficient permissions, as dicatated by the PermissionList
     error InsufficientPermissions();
 
-    /**
-     * @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
-     */
+    /// @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
     error InsufficientAvailableBalance();
 
-    /**
-     * @dev Thrown when the amount of tokens to spend or release exceeds the amount encumbered to the taker
-     */
+    /// @dev Thrown when the amount of tokens to spend or release exceeds the amount encumbered to the taker
     error InsufficientEncumbrance();
 
-    /**
-     * @dev Thrown when the amount of tokens an address is encumbering exceeds the amount they're approved to spend
-     */
-    error InsufficientAllowance();
-
-    /**
-     * @dev Thrown when the current timestamp has surpassed the expiration time for a signature
-     */
+    /// @dev Thrown when the current timestamp has surpassed the expiration time for a signature
     error SignatureExpired();
 
-    /**
-     * @dev Thrown if the signature has an S value that is in the upper half order.
-     */
+    /// @dev Thrown if the signature has an S value that is in the upper half order.
     error InvalidSignatureS();
 
-    /**
-     * @dev Thrown if the signature is invalid or its signer does not match the expected singer
-     */
+    /// @dev Thrown if the signature is invalid or its signer does not match the expected singer
     error BadSignatory();
 
     /**
-     * @notice Construct a new ERC20 token instance with the given admin and permissionlist
+     * @notice Construct a new ERC20 token instance with the given admin and PermissionList
      * @param _admin The address designated as the admin with special privileges
-     * @param _permissionlist Address of the Permissionlist contract to use for permission checking
+     * @param _permissionList Address of the PermissionList contract to use for permission checking
      */
-    constructor(address _admin, Permissionlist _permissionlist) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
+    constructor(address _admin, PermissionList _permissionList) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
         admin = _admin;
-        permissionlist = _permissionlist;
+        permissionList = _permissionList;
     }
 
     /**
      * @notice Invokes the {Pausable-_pause} internal function
      * @dev Can only be called by the admin
      */
-    function pause() public {
+    function pause() external {
         if (msg.sender != admin) revert Unauthorized();
 
         _pause();
@@ -108,7 +89,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @notice Invokes the {Pausable-_unpause} internal function
      * @dev Can only be called by the admin
      */
-    function unpause() public {
+    function unpause() external {
         if (msg.sender != admin) revert Unauthorized();
 
         _unpause();
@@ -118,7 +99,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @notice Number of decimals used for the user representation of the token
      */
     function decimals() public pure override returns (uint8) {
-        return _decimals;
+        return DECIMALS;
     }
 
     /**
@@ -134,25 +115,23 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens `dst` is the contract address
+     * @dev Includes extra functionality to burn tokens if `dst` is the contract address
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transfer(address dst, uint256 amount) public override returns (bool) {
+    function transfer(address dst, uint256 amount) public override whenNotPaused returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-
         if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
 
         if (dst == address(this)) {
             _burn(msg.sender, amount);
-            return true;
+        } else {
+            if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
+            _transfer(msg.sender, dst, amount);
         }
 
-        if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
-
-        _transfer(msg.sender, dst, amount);
         return true;
     }
 
@@ -166,10 +145,14 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
         if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
 
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
+        if (encumberedToTaker == 0 && !hasSufficientPermissions(src)) {
+            revert InsufficientPermissions();
+        }
+
         if (amount > encumberedToTaker) {
             uint256 excessAmount = amount - encumberedToTaker;
 
@@ -197,7 +180,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param taker Address to increase encumbrance to
      * @param amount Amount of tokens to increase the encumbrance by
      */
-    function encumber(address taker, uint256 amount) external {
+    function encumber(address taker, uint256 amount) external whenNotPaused {
         _encumber(msg.sender, taker, amount);
     }
 
@@ -209,9 +192,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param taker Address to increase encumbrance to
      * @param amount Amount of tokens to increase the encumbrance to `taker` by
      */
-    function encumberFrom(address owner, address taker, uint256 amount) external {
-        if (allowance(owner, msg.sender) < amount) revert InsufficientAllowance();
-
+    function encumberFrom(address owner, address taker, uint256 amount) external whenNotPaused {
         // spend caller's allowance
         _spendAllowance(owner, msg.sender, amount);
         _encumber(owner, taker, amount);
@@ -245,7 +226,6 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         if (block.timestamp >= expiry) revert SignatureExpired();
 
         uint256 nonce = nonces[owner];
-
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
         if (isValidSignature(owner, digest, v, r, s)) {
@@ -262,8 +242,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view returns (bool) {
-        Permissionlist.Permission memory permissions = permissionlist.getPermission(addr);
-        return permissions.allowed;
+        PermissionList.Permission memory permissions = permissionList.getPermission(addr);
+        return permissions.isAllowed;
     }
 
     /**
@@ -272,8 +252,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param dst Recipient of the minted tokens
      * @param amount Amount of tokens to mint
      */
-    function mint(address dst, uint256 amount) external {
+    function mint(address dst, uint256 amount) external whenNotPaused {
         if (msg.sender != admin) revert Unauthorized();
+
         _mint(dst, amount);
     }
 
@@ -283,9 +264,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param src Source address from which tokens will be burned
      * @param amount Amount of tokens to burn
      */
-    function burn(address src, uint256 amount) external {
+    function burn(address src, uint256 amount) external whenNotPaused {
         if (msg.sender != admin) revert Unauthorized();
-
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
@@ -294,9 +274,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /**
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
-    function _encumber(address owner, address taker, uint256 amount) private whenNotPaused {
+    function _encumber(address owner, address taker, uint256 amount) private {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-
         if (!hasSufficientPermissions(owner)) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;
@@ -312,8 +291,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
 
         if (currentEncumbrance < amount) revert InsufficientEncumbrance();
 
-        uint256 newEncumbrance = currentEncumbrance - amount;
-        encumbrances[owner][taker] = newEncumbrance;
+        encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
         emit EncumbranceSpend(owner, taker, amount);
     }
@@ -327,17 +305,6 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         encumbrances[owner][taker] -= amount;
         encumberedBalanceOf[owner] -= amount;
         emit Release(owner, taker, amount);
-    }
-
-    /**
-     * @dev See {ERC20-_update}.
-     *
-     * Requirements:
-     *
-     * - the contract must not be paused.
-     */
-    function _update(address from, address to, uint256 value) internal virtual override whenNotPaused {
-        super._update(from, to, value);
     }
 
     /**
@@ -355,7 +322,6 @@ contract SUPTB is ERC20, IERC7246, Pausable {
 
     /**
      * @notice Checks if a signature is valid
-     * @dev Supports EIP-1271 signatures for smart contracts
      * @param signer The address that signed the signature
      * @param digest The hashed message that is signed
      * @param v The recovery byte of the signature
