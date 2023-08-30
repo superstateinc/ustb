@@ -11,6 +11,8 @@ import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
 import { SUPTB } from "src/SUPTB.sol";
 import { PermissionList } from "src/PermissionList.sol";
+import "test/PermissionListV2.sol";
+
 
 contract SUPTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
@@ -610,5 +612,46 @@ contract SUPTBTest is Test {
         token.release(alice, 50e6);
 
         assertEq(token.balanceOf(alice), 100e6);
+    }
+
+    function testUpgradingPermissionListDoesNotAffectToken() public {
+        PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
+        permsAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        
+        PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
+
+        assertEq(address(token.permissionList()), address(permsProxy));
+
+        // check Alice, Bob, and Charlie still whitelisted
+        assertEq(permsV2.getPermission(alice).isAllowed, true);
+        assertEq(permsV2.getPermission(bob).isAllowed, true);
+        assertEq(permsV2.getPermission(charlie).isAllowed, true);
+
+        deal(address(token), alice, 100e6);
+        deal(address(token), bob, 100e6);
+
+        // check Alice, Bob, and Charlie can still do whitelisted operations (transfer, transferFrom, encumber, encumberFrom)
+        vm.prank(alice);
+        token.transfer(bob, 10e6);
+
+        assertEq(token.balanceOf(alice), 90e6);
+        assertEq(token.balanceOf(bob), 110e6);
+
+        vm.prank(bob);
+        token.approve(alice, 40e6);
+        
+        vm.prank(alice);
+        token.transferFrom(bob, charlie, 20e6);
+
+        assertEq(token.balanceOf(bob), 90e6);
+        assertEq(token.balanceOf(charlie), 20e6);
+
+        vm.prank(bob);
+        token.encumber(charlie, 20e6);
+
+        vm.prank(alice);
+        token.encumberFrom(bob, charlie, 10e6);
+
+        assertEq(token.encumbrances(bob, charlie), 30e6);
     }
 }
