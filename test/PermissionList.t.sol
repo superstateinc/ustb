@@ -228,6 +228,178 @@ contract PermissionListTest is Test {
         perms.setMultipleIsAllowed(users, newValues);
     }
 
+    function testSetNthPermissionToTrue() public {
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(false, false, false, false, false, false));
+
+        PermissionList.Permission memory currentPerms = PermissionList.Permission(false, false, false, false, false, false);
+
+        /* ===== Set 0th permission ===== */
+        currentPerms.isAllowed = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 0, true);
+
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+
+        /* ===== Set 1st permission ===== */
+        currentPerms.state1 = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 1, true);
+
+        assertEq(perms.getPermission(alice).state1, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+
+        /* ===== Set 2nd permission ===== */
+        currentPerms.state2 = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 2, true);
+
+        assertEq(perms.getPermission(alice).state2, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+
+        /* ===== Set 3rd permission ===== */
+        currentPerms.state3 = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 3, true);
+
+        assertEq(perms.getPermission(alice).state3, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+
+        /* ===== Set 4th permission ===== */
+        currentPerms.state4 = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 4, true);
+
+        assertEq(perms.getPermission(alice).state4, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+
+        /* ===== Set 5th permission ===== */
+        currentPerms.state5 = true;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, currentPerms);
+
+        // allow alice
+        perms.setNthPermission(alice, 5, true);
+
+        assertEq(perms.getPermission(alice).state5, true);
+        assertEq(perms.getPermission(alice), currentPerms);
+    }
+
+    function testSetNthPermissionToFalse() public {
+        perms.setPermission(bob, PermissionList.Permission(true, true, true, true, true, true));
+
+        assertEq(perms.getPermission(bob).isAllowed, true);
+        assertEq(perms.getPermission(bob), PermissionList.Permission(true, true, true, true, true, true));
+
+        PermissionList.Permission memory currentPerms = PermissionList.Permission(true, true, true, true, true, true);
+
+        /* ===== Set 0th permission ===== */
+        currentPerms.isAllowed = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 0, false);
+
+        assertEq(perms.getPermission(bob).isAllowed, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+
+        /* ===== Set 1st permission ===== */
+        currentPerms.state1 = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 1, false);
+
+        assertEq(perms.getPermission(bob).state1, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+
+        /* ===== Set 2nd permission ===== */
+        currentPerms.state2 = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 2, false);
+
+        assertEq(perms.getPermission(bob).state2, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+
+        /* ===== Set 3rd permission ===== */
+        currentPerms.state3 = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 3, false);
+
+        assertEq(perms.getPermission(bob).state3, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+
+        /* ===== Set 4th permission ===== */
+        currentPerms.state4 = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 4, false);
+
+        assertEq(perms.getPermission(bob).state4, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+
+        /* ===== Set 5th permission ===== */
+        currentPerms.state5 = false;
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, currentPerms);
+
+        // allow bob
+        perms.setNthPermission(bob, 5, false);
+
+        assertEq(perms.getPermission(bob).state5, false);
+        assertEq(perms.getPermission(bob), currentPerms);
+    }
+
     function testUpgradePermissions() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
 
