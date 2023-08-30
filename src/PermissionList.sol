@@ -17,6 +17,11 @@ contract PermissionList {
     /// @dev Mapping of addresses to their permissions
     struct Permission {
         bool isAllowed;
+        bool state1;
+        bool state2;
+        bool state3;
+        bool state4;
+        bool state5;
     }
 
     /// @notice A record of permissions for each address determining if they are allowed
@@ -27,6 +32,9 @@ contract PermissionList {
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
+
+    /// @dev Thrown when the input for a function is invalid
+    error BadData();
 
     /**
      * @notice Construct a new PermissionList instance
@@ -56,5 +64,22 @@ contract PermissionList {
         permissions[addr] = permission;
 
         emit PermissionSet(addr, permission);
+    }
+
+    /**
+     * @notice Sets permissions for a list of addresses
+     * @param users The addresses to be updated
+     * @param perms The permission statuses to set
+     */
+    function setMultiplePermissions(address[] calldata users, Permission[] calldata perms) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+        if (users.length != perms.length) revert BadData();
+
+        for (uint i = 0; i < users.length; ) {
+            permissions[users[i]] = perms[i];
+            emit PermissionSet(users[i], perms[i]);
+
+            unchecked { i++; }
+        }
     }
 }

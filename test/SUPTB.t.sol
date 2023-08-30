@@ -60,7 +60,7 @@ contract SUPTBTest is Test {
         token = SUPTB(address(tokenProxy));
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(alice, allowPerms);
         perms.setPermission(bob, allowPerms);
         perms.setPermission(charlie, allowPerms);
@@ -492,14 +492,14 @@ contract SUPTBTest is Test {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(mallory, allowPerms);
 
         vm.prank(mallory);
         token.encumber(bob, 20e6);
 
         // now un-whitelist mallory
-        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false);
+        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
         perms.setPermission(mallory, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
@@ -529,7 +529,7 @@ contract SUPTBTest is Test {
         deal(address(token), bob, 100e6);
 
         // un-whitelist alice
-        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false);
+        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
         perms.setPermission(alice, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address
