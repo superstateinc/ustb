@@ -400,6 +400,118 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(bob), currentPerms);
     }
 
+    function testSetMultipleNthPermissions() public {
+        perms.setPermission(bob, PermissionList.Permission(true, true, true, true, true, true));
+
+        assertEq(perms.getPermission(alice), PermissionList.Permission(false, false, false, false, false, false));
+        assertEq(perms.getPermission(bob), PermissionList.Permission(true, true, true, true, true, true));
+
+        // we'll be iteratively setting alice's permissions to true and bob's to false, starting from the 0 index
+        address[] memory users = new address[](12);
+        uint[] memory indices = new uint[](12);
+        bool[] memory newValues = new bool[](12);
+        users[0] = alice;
+        users[1] = alice;
+        users[2] = alice;
+        users[3] = alice;
+        users[4] = alice;
+        users[5] = alice;
+        users[6] = bob;
+        users[7] = bob;
+        users[8] = bob;
+        users[9] = bob;
+        users[10] = bob;
+        users[11] = bob;
+        indices[0] = 0;
+        indices[1] = 1;
+        indices[2] = 2;
+        indices[3] = 3;
+        indices[4] = 4;
+        indices[5] = 5;
+        indices[6] = 0;
+        indices[7] = 1;
+        indices[8] = 2;
+        indices[9] = 3;
+        indices[10] = 4;
+        indices[11] = 5;
+        newValues[0] = true;
+        newValues[1] = true;
+        newValues[2] = true;
+        newValues[3] = true;
+        newValues[4] = true;
+        newValues[5] = true;
+        newValues[6] = false;
+        newValues[7] = false;
+        newValues[8] = false;
+        newValues[9] = false;
+        newValues[10] = false;
+        newValues[11] = false;
+
+        // emits multiple PermissionSet events
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, true, false, false, false, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, true, true, false, false, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, false, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, true, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, true, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, true, true, true, true, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, true, true, true, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, true, true, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, true, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, true));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+
+        perms.setMultipleNthPermissions(users, indices, newValues);
+
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, true, true, true, true, true));
+        assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
+    }
+
+    function testSetMultipleNthPermissionsRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        address[] memory users = new address[](1);
+        uint[] memory indices = new uint[](1);
+        bool[] memory newValues = new bool[](1);
+        users[0] = alice;
+        indices[0] = 0;
+        newValues[0] = false;
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setMultipleNthPermissions(users, indices, newValues);
+    }
+
+    function testSetMultipleNthPermissionsRevertsBadData() public {
+        address[] memory users = new address[](1);
+        uint[] memory indices = new uint[](2);
+        bool[] memory newValues = new bool[](1);
+
+        // should revert, since the input lists are different lengths
+        vm.expectRevert(PermissionList.BadData.selector);
+        perms.setMultipleNthPermissions(users, indices, newValues);
+
+        address[] memory usersB = new address[](1);
+        uint[] memory indicesB = new uint[](1);
+        bool[] memory newValuesB = new bool[](2);
+
+        // should revert, since the input lists are different lengths
+        vm.expectRevert(PermissionList.BadData.selector);
+        perms.setMultipleNthPermissions(usersB, indicesB, newValuesB);
+    }
+
     function testUpgradePermissions() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
 
