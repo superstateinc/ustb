@@ -119,4 +119,41 @@ contract PermissionList {
             unchecked { i++; }
         }
     }
+
+    /**
+     * @notice Sets the nth permission for a given address
+     * @param addr The address to be updated
+     * @param index The index of the permission to update
+     * @param value The status to set
+     * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
+     */
+    function setNthPermission(address addr, uint index, bool value) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+
+        Permission memory perms = permissions[addr];
+        perms = updateNthPermission(perms, index, value);
+        permissions[addr] = perms;
+
+        emit PermissionSet(addr, perms);
+    }
+
+    function updateNthPermission(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
+        if (index == 0) {
+            perms.isAllowed = value;
+        } else if (index == 1) {
+            perms.state1 = value;
+        } else if (index == 2) {
+            perms.state2 = value;
+        } else if (index == 3) {
+            perms.state3 = value;
+        } else if (index == 4) {
+            perms.state4 = value;
+        } else if (index == 5) {
+            perms.state5 = value;
+        } else {
+            revert BadData();
+        }
+
+        return perms;
+    }
 }
