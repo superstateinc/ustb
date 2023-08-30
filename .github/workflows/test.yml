@@ -1,16 +1,17 @@
-name: test
+name: SUPTB Test CI
 
-on: workflow_dispatch
+on:
+  - pull_request
 
 env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
+  forge:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: Run Forge Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -21,6 +22,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Install Forge Dependencies
+        run: forge install
 
       - name: Run Forge build
         run: |
