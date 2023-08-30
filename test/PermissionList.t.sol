@@ -142,6 +142,42 @@ contract PermissionListTest is Test {
         perms.setMultiplePermissions(users, newPerms);
     }
 
+    function testSetIsAllowedToTrue() public {
+        assertEq(perms.getPermission(alice).isAllowed, false);
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+
+        // allow alice
+        perms.setIsAllowed(alice, true);
+
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, false, false, false));
+    }
+
+    function testSetIsAllowedToFalse() public {
+        assertEq(perms.getPermission(bob).isAllowed, true);
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+
+        // disallow bob
+        perms.setIsAllowed(bob, false);
+
+        assertEq(perms.getPermission(bob).isAllowed, false);
+        assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
+    }
+
+    function testSetIsAllowedRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setIsAllowed(alice, true);
+    }
+
     function testUpgradePermissions() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
 

@@ -82,4 +82,19 @@ contract PermissionList {
             unchecked { i++; }
         }
     }
+
+    /**
+     * @notice Sets isAllowed permissions for a given address
+     * @param addr The address to be updated
+     * @param isAllowed The permission status to set
+     */
+    function setIsAllowed(address addr, bool isAllowed) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+
+        Permission memory perms = permissions[addr];
+        perms.isAllowed = isAllowed;
+        permissions[addr] = perms;
+
+        emit PermissionSet(addr, perms);
+    }
 }
