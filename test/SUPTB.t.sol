@@ -22,13 +22,11 @@ contract SUPTBTest is Test {
     ProxyAdmin permsAdmin;
 
     PermissionList public perms;
-    PermissionList public wrappedPerms;
 
     TransparentUpgradeableProxy tokenProxy;
     ProxyAdmin tokenAdmin;
 
     SUPTB public token;
-    SUPTB public wrappedToken;
 
     // Storage slot with the admin of the contract.
     bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
@@ -39,118 +37,120 @@ contract SUPTBTest is Test {
     address mallory = address(13);
 
     function setUp() public {
-        perms = new PermissionList(address(this));
+        PermissionList permsImplementation = new PermissionList(address(this));
 
         // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(perms), address(this), "");
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
 
         bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
         permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
 
         // wrap in ABI to support easier calls
-        wrappedPerms = PermissionList(address(permsProxy));
+        perms = PermissionList(address(permsProxy));
 
-        token = new SUPTB(address(this), wrappedPerms);
+        SUPTB tokenImplementation = new SUPTB(address(this), perms);
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(token), address(this), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
 
         bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
         tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
 
         // wrap in ABI to support easier calls
-        wrappedToken = SUPTB(address(tokenProxy));
+        token = SUPTB(address(tokenProxy));
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
-        wrappedPerms.setPermission(alice, allowPerms);
-        wrappedPerms.setPermission(bob, allowPerms);
-        wrappedPerms.setPermission(charlie, allowPerms);
+        perms.setPermission(alice, allowPerms);
+        perms.setPermission(bob, allowPerms);
+        perms.setPermission(charlie, allowPerms);
     }
 
+    // TODO: Resolve token.name() error
     function testTokenName() public {
         assertEq(token.name(), "Superstate Treasuries Blockchain");
     }
 
+    // TODO: Resolve token.symbol() error
     function testTokenSymbol() public {
         assertEq(token.symbol(), "SUPTB");
     }
 
     function testTokenDecimals() public {
-        assertEq(wrappedToken.decimals(), 6);
+        assertEq(token.decimals(), 6);
     }
 
     function testAvailableBalanceOf() public {
         vm.startPrank(alice);
 
         // availableBalanceOf is 0 by default
-        assertEq(wrappedToken.availableBalanceOf(alice), 0);
+        assertEq(token.availableBalanceOf(alice), 0);
 
         // reflects balance when there are no encumbrances
-        deal(address(wrappedToken), alice, 100e6);
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 100e6);
+        deal(address(token), alice, 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 100e6);
 
         // is reduced by encumbrances
-        wrappedToken.encumber(bob, 20e6);
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 80e6);
+        token.encumber(bob, 20e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 80e6);
 
         // is reduced by transfers
-        wrappedToken.transfer(bob, 20e6);
-        assertEq(wrappedToken.balanceOf(alice), 80e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 60e6);
+        token.transfer(bob, 20e6);
+        assertEq(token.balanceOf(alice), 80e6);
+        assertEq(token.availableBalanceOf(alice), 60e6);
 
         vm.stopPrank();
 
         vm.startPrank(bob);
 
         // is NOT reduced by transferFrom (from an encumbered address)
-        wrappedToken.transferFrom(alice, charlie, 10e6);
-        assertEq(wrappedToken.balanceOf(alice), 70e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 60e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 10e6);
-        assertEq(wrappedToken.balanceOf(charlie), 10e6);
+        token.transferFrom(alice, charlie, 10e6);
+        assertEq(token.balanceOf(alice), 70e6);
+        assertEq(token.availableBalanceOf(alice), 60e6);
+        assertEq(token.encumbrances(alice, bob), 10e6);
+        assertEq(token.balanceOf(charlie), 10e6);
 
         // is increased by a release
-        wrappedToken.release(alice, 5e6);
-        assertEq(wrappedToken.balanceOf(alice), 70e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 65e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 5e6);
+        token.release(alice, 5e6);
+        assertEq(token.balanceOf(alice), 70e6);
+        assertEq(token.availableBalanceOf(alice), 65e6);
+        assertEq(token.encumbrances(alice, bob), 5e6);
 
         vm.stopPrank();
     }
 
     function testTransferRevertInsufficentBalance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
         // alice encumbers half her balance to charlie
-        wrappedToken.encumber(charlie, 50e6);
+        token.encumber(charlie, 50e6);
 
         // alice attempts to transfer her entire balance
         vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
-        wrappedToken.transfer(bob, 100e6);
+        token.transfer(bob, 100e6);
 
         vm.stopPrank();
     }
 
     function testEncumberRevert() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
         // alice encumbers half her balance to bob
-        wrappedToken.encumber(bob, 50e6);
+        token.encumber(bob, 50e6);
 
         // alice attempts to encumber more than her remaining available balance
         vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
-        wrappedToken.encumber(charlie, 60e6);
+        token.encumber(charlie, 60e6);
 
         vm.stopPrank();
     }
 
     function testEncumber() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
         // emits Encumber event
@@ -158,87 +158,87 @@ contract SUPTBTest is Test {
         emit Encumber(alice, bob, 60e6);
 
         // alice encumbers some of her balance to bob
-        wrappedToken.encumber(bob, 60e6);
+        token.encumber(bob, 60e6);
 
         // balance is unchanged
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
         // available balance is reduced
-        assertEq(wrappedToken.availableBalanceOf(alice), 40e6);
+        assertEq(token.availableBalanceOf(alice), 40e6);
 
         // creates encumbrance for taker
-        assertEq(wrappedToken.encumbrances(alice, bob), 60e6);
+        assertEq(token.encumbrances(alice, bob), 60e6);
 
         // updates encumbered balance of owner
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 60e6);
+        assertEq(token.encumberedBalanceOf(alice), 60e6);
     }
 
     function testTransferFromSufficientEncumbrance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
         vm.prank(alice);
 
         // alice encumbers some of her balance to bob
-        wrappedToken.encumber(bob, 60e6);
+        token.encumber(bob, 60e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 40e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 60e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 60e6);
-        assertEq(wrappedToken.balanceOf(charlie), 0);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 40e6);
+        assertEq(token.encumberedBalanceOf(alice), 60e6);
+        assertEq(token.encumbrances(alice, bob), 60e6);
+        assertEq(token.balanceOf(charlie), 0);
 
         // bob calls transfers from alice to charlie
         vm.prank(bob);
-        wrappedToken.transferFrom(alice, charlie, 40e6);
+        token.transferFrom(alice, charlie, 40e6);
 
         // alice balance is reduced
-        assertEq(wrappedToken.balanceOf(alice), 60e6);
+        assertEq(token.balanceOf(alice), 60e6);
         // alice encumbrance to bob is reduced
-        assertEq(wrappedToken.availableBalanceOf(alice), 40e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 20e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 20e6);
+        assertEq(token.availableBalanceOf(alice), 40e6);
+        assertEq(token.encumberedBalanceOf(alice), 20e6);
+        assertEq(token.encumbrances(alice, bob), 20e6);
         // transfer is completed
-        assertEq(wrappedToken.balanceOf(charlie), 40e6);
+        assertEq(token.balanceOf(charlie), 40e6);
     }
 
     function testTransferFromEncumbranceAndAllowance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
         // alice encumbers some of her balance to bob
-        wrappedToken.encumber(bob, 20e6);
+        token.encumber(bob, 20e6);
 
         // she also grants him an approval
-        wrappedToken.approve(bob, 30e6);
+        token.approve(bob, 30e6);
 
         vm.stopPrank();
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 80e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 20e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 20e6);
-        assertEq(wrappedToken.allowance(alice, bob), 30e6);
-        assertEq(wrappedToken.balanceOf(charlie), 0);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 80e6);
+        assertEq(token.encumberedBalanceOf(alice), 20e6);
+        assertEq(token.encumbrances(alice, bob), 20e6);
+        assertEq(token.allowance(alice, bob), 30e6);
+        assertEq(token.balanceOf(charlie), 0);
 
         // bob calls transfers from alice to charlie
         vm.prank(bob);
-        wrappedToken.transferFrom(alice, charlie, 40e6);
+        token.transferFrom(alice, charlie, 40e6);
 
         // alice balance is reduced
-        assertEq(wrappedToken.balanceOf(alice), 60e6);
+        assertEq(token.balanceOf(alice), 60e6);
 
         // her encumbrance to bob has been fully spent
-        assertEq(wrappedToken.availableBalanceOf(alice), 60e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 0);
-        assertEq(wrappedToken.encumbrances(alice, bob), 0);
+        assertEq(token.availableBalanceOf(alice), 60e6);
+        assertEq(token.encumberedBalanceOf(alice), 0);
+        assertEq(token.encumbrances(alice, bob), 0);
 
         // her allowance to bob has been partially spent
-        assertEq(wrappedToken.allowance(alice, bob), 10e6);
+        assertEq(token.allowance(alice, bob), 10e6);
 
         // the dst receives the transfer
-        assertEq(wrappedToken.balanceOf(charlie), 40e6);
+        assertEq(token.balanceOf(charlie), 40e6);
     }
 
     function testTransferFromInsufficientAllowance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         uint256 encumberedAmount = 10e6;
         uint256 approvedAmount = 20e6;
@@ -247,149 +247,157 @@ contract SUPTBTest is Test {
         vm.startPrank(alice);
 
         // alice encumbers some of her balance to bob
-        wrappedToken.encumber(bob, encumberedAmount);
+        token.encumber(bob, encumberedAmount);
 
         // she also grants him an approval
-        wrappedToken.approve(bob, approvedAmount);
+        token.approve(bob, approvedAmount);
 
         vm.stopPrank();
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 90e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 10e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), encumberedAmount);
-        assertEq(wrappedToken.allowance(alice, bob), approvedAmount);
-        assertEq(wrappedToken.balanceOf(charlie), 0);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 90e6);
+        assertEq(token.encumberedBalanceOf(alice), 10e6);
+        assertEq(token.encumbrances(alice, bob), encumberedAmount);
+        assertEq(token.allowance(alice, bob), approvedAmount);
+        assertEq(token.balanceOf(charlie), 0);
 
         // bob tries to transfer more than his encumbered and allowed balances
         vm.prank(bob);
         vm.expectRevert();
-        wrappedToken.transferFrom(alice, charlie, transferAmount);
+        token.transferFrom(alice, charlie, transferAmount);
     }
 
     function testEncumberFromInsufficientAllowance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         // alice grants bob an approval
         vm.prank(alice);
-        wrappedToken.approve(bob, 50e6);
+        token.approve(bob, 50e6);
 
         // but bob tries to encumber more than his allowance
         vm.prank(bob);
         vm.expectRevert();
-        wrappedToken.encumberFrom(alice, charlie, 60e6);
+        token.encumberFrom(alice, charlie, 60e6);
     }
 
     function testEncumberFrom() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         // alice grants bob an approval
         vm.prank(alice);
-        wrappedToken.approve(bob, 100e6);
+        token.approve(bob, 100e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 100e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 0e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 0e6);
-        assertEq(wrappedToken.allowance(alice, bob), 100e6);
-        assertEq(wrappedToken.balanceOf(charlie), 0);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 100e6);
+        assertEq(token.encumberedBalanceOf(alice), 0e6);
+        assertEq(token.encumbrances(alice, bob), 0e6);
+        assertEq(token.allowance(alice, bob), 100e6);
+        assertEq(token.balanceOf(charlie), 0);
 
         // bob encumbers part of his allowance from alice to charlie
         vm.prank(bob);
         // emits an Encumber event
         vm.expectEmit(true, true, true, true);
         emit Encumber(alice, charlie, 60e6);
-        wrappedToken.encumberFrom(alice, charlie, 60e6);
+        token.encumberFrom(alice, charlie, 60e6);
 
         // no balance is transferred
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.balanceOf(charlie), 0);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.balanceOf(charlie), 0);
         // but available balance is reduced
-        assertEq(wrappedToken.availableBalanceOf(alice), 40e6);
+        assertEq(token.availableBalanceOf(alice), 40e6);
         // encumbrance to charlie is created
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 60e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 0e6);
-        assertEq(wrappedToken.encumbrances(alice, charlie), 60e6);
+        assertEq(token.encumberedBalanceOf(alice), 60e6);
+        assertEq(token.encumbrances(alice, bob), 0e6);
+        assertEq(token.encumbrances(alice, charlie), 60e6);
         // allowance is partially spent
-        assertEq(wrappedToken.allowance(alice, bob), 40e6);
+        assertEq(token.allowance(alice, bob), 40e6);
     }
 
     function testRelease() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         vm.prank(alice);
 
         // alice encumbers her balance to bob
-        wrappedToken.encumber(bob, 100e6);
+        token.encumber(bob, 100e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 0);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 100e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 0);
+        assertEq(token.encumberedBalanceOf(alice), 100e6);
+        assertEq(token.encumbrances(alice, bob), 100e6);
 
         // bob releases part of the encumbrance
         vm.prank(bob);
         // emits Release event
         vm.expectEmit(true, true, true, true);
         emit Release(alice, bob, 40e6);
-        wrappedToken.release(alice, 40e6);
+        token.release(alice, 40e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 40e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 60e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 60e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 40e6);
+        assertEq(token.encumberedBalanceOf(alice), 60e6);
+        assertEq(token.encumbrances(alice, bob), 60e6);
     }
 
     function testReleaseInsufficientEncumbrance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         vm.prank(alice);
 
         // alice encumbers her entire balance to bob
-        wrappedToken.encumber(bob, 100e6);
+        token.encumber(bob, 100e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 0);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 100e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 0);
+        assertEq(token.encumberedBalanceOf(alice), 100e6);
+        assertEq(token.encumbrances(alice, bob), 100e6);
 
         // bob releases a greater amount than is encumbered to him
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientEncumbrance.selector);
-        wrappedToken.release(alice, 200e6);
+        token.release(alice, 200e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 0);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 100e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 0);
+        assertEq(token.encumberedBalanceOf(alice), 100e6);
+        assertEq(token.encumbrances(alice, bob), 100e6);
     }
 
     function testMint() public {
-        wrappedToken.mint(alice, 100e6);
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
+        // emits Transfer event
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0), alice, 100e6);
+
+        token.mint(alice, 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
     }
 
     function testMintRevertBadCaller() public {
         vm.prank(alice);
         vm.expectRevert(SUPTB.Unauthorized.selector);
-        wrappedToken.mint(bob, 100e6);
+        token.mint(bob, 100e6);
 
-        assertEq(wrappedToken.balanceOf(bob), 0);
+        assertEq(token.balanceOf(bob), 0);
     }
 
     function testBurn() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
 
-        wrappedToken.burn(alice, 100e6);
-        assertEq(wrappedToken.balanceOf(alice), 0);
+        // emits Transfer event
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 100e6);
+
+        token.burn(alice, 100e6);
+        assertEq(token.balanceOf(alice), 0);
     }
 
     function testSelfBurnUsingTransfer() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
 
         // emits Transfer event
         vm.expectEmit(true, true, true, true);
@@ -397,162 +405,210 @@ contract SUPTBTest is Test {
 
         // alice calls transfer(contract_address, amount) to self-burn
         vm.prank(alice);
-        wrappedToken.transfer(address(wrappedToken), 50e6);
+        token.transfer(address(token), 50e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 50e6);
+        assertEq(token.balanceOf(alice), 50e6);
     }
 
     function testBurnRevertBadCaller() public {
         vm.prank(alice);
         vm.expectRevert(SUPTB.Unauthorized.selector);
-        wrappedToken.burn(bob, 100e6);
+        token.burn(bob, 100e6);
     }
 
     function testBurnRevertInsufficientBalance() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         // alice encumbers half her balance to bob
         vm.prank(alice);
-        wrappedToken.encumber(bob, 50e6);
+        token.encumber(bob, 50e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-        assertEq(wrappedToken.availableBalanceOf(alice), 50e6);
-        assertEq(wrappedToken.encumberedBalanceOf(alice), 50e6);
-        assertEq(wrappedToken.encumbrances(alice, bob), 50e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 50e6);
+        assertEq(token.encumberedBalanceOf(alice), 50e6);
+        assertEq(token.encumbrances(alice, bob), 50e6);
 
         // alice tries to burn more than her available balance
         vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
-        wrappedToken.burn(alice, 60e6);
+        token.burn(alice, 60e6);
     }
 
     function testEncumberRevertOwnerInsufficientPermissions() public {
-        deal(address(wrappedToken), mallory, 100e6);
+        deal(address(token), mallory, 100e6);
         vm.startPrank(mallory);
 
         // mallory tries to encumber to bob, without being whitelisted
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.encumber(bob, 50e6);
+        token.encumber(bob, 50e6);
 
         vm.stopPrank();
     }
 
     function testEncumberFromRevertOwnerInsufficientPermissions() public {
-        deal(address(wrappedToken), mallory, 100e6);
+        deal(address(token), mallory, 100e6);
 
         // mallory grants bob an approval
         vm.prank(mallory);
-        wrappedToken.approve(bob, 50e6);
+        token.approve(bob, 50e6);
 
         // bob tries to encumber to charlie on behalf of mallory, but mallory isn't whitelisted
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.encumberFrom(mallory, charlie, 30e6);
+        token.encumberFrom(mallory, charlie, 30e6);
     }
 
     function testTransferRevertSenderInsufficientPermissions() public {
-        deal(address(wrappedToken), mallory, 100e6);
+        deal(address(token), mallory, 100e6);
 
         // mallory tries to transfer tokens, but isn't whitelisted
         vm.prank(mallory);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.transfer(charlie, 30e6);
+        token.transfer(charlie, 30e6);
     }
 
     function testTransferRevertReceiverInsufficientPermissions() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         // alice tries to transfer tokens to mallory, but mallory isn't whitelisted
         vm.prank(alice);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.transfer(mallory, 30e6);
+        token.transfer(mallory, 30e6);
     }
 
     function testTransferFromRevertReceiverInsufficientPermissions() public {
-        deal(address(wrappedToken), alice, 100e6);
+        deal(address(token), alice, 100e6);
 
         // alice grants bob an approval
         vm.prank(alice);
-        wrappedToken.approve(bob, 50e6);
+        token.approve(bob, 50e6);
 
         // bob tries to transfer alice's tokens to mallory, but mallory isn't whitelisted
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.transferFrom(alice, mallory, 50e6);
+        token.transferFrom(alice, mallory, 50e6);
+    }
+
+    function testTransferFromWorksIfUsingEncumbranceAndSourceIsWhitelisted() public {
+        deal(address(token), mallory, 100e6);
+
+        // whitelist mallory for setting encumbrances
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
+        perms.setPermission(mallory, allowPerms);
+
+        vm.prank(mallory);
+        token.encumber(bob, 20e6);
+
+        // now un-whitelist mallory
+        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false);
+        perms.setPermission(mallory, forbidPerms);
+
+        // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
+        vm.prank(bob);
+        token.transferFrom(mallory, alice, 10e6);
+
+        assertEq(token.balanceOf(mallory), 90e6);
+        assertEq(token.balanceOf(alice), 10e6);
+        assertEq(token.balanceOf(bob), 0e6);
+        assertEq(token.encumbrances(mallory, bob), 10e6);
+    }
+
+    function testTransferFromRevertsIfNotUsingEncumbrancesAndSourceNotWhitelisted() public {
+        deal(address(token), mallory, 100e6);
+
+        vm.prank(mallory);
+        token.approve(bob, 50e6);
+
+        // reverts because encumbrances[src][bob] == 0 and src (mallory) is not whitelisted
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        token.transferFrom(mallory, alice, 10e6);
     }
 
     function testTransfersAndEncumbersRevertIfUnwhitelisted() public {
-        deal(address(wrappedToken), alice, 100e6);
-        deal(address(wrappedToken), bob, 100e6);
+        deal(address(token), alice, 100e6);
+        deal(address(token), bob, 100e6);
 
         // un-whitelist alice
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false);
-        wrappedPerms.setPermission(alice, disallowPerms);
+        perms.setPermission(alice, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address
         vm.prank(alice);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.transfer(bob, 30e6);
+        token.transfer(bob, 30e6);
 
         // whitelisted addresses can't transfer tokens to alice
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.transfer(alice, 30e6);
+        token.transfer(alice, 30e6);
 
         vm.prank(bob);
-        wrappedToken.approve(charlie, 50e6);
+        token.approve(charlie, 50e6);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         vm.prank(charlie);
-        wrappedToken.transferFrom(bob, alice, 30e6);
+        token.transferFrom(bob, alice, 30e6);
 
         // alice can't encumber tokens to anyone
         vm.prank(alice);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.encumber(bob, 30e6);
+        token.encumber(bob, 30e6);
 
         // others can't encumber alice's tokens, even if she's approved them
         vm.prank(alice);
-        wrappedToken.approve(bob, 50e6);
+        token.approve(bob, 50e6);
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        wrappedToken.encumberFrom(alice, charlie, 30e6);
+        token.encumberFrom(alice, charlie, 30e6);
     }
 
     function testPauseAndUnpauseRevertIfUnauthorized() public {
         // try pausing contract from unauthorized sender
         vm.prank(charlie);
         vm.expectRevert(SUPTB.Unauthorized.selector);
-        wrappedToken.pause();
+        token.pause();
 
         // admin pauses the contract
-        wrappedToken.pause();
+        token.pause();
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
         vm.expectRevert(SUPTB.Unauthorized.selector);
-        wrappedToken.unpause();
+        token.unpause();
     }
 
     function testCannotUpdateBalancesIfTokenPaused() public {
-        wrappedToken.mint(alice, 100e6);
+        token.mint(alice, 100e6);
 
-        wrappedToken.pause();
+        token.pause();
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
-
-        vm.expectRevert(Pausable.EnforcedPause.selector);
-        wrappedToken.mint(alice, 100e6);
+        assertEq(token.balanceOf(alice), 100e6);
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        wrappedToken.burn(alice, 100e6);
+        token.mint(alice, 100e6);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        token.burn(alice, 100e6);
 
         vm.prank(alice);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        wrappedToken.transfer(bob, 50e6);
+        token.transfer(bob, 50e6);
 
         vm.prank(alice);
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        wrappedToken.encumber(bob, 50e6);
+        token.encumber(bob, 50e6);
 
-        assertEq(wrappedToken.balanceOf(alice), 100e6);
+        vm.prank(bob);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        token.transferFrom(alice, charlie, 50e6);
+
+        vm.prank(bob);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        token.encumberFrom(alice, charlie, 50e6);
+
+        vm.prank(bob);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        token.release(alice, 50e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
     }
 }

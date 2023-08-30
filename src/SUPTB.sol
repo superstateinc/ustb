@@ -206,7 +206,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @param owner Address to decrease encumbrance from
      * @param amount Amount of tokens to decrease the encumbrance by
      */
-    function release(address owner, uint256 amount) external {
+    function release(address owner, uint256 amount) external whenNotPaused {
         _release(owner, msg.sender, amount);
     }
 
