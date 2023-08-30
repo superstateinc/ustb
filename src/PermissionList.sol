@@ -100,7 +100,7 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets isAllowed permissions for a given address
+     * @notice Sets isAllowed permissions for a list of addresses
      * @param users The addresses to be updated
      * @param values The isAllowed statuses to set
      */
@@ -137,6 +137,34 @@ contract PermissionList {
         emit PermissionSet(addr, perms);
     }
 
+    /**
+     * @notice Sets the nth permissions for a list of addresses
+     * @param users The addresses to be updated
+     * @param indices The indices of the permissions to update
+     * @param values The statuses to set
+     */
+    function setMultipleNthPermissions(address[] calldata users, uint[] calldata indices, bool[] calldata values) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+        if (users.length != indices.length || users.length != values.length) revert BadData();
+
+        for (uint i = 0; i < users.length; ) {
+            address user = users[i];
+            Permission memory perms = permissions[user];
+            perms = updateNthPermission(perms, indices[i], values[i]);
+            permissions[user] = perms;
+
+            emit PermissionSet(user, perms);
+
+            unchecked { i++; }
+        }
+    }
+
+    /**
+     * @dev Sets the nth permission for a Permission and returns the updated struct
+     * @param perms The Permission to be updated
+     * @param index The index of the permission to update
+     * @param value The status to set
+     */
     function updateNthPermission(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
         if (index == 0) {
             perms.isAllowed = value;
