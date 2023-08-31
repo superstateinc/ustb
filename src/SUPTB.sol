@@ -44,11 +44,11 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
-    /// @dev Extra log emitted when minting tokens
-    event Mint(address indexed dst, uint256 amount);
+    /// @dev Event emitted when tokens are minted
+    event Mint(address indexed minter, address indexed to, uint256 amount);
 
-    /// @dev Extra log emitted when burning tokens
-    event Burn(address indexed src, uint256 amount);
+    /// @dev Event emitted when tokens are burned
+    event Burn(address indexed burner, uint256 amount);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -156,6 +156,10 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
+        if (encumberedToTaker == 0 && !permissionList.getPermission(src).isAllowed) {
+            revert InsufficientPermissions();
+        }
+
         if (amount > encumberedToTaker) {
             uint256 excessAmount = amount - encumberedToTaker;
 
@@ -167,10 +171,6 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             // to not unfairly move tokens encumbered to others
 
             if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
-            PermissionList.Permission memory srcPermissions = permissionList.getPermission(src);
-            if (excessAmount > 0 && !srcPermissions.isAllowed) {
-                revert InsufficientPermissions();
-            }
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
@@ -271,7 +271,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         if (msg.sender != admin) revert Unauthorized();
 
         _mint(dst, amount);
-        emit Mint(dst, amount);
+        emit Mint(msg.sender, dst, amount);
     }
 
     /**
