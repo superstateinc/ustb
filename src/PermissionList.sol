@@ -131,7 +131,7 @@ contract PermissionList {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         Permission memory perms = permissions[addr];
-        perms = updateNthPermission(perms, index, value);
+        perms = setPermissionAtIndex(perms, index, value);
         permissions[addr] = perms;
 
         emit PermissionSet(addr, perms);
@@ -150,7 +150,7 @@ contract PermissionList {
         for (uint i = 0; i < users.length; ) {
             address user = users[i];
             Permission memory perms = permissions[user];
-            perms = updateNthPermission(perms, indices[i], values[i]);
+            perms = setPermissionAtIndex(perms, indices[i], values[i]);
             permissions[user] = perms;
 
             emit PermissionSet(user, perms);
@@ -165,7 +165,7 @@ contract PermissionList {
      * @param index The index of the permission to update
      * @param value The status to set
      */
-    function updateNthPermission(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
+    function setPermissionAtIndex(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
         if (index == 0) {
             perms.isAllowed = value;
         } else if (index == 1) {
