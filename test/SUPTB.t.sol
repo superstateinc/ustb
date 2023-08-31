@@ -2,9 +2,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/StdUtils.sol";
 import { Test } from "forge-std/Test.sol";
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
-import { IERC20Metadata } from "openzeppelin-contracts/interfaces/IERC20Metadata.sol";
+import { PausableUpgradeable } from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
@@ -13,7 +11,6 @@ import { SUPTB } from "src/SUPTB.sol";
 import { PermissionList } from "src/PermissionList.sol";
 import "test/PermissionListV2.sol";
 import "test/SUPTBV2.sol";
-
 
 contract SUPTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
@@ -64,6 +61,9 @@ contract SUPTBTest is Test {
         // wrap in ABI to support easier calls
         token = SUPTB(address(tokenProxy));
 
+        // initialize token contract
+        token.initialize("Superstate Short-Term Government Securities Fund", "SUPTB");
+
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(alice, allowPerms);
@@ -71,18 +71,21 @@ contract SUPTBTest is Test {
         perms.setPermission(charlie, allowPerms);
     }
 
-    // TODO: Resolve token.name() error
     function testTokenName() public {
-        assertEq(token.name(), "Superstate Treasuries Blockchain");
+        assertEq(token.name(), "Superstate Short-Term Government Securities Fund");
     }
 
-    // TODO: Resolve token.symbol() error
     function testTokenSymbol() public {
         assertEq(token.symbol(), "SUPTB");
     }
 
     function testTokenDecimals() public {
         assertEq(token.decimals(), 6);
+    }
+
+    function testInitializeRevertIfCalledAgain() public {
+        vm.expectRevert(bytes("Initializable: contract is already initialized"));
+        token.initialize("new name", "new symbol");
     }
 
     function testAvailableBalanceOf() public {
@@ -624,30 +627,30 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.mint(alice, 100e6);
 
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.burn(alice, 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.transfer(bob, 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.encumber(bob, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.transferFrom(alice, charlie, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.encumberFrom(alice, charlie, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(Pausable.EnforcedPause.selector);
+        vm.expectRevert(bytes("Pausable: paused"));
         token.release(alice, 50e6);
 
         assertEq(token.balanceOf(alice), 100e6);
@@ -656,7 +659,7 @@ contract SUPTBTest is Test {
     function testUpgradingPermissionListDoesNotAffectToken() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
         permsAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
-        
+
         PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
 
         assertEq(address(token.permissionList()), address(permsProxy));
@@ -678,7 +681,7 @@ contract SUPTBTest is Test {
 
         vm.prank(bob);
         token.approve(alice, 40e6);
-        
+
         vm.prank(alice);
         token.transferFrom(bob, charlie, 20e6);
 
