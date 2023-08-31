@@ -16,9 +16,8 @@ contract PermissionListV2 {
     /// @dev Mapping of addresses to their permissions
     struct Permission {
         bool isAllowed;
-        bool reserve2;
-        bool reserve3;
-        bool reserve4;
+        bool isKyc;
+        bool isAccredited;
     }
 
     /// @notice A record of permissions for each address determining if they are allowed

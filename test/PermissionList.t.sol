@@ -98,15 +98,15 @@ contract PermissionListTest is Test {
         assertEq(permsV2.getPermission(bob).isAllowed, true);
 
         // check bob's new statuses are at default false values
-        assertEq(permsV2.getPermission(bob).reserve2, false);
-        assertEq(permsV2.getPermission(bob).reserve3, false);
+        assertEq(permsV2.getPermission(bob).isKyc, false);
+        assertEq(permsV2.getPermission(bob).isAccredited, false);
 
         // set new multi-permission values for bob
-        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false, false);
+        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false);
         permsV2.setPermission(bob, multiPerms);
 
         assertEq(permsV2.getPermission(bob).isAllowed, true);
-        assertEq(permsV2.getPermission(bob).reserve2, true);
-        assertEq(permsV2.getPermission(bob).reserve3, false);
+        assertEq(permsV2.getPermission(bob).isKyc, true);
+        assertEq(permsV2.getPermission(bob).isAccredited, false);
     }
 }
