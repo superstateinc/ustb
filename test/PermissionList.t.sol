@@ -543,4 +543,10 @@ contract PermissionListTest is Test {
         bytes memory actualBytes = abi.encode(actual);
         assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function
     }
+
+    function assertEq(PermissionList.Permission memory expected, PermissionList.Permission memory actual) internal {
+        bytes memory expectedBytes = abi.encode(expected);
+        bytes memory actualBytes = abi.encode(actual);
+        assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function
+    }
 }

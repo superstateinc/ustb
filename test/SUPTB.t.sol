@@ -20,8 +20,8 @@ contract SUPTBTest is Test {
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Mint(address indexed dst, uint256 amount);
-    event Burn(address indexed src, uint256 amount);
+    event Mint(address indexed minter, address indexed to, uint256 amount);
+    event Burn(address indexed burner, uint256 amount);
 
     TransparentUpgradeableProxy permsProxy;
     ProxyAdmin permsAdmin;
@@ -370,9 +370,11 @@ contract SUPTBTest is Test {
     }
 
     function testMint() public {
-        // emits mint event
+        // emits transfer and mint events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0), alice, 100e6);
         vm.expectEmit();
-        emit Mint(alice, 100e6);
+        emit Mint(address(this), alice, 100e6);
 
         token.mint(alice, 100e6);
         assertEq(token.balanceOf(alice), 100e6);
@@ -391,7 +393,9 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-       // emits Burn event
+       // emits Transfer and Burn events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 100e6);
         vm.expectEmit();
         emit Burn(alice, 100e6);
 
@@ -404,7 +408,9 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        // emits Burn event
+        // emits Transfer and Burn events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
         emit Burn(alice, 50e6);
 
@@ -423,7 +429,9 @@ contract SUPTBTest is Test {
         vm.prank(alice);
         token.approve(bob, 50e6);
 
-        // emits Burn event
+        // emits Transfer and Burn events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
         emit Burn(alice, 50e6);
 
@@ -513,15 +521,17 @@ contract SUPTBTest is Test {
         token.transferFrom(alice, mallory, 50e6);
     }
 
-    function testTransferFromWorksIfUsingEncumbranceAndSourceIsWhitelisted() public {
+    function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(mallory, allowPerms);
 
-        vm.prank(mallory);
+        vm.startPrank(mallory);
         token.encumber(bob, 20e6);
+        token.approve(bob, 10e6);
+        vm.stopPrank();
 
         // now un-whitelist mallory
         PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
@@ -529,12 +539,12 @@ contract SUPTBTest is Test {
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
-        token.transferFrom(mallory, alice, 10e6);
+        token.transferFrom(mallory, alice, 30e6);
 
-        assertEq(token.balanceOf(mallory), 90e6);
-        assertEq(token.balanceOf(alice), 10e6);
+        assertEq(token.balanceOf(mallory), 70e6);
+        assertEq(token.balanceOf(alice), 30e6);
         assertEq(token.balanceOf(bob), 0e6);
-        assertEq(token.encumbrances(mallory, bob), 10e6);
+        assertEq(token.encumbrances(mallory, bob), 0e6);
     }
 
     function testTransferFromRevertsIfNotUsingEncumbrancesAndSourceNotWhitelisted() public {
