@@ -369,7 +369,7 @@ contract SUPTBTest is Test {
     }
 
     function testMint() public {
-        // emits transfer and mint event
+        // emits transfer and mint events
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(0), alice, 100e6);
         vm.expectEmit();
@@ -392,7 +392,7 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-       // emits Transfer and Burn event
+       // emits Transfer and Burn events
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 100e6);
         vm.expectEmit();
@@ -407,7 +407,7 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        // emits Transfer and Burn event
+        // emits Transfer and Burn events
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
@@ -428,7 +428,7 @@ contract SUPTBTest is Test {
         vm.prank(alice);
         token.approve(bob, 50e6);
 
-        // emits Transfer and Burn event
+        // emits Transfer and Burn events
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
