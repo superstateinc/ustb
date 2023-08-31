@@ -12,6 +12,7 @@ import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 import { SUPTB } from "src/SUPTB.sol";
 import { PermissionList } from "src/PermissionList.sol";
 import "test/PermissionListV2.sol";
+import "test/SUPTBV2.sol";
 
 
 contract SUPTBTest is Test {
@@ -675,5 +676,78 @@ contract SUPTBTest is Test {
         token.encumberFrom(bob, charlie, 10e6);
 
         assertEq(token.encumbrances(bob, charlie), 30e6);
+    }
+
+    function testUpgradingPermissionListAndTokenWorks() public {
+        PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
+        permsAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
+
+        SUPTBV2 tokenV2Implementation = new SUPTBV2(address(this), permsV2);
+        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), "");
+        SUPTBV2 tokenV2 = SUPTBV2(address(tokenProxy));
+
+        // Whitelisting criteria now requires `state7` (newly added state) be true,
+        // so Alice, Bob, and Charlie no longer have sufficient permissions...
+        assertEq(tokenV2.hasSufficientPermissions(alice), false);
+        assertEq(tokenV2.hasSufficientPermissions(bob), false);
+        assertEq(tokenV2.hasSufficientPermissions(charlie), false);
+
+        deal(address(tokenV2), alice, 100e6);
+        deal(address(tokenV2), bob, 100e6);
+
+        // ...and cannot do regular token operations (transfer, transferFrom, encumber, encumberFrom)
+        vm.prank(alice);
+        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        tokenV2.transfer(bob, 10e6);
+
+        vm.prank(charlie);
+        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        tokenV2.transferFrom(alice, bob, 10e6);
+
+        vm.prank(bob);
+        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        tokenV2.encumber(charlie, 10e6);
+
+        vm.prank(bob);
+        tokenV2.approve(alice, 40e6);
+        vm.prank(alice);
+        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        tokenV2.encumberFrom(bob, charlie, 10e6);
+
+        // But when we whitelist all three according to the new criteria...
+        PermissionListV2.Permission memory newPerms = PermissionListV2.Permission(true, false, false, false, false, false, false, true);
+        permsV2.setPermission(alice, newPerms);
+        permsV2.setPermission(bob, newPerms);
+        permsV2.setPermission(charlie, newPerms);
+
+        // ...they now have sufficient permissions
+        assertEq(tokenV2.hasSufficientPermissions(alice), true);
+        assertEq(tokenV2.hasSufficientPermissions(bob), true);
+        assertEq(tokenV2.hasSufficientPermissions(charlie), true);
+
+        // ...and can now do regular token operations (transfer, transferFrom, encumber, encumberFrom) without reverts
+        vm.prank(alice);
+        tokenV2.transfer(bob, 10e6);
+
+        assertEq(tokenV2.balanceOf(alice), 90e6);
+        assertEq(tokenV2.balanceOf(bob), 110e6);
+
+        vm.prank(bob);
+        tokenV2.approve(alice, 40e6);
+
+        vm.prank(alice);
+        tokenV2.transferFrom(bob, charlie, 20e6);
+
+        assertEq(tokenV2.balanceOf(bob), 90e6);
+        assertEq(tokenV2.balanceOf(charlie), 20e6);
+
+        vm.prank(bob);
+        tokenV2.encumber(charlie, 20e6);
+
+        vm.prank(alice);
+        tokenV2.encumberFrom(bob, charlie, 10e6);
+
+        assertEq(tokenV2.encumbrances(bob, charlie), 30e6);
     }
 }

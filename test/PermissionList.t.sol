@@ -526,16 +526,16 @@ contract PermissionListTest is Test {
         assertEq(permsV2.getPermission(bob).isAllowed, true);
 
         // check bob's new statuses are at default false values
-        assertEq(permsV2.getPermission(bob).isKyc, false);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(permsV2.getPermission(bob).state1, false);
+        assertEq(permsV2.getPermission(bob).state2, false);
 
         // set new multi-permission values for bob
-        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false);
+        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false, false, false, false, false, false);
         permsV2.setPermission(bob, multiPerms);
 
         assertEq(permsV2.getPermission(bob).isAllowed, true);
-        assertEq(permsV2.getPermission(bob).isKyc, true);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(permsV2.getPermission(bob).state1, true);
+        assertEq(permsV2.getPermission(bob).state2, false);
     }
 
     function assertEq(PermissionList.Permission memory expected, PermissionList.Permission memory actual) internal {
