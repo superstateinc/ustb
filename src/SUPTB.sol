@@ -270,6 +270,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function mint(address dst, uint256 amount) external whenNotPaused {
         if (msg.sender != admin) revert Unauthorized();
+        if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
         emit Mint(msg.sender, dst, amount);
