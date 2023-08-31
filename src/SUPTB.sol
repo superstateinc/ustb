@@ -44,6 +44,12 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
+    /// @dev Event emitted when tokens are minted
+    event Mint(address indexed minter, address indexed to, uint256 amount);
+
+    /// @dev Event emitted when tokens are burned
+    event Burn(address indexed burner, uint256 amount);
+
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
 
@@ -123,12 +129,15 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     function transfer(address dst, uint256 amount) public override whenNotPaused returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
+        PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
+        if (!senderPermissions.isAllowed) revert InsufficientPermissions();
 
-        if (dst == address(this)) {
+        if (dst == address(0)) {
             _burn(msg.sender, amount);
+            emit Burn(msg.sender, amount);
         } else {
-            if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
+            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
+            if (!dstPermissions.isAllowed) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
 
@@ -146,10 +155,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @return bool Whether the operation was successful
      */
     function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
-        if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
-
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
-        if (encumberedToTaker == 0 && !hasSufficientPermissions(src)) {
+        // check src permissions if transferFrom doesn't use any encumbrances
+        if (encumberedToTaker == 0 && !permissionList.getPermission(src).isAllowed) {
             revert InsufficientPermissions();
         }
 
@@ -170,7 +178,15 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             _spendEncumbrance(src, msg.sender, amount);
         }
 
-        _transfer(src, dst, amount);
+        if (dst == address(0)) {
+            _burn(src, amount);
+            emit Burn(src, amount);
+        } else {
+            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
+            if (!dstPermissions.isAllowed) revert InsufficientPermissions();
+            _transfer(src, dst, amount);
+        }
+
         return true;
     }
 
@@ -256,6 +272,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         if (msg.sender != admin) revert Unauthorized();
 
         _mint(dst, amount);
+        emit Mint(msg.sender, dst, amount);
     }
 
     /**
@@ -269,6 +286,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
+        emit Burn(src, amount);
     }
 
     /**
@@ -276,7 +294,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-        if (!hasSufficientPermissions(owner)) revert InsufficientPermissions();
+        PermissionList.Permission memory permissions = permissionList.getPermission(owner);
+        if (!permissions.isAllowed) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
