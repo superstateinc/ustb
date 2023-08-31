@@ -388,6 +388,12 @@ contract SUPTBTest is Test {
         assertEq(token.balanceOf(bob), 0);
     }
 
+    function testMintRevertInsufficientPermissions() public {
+        // cannot mint to Mallory since un-whitelisted
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        token.mint(mallory, 100e6);
+    }
+
     function testBurn() public {
         deal(address(token), alice, 100e6);
 
