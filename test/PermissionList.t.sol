@@ -10,6 +10,8 @@ import "src/PermissionList.sol";
 import "test/PermissionListV2.sol";
 
 contract PermissionListTest is Test {
+    event PermissionSet(address indexed addr, PermissionList.Permission permission);
+
     TransparentUpgradeableProxy proxy;
     ProxyAdmin proxyAdmin;
 
@@ -33,7 +35,7 @@ contract PermissionListTest is Test {
         perms = PermissionList(address(proxy));
 
         // whitelist bob
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(bob, allowPerms);
     }
 
@@ -41,14 +43,20 @@ contract PermissionListTest is Test {
         assertEq(perms.permissionAdmin(), address(this));
     }
 
-    function testSetAllowPerms() public {
+    function testSetPermission() public {
         assertEq(perms.getPermission(alice).isAllowed, false);
 
+        PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, true, false, true);
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, newPerms);
+
         // allow alice
-        PermissionList.Permission memory newPerms = PermissionList.Permission(true);
         perms.setPermission(alice, newPerms);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, true, false, true));
     }
 
     function testSetPermissonsRevertsUnauthorized() public {
@@ -56,7 +64,7 @@ contract PermissionListTest is Test {
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        PermissionList.Permission memory newPerms = PermissionList.Permission(true);
+        PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(alice, newPerms);
     }
 
@@ -64,7 +72,7 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(bob).isAllowed, true);
 
         // disallow bob
-        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false);
+        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
         perms.setPermission(bob, disallowPerms);
 
         assertEq(perms.getPermission(bob).isAllowed, false);
@@ -74,14 +82,64 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice).isAllowed, false);
 
         // allow alice
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true);
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(alice, allowPerms);
         assertEq(perms.getPermission(alice).isAllowed, true);
 
         // now disallow alice
-        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false);
+        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
         perms.setPermission(alice, disallowPerms);
         assertEq(perms.getPermission(alice).isAllowed, false);
+    }
+
+    function testSetMultiplePermissons() public {
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.getPermission(bob).isAllowed, true);
+
+        address[] memory users = new address[](2);
+        PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](2);
+        users[0] = alice;
+        users[1] = bob;
+        newPerms[0] = PermissionList.Permission(true, false, false, false, false, true);
+        newPerms[1] = PermissionList.Permission(false, false, true, false, false, false);
+
+        // emits multiple PermissionSet events
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, newPerms[0]);
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, newPerms[1]);
+
+        perms.setMultiplePermissions(users, newPerms);
+
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(bob).isAllowed, false);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, false, false, true));
+        assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, true, false, false, false));
+    }
+
+    function testSetMultiplePermissonsRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        address[] memory users = new address[](1);
+        PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](1);
+        users[0] = alice;
+        newPerms[0] = PermissionList.Permission(true, false, false, false, false, false);
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setMultiplePermissions(users, newPerms);
+    }
+
+    function testSetMultiplePermissonsRevertsBadData() public {
+        address[] memory users = new address[](2);
+        PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](1);
+        users[0] = alice;
+        users[1] = bob;
+        newPerms[0] = PermissionList.Permission(true, false, false, false, false, false);
+
+        // should revert, since the input lists are different lengths
+        vm.expectRevert(PermissionList.BadData.selector);
+        perms.setMultiplePermissions(users, newPerms);
     }
 
     function testUpgradePermissions() public {
@@ -108,5 +166,11 @@ contract PermissionListTest is Test {
         assertEq(permsV2.getPermission(bob).isAllowed, true);
         assertEq(permsV2.getPermission(bob).isKyc, true);
         assertEq(permsV2.getPermission(bob).isAccredited, false);
+    }
+
+    function assertEq(PermissionList.Permission memory expected, PermissionList.Permission memory actual) internal {
+        bytes memory expectedBytes = abi.encode(expected);
+        bytes memory actualBytes = abi.encode(actual);
+        assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function
     }
 }
