@@ -100,7 +100,7 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets isAllowed permissions for a given address
+     * @notice Sets isAllowed permissions for a list of addresses
      * @param users The addresses to be updated
      * @param values The isAllowed statuses to set
      */
@@ -118,5 +118,70 @@ contract PermissionList {
 
             unchecked { i++; }
         }
+    }
+
+    /**
+     * @notice Sets the nth permission for a given address
+     * @param addr The address to be updated
+     * @param index The index of the permission to update
+     * @param value The status to set
+     * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
+     */
+    function setNthPermission(address addr, uint index, bool value) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+
+        Permission memory perms = permissions[addr];
+        perms = setPermissionAtIndex(perms, index, value);
+        permissions[addr] = perms;
+
+        emit PermissionSet(addr, perms);
+    }
+
+    /**
+     * @notice Sets the nth permissions for a list of addresses
+     * @param users The addresses to be updated
+     * @param indices The indices of the permissions to update
+     * @param values The statuses to set
+     */
+    function setMultipleNthPermissions(address[] calldata users, uint[] calldata indices, bool[] calldata values) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+        if (users.length != indices.length || users.length != values.length) revert BadData();
+
+        for (uint i = 0; i < users.length; ) {
+            address user = users[i];
+            Permission memory perms = permissions[user];
+            perms = setPermissionAtIndex(perms, indices[i], values[i]);
+            permissions[user] = perms;
+
+            emit PermissionSet(user, perms);
+
+            unchecked { i++; }
+        }
+    }
+
+    /**
+     * @dev Sets the nth permission for a Permission and returns the updated struct
+     * @param perms The Permission to be updated
+     * @param index The index of the permission to update
+     * @param value The status to set
+     */
+    function setPermissionAtIndex(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
+        if (index == 0) {
+            perms.isAllowed = value;
+        } else if (index == 1) {
+            perms.state1 = value;
+        } else if (index == 2) {
+            perms.state2 = value;
+        } else if (index == 3) {
+            perms.state3 = value;
+        } else if (index == 4) {
+            perms.state4 = value;
+        } else if (index == 5) {
+            perms.state5 = value;
+        } else {
+            revert BadData();
+        }
+
+        return perms;
     }
 }
