@@ -142,6 +142,92 @@ contract PermissionListTest is Test {
         perms.setMultiplePermissions(users, newPerms);
     }
 
+    function testSetIsAllowedToTrue() public {
+        assertEq(perms.getPermission(alice).isAllowed, false);
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+
+        // allow alice
+        perms.setIsAllowed(alice, true);
+
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, false, false, false));
+    }
+
+    function testSetIsAllowedToFalse() public {
+        assertEq(perms.getPermission(bob).isAllowed, true);
+
+        // emits PermissionSet event
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+
+        // disallow bob
+        perms.setIsAllowed(bob, false);
+
+        assertEq(perms.getPermission(bob).isAllowed, false);
+        assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
+    }
+
+    function testSetIsAllowedRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setIsAllowed(alice, true);
+    }
+
+    function testSetMultipleIsAllowed() public {
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.getPermission(bob).isAllowed, true);
+
+        address[] memory users = new address[](2);
+        bool[] memory newValues = new bool[](2);
+        users[0] = alice;
+        users[1] = bob;
+        newValues[0] = true;
+        newValues[1] = false;
+
+        // emits multiple PermissionSet events
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+        vm.expectEmit(true, true, true, true);
+        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+
+        perms.setMultipleIsAllowed(users, newValues);
+
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(bob).isAllowed, false);
+        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, false, false, false));
+        assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
+    }
+
+    function testSetMultipleIsAllowedRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        address[] memory users = new address[](1);
+        bool[] memory newValues = new bool[](1);
+        users[0] = alice;
+        newValues[0] = false;
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setMultipleIsAllowed(users, newValues);
+    }
+
+    function testSetMultipleIsAllowedRevertsBadData() public {
+        address[] memory users = new address[](2);
+        bool[] memory newValues = new bool[](1);
+        users[0] = alice;
+        users[1] = bob;
+        newValues[0] = false;
+
+        // should revert, since the input lists are different lengths
+        vm.expectRevert(PermissionList.BadData.selector);
+        perms.setMultipleIsAllowed(users, newValues);
+    }
+
     function testUpgradePermissions() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
 

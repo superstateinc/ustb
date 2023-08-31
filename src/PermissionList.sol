@@ -77,7 +77,44 @@ contract PermissionList {
 
         for (uint i = 0; i < users.length; ) {
             permissions[users[i]] = perms[i];
+
             emit PermissionSet(users[i], perms[i]);
+
+            unchecked { i++; }
+        }
+    }
+
+    /**
+     * @notice Sets isAllowed permissions for a given address
+     * @param addr The address to be updated
+     * @param value The isAllowed status to set
+     */
+    function setIsAllowed(address addr, bool value) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+
+        Permission memory perms = permissions[addr];
+        perms.isAllowed = value;
+        permissions[addr] = perms;
+
+        emit PermissionSet(addr, perms);
+    }
+
+    /**
+     * @notice Sets isAllowed permissions for a given address
+     * @param users The addresses to be updated
+     * @param values The isAllowed statuses to set
+     */
+    function setMultipleIsAllowed(address[] calldata users, bool[] calldata values) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+        if (users.length != values.length) revert BadData();
+
+        for (uint i = 0; i < users.length; ) {
+            address user = users[i];
+            Permission memory perms = permissions[user];
+            perms.isAllowed = values[i];
+            permissions[user] = perms;
+
+            emit PermissionSet(user, perms);
 
             unchecked { i++; }
         }
