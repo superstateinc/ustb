@@ -46,6 +46,9 @@ contract DeployScript is Script {
         // wrap in ABI to support easier calls
         SUPTB wrappedToken = SUPTB(address(tokenProxy));
 
+        // initialize token contract
+        wrappedToken.initialize("Superstate Short-Term Government Securities Fund", "SUPTB");
+
         vm.stopBroadcast();
     }
 }
