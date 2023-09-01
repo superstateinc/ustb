@@ -193,6 +193,10 @@ contract SUPTBTest is Test {
         assertEq(token.encumbrances(alice, bob), 60e6);
         assertEq(token.balanceOf(charlie), 0);
 
+        // emits EncumbranceSpend event
+        vm.expectEmit(true, true, true, true);
+        emit EncumbranceSpend(alice, bob, 40e6);
+
         // bob calls transfers from alice to charlie
         vm.prank(bob);
         token.transferFrom(alice, charlie, 40e6);
