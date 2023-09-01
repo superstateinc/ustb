@@ -1,5 +1,4 @@
-// TODO: Decide contract license
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
 /**
