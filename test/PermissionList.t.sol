@@ -513,11 +513,16 @@ contract PermissionListTest is Test {
     }
 
     function testUpgradePermissions() public {
+        assertEq(perms.getPermission(alice), PermissionList.Permission(false, false, false, false, false, false));
+        assertEq(perms.getPermission(bob), PermissionList.Permission(true, false, false, false, false, false));
+
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
-
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation), "");
-
         PermissionListV2 permsV2 = PermissionListV2(address(proxy));
+
+        // check Permissions struct values are unchanged after upgrade
+        assertEq(permsV2.getPermission(alice), PermissionListV2.Permission(false, false, false, false, false, false, false, false));
+        assertEq(permsV2.getPermission(bob), PermissionListV2.Permission(true, false, false, false, false, false, false, false));
 
         // check permission admin didn't change
         assertEq(permsV2.permissionAdmin(), address(this));
@@ -526,19 +531,25 @@ contract PermissionListTest is Test {
         assertEq(permsV2.getPermission(bob).isAllowed, true);
 
         // check bob's new statuses are at default false values
-        assertEq(permsV2.getPermission(bob).isKyc, false);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(permsV2.getPermission(bob).state1, false);
+        assertEq(permsV2.getPermission(bob).state2, false);
 
         // set new multi-permission values for bob
-        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false);
+        PermissionListV2.Permission memory multiPerms = PermissionListV2.Permission(true, true, false, false, false, false, false, false);
         permsV2.setPermission(bob, multiPerms);
 
         assertEq(permsV2.getPermission(bob).isAllowed, true);
-        assertEq(permsV2.getPermission(bob).isKyc, true);
-        assertEq(permsV2.getPermission(bob).isAccredited, false);
+        assertEq(permsV2.getPermission(bob).state1, true);
+        assertEq(permsV2.getPermission(bob).state2, false);
     }
 
     function assertEq(PermissionList.Permission memory expected, PermissionList.Permission memory actual) internal {
+        bytes memory expectedBytes = abi.encode(expected);
+        bytes memory actualBytes = abi.encode(actual);
+        assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function
+    }
+
+    function assertEq(PermissionListV2.Permission memory expected, PermissionListV2.Permission memory actual) internal {
         bytes memory expectedBytes = abi.encode(expected);
         bytes memory actualBytes = abi.encode(actual);
         assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function

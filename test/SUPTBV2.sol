@@ -7,14 +7,14 @@ import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
 import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 import { IERC7246 } from "src/interfaces/IERC7246.sol";
-import { PermissionList } from "src/PermissionList.sol";
+import { PermissionListV2 } from "test/PermissionListV2.sol";
 
 /**
- * @title SUPTB
- * @notice A Pausable ERC7246 token contract that interacts with the PermissionList contract to check if transfers are allowed
+ * @title SUPTBV2
+ * @notice A Pausable ERC7246 token contract that interacts with the PermissionListV2 contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTB is ERC20, IERC7246, Pausable {
+contract SUPTBV2 is ERC20, IERC7246, Pausable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -30,7 +30,7 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     address public immutable admin;
 
     /// @notice Address of the PermissionList contract which determines permissions for transfers
-    PermissionList public immutable permissionList;
+    PermissionListV2 public immutable permissionList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -44,11 +44,11 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
-    /// @dev Event emitted when tokens are minted
-    event Mint(address indexed minter, address indexed to, uint256 amount);
+    /// @dev Extra log emitted when minting tokens
+    event Mint(address indexed dst, uint256 amount);
 
-    /// @dev Event emitted when tokens are burned
-    event Burn(address indexed burner, uint256 amount);
+    /// @dev Extra log emitted when burning tokens
+    event Burn(address indexed src, uint256 amount);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -74,9 +74,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
      * @param _admin The address designated as the admin with special privileges
-     * @param _permissionList Address of the PermissionList contract to use for permission checking
+     * @param _permissionList Address of the PermissionListV2 contract to use for permission checking
      */
-    constructor(address _admin, PermissionList _permissionList) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
+    constructor(address _admin, PermissionListV2 _permissionList) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
         admin = _admin;
         permissionList = _permissionList;
     }
@@ -129,15 +129,15 @@ contract SUPTB is ERC20, IERC7246, Pausable {
     function transfer(address dst, uint256 amount) public override whenNotPaused returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
-        if (!senderPermissions.isAllowed) revert InsufficientPermissions();
+        PermissionListV2.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
+        if (!senderPermissions.isAllowed || !senderPermissions.state7) revert InsufficientPermissions();
 
         if (dst == address(0)) {
             _burn(msg.sender, amount);
             emit Burn(msg.sender, amount);
         } else {
-            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
-            if (!dstPermissions.isAllowed) revert InsufficientPermissions();
+            PermissionListV2.Permission memory dstPermissions = permissionList.getPermission(dst);
+            if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
 
@@ -156,11 +156,6 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
-        // check src permissions if transferFrom doesn't use any encumbrances
-        if (encumberedToTaker == 0 && !permissionList.getPermission(src).isAllowed) {
-            revert InsufficientPermissions();
-        }
-
         if (amount > encumberedToTaker) {
             uint256 excessAmount = amount - encumberedToTaker;
 
@@ -172,6 +167,10 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             // to not unfairly move tokens encumbered to others
 
             if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
+            PermissionListV2.Permission memory srcPermissions = permissionList.getPermission(src);
+            if (excessAmount > 0 && !srcPermissions.isAllowed || !srcPermissions.state7) {
+                revert InsufficientPermissions();
+            }
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
@@ -182,8 +181,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
             _burn(src, amount);
             emit Burn(src, amount);
         } else {
-            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
-            if (!dstPermissions.isAllowed) revert InsufficientPermissions();
+            PermissionListV2.Permission memory dstPermissions = permissionList.getPermission(dst);
+            if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(src, dst, amount);
         }
 
@@ -258,8 +257,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view returns (bool) {
-        PermissionList.Permission memory permissions = permissionList.getPermission(addr);
-        return permissions.isAllowed;
+        PermissionListV2.Permission memory permissions = permissionList.getPermission(addr);
+        return permissions.isAllowed && permissions.state7;
     }
 
     /**
@@ -270,10 +269,9 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function mint(address dst, uint256 amount) external whenNotPaused {
         if (msg.sender != admin) revert Unauthorized();
-        if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
-        emit Mint(msg.sender, dst, amount);
+        emit Mint(dst, amount);
     }
 
     /**
@@ -295,8 +293,8 @@ contract SUPTB is ERC20, IERC7246, Pausable {
      */
     function _encumber(address owner, address taker, uint256 amount) private {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-        PermissionList.Permission memory permissions = permissionList.getPermission(owner);
-        if (!permissions.isAllowed) revert InsufficientPermissions();
+        PermissionListV2.Permission memory permissions = permissionList.getPermission(owner);
+        if (!permissions.isAllowed || !permissions.state7) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;
         encumberedBalanceOf[owner] += amount;
