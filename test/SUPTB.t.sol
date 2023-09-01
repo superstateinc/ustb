@@ -37,8 +37,14 @@ contract SUPTBTest is Test {
     address bob = address(11);
     address charlie = address(12);
     address mallory = address(13);
+    uint256 evePrivateKey = 0x353;
+    address eve; // see setup()
+
+    bytes32 internal constant AUTHORIZATION_TYPEHASH = keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
 
     function setUp() public {
+        eve = vm.addr(evePrivateKey);
+
         PermissionList permsImplementation = new PermissionList(address(this));
 
         // deploy proxy contract and point it to implementation
@@ -772,5 +778,248 @@ contract SUPTBTest is Test {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         assertEq(tokenV2.encumbrances(bob, charlie), 30e6);
+    }
+
+    /* ===== Permit Tests ===== */
+
+    function eveAuthorization(uint256 amount, uint256 nonce, uint256 expiry) internal view returns (uint8, bytes32, bytes32) {
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, amount, nonce, expiry));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+        return vm.sign(evePrivateKey, digest);
+    }
+
+    function testPermit() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature
+        vm.prank(bob);
+        token.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve equals allowance
+        assertEq(token.allowance(eve, bob), allowance);
+
+        // eve's nonce is incremented
+        assertEq(token.nonces(eve), nonce + 1);
+    }
+
+    function testPermitRevertsForBadOwner() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature, but he manipulates the owner
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(charlie, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsForBadSpender() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature, but he manipulates the spender
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, charlie, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsForBadAmount() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature, but he manipulates the allowance
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, bob, allowance + 1 wei, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsForBadExpiry() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature, but he manipulates the expiry
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, bob, allowance, expiry + 1, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsForBadNonce() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve signs an authorization with an invalid nonce
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 badNonce = nonce + 1;
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, badNonce, expiry);
+
+        // bob calls permit with the signature with an invalid nonce
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsOnRepeatedCall() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature
+        vm.prank(bob);
+        token.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve equals allowance
+        assertEq(token.allowance(eve, bob), allowance);
+
+        // eve's nonce is incremented
+        assertEq(token.nonces(eve), nonce + 1);
+
+        // eve revokes bob's allowance
+        vm.prank(eve);
+        token.approve(bob, 0);
+        assertEq(token.allowance(eve, bob), 0);
+
+        // bob tries to reuse the same signature twice
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce + 1);
+    }
+
+    function testPermitRevertsForExpiredSignature() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // the expiry block arrives
+        vm.warp(expiry);
+
+        // bob calls permit with the signature after the expiry
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.SignatureExpired.selector);
+        token.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsInvalidS() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, ) = eveAuthorization(allowance, nonce, expiry);
+
+        // 1 greater than the max value of s
+        bytes32 invalidS = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A1;
+
+        // bob calls permit with the signature with invalid `s` value
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.InvalidSignatureS.selector);
+        token.permit(eve, bob, allowance, expiry, v, r, invalidS);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
+    function testPermitRevertsWhenTokenPaused() public {
+        token.pause();
+
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit when token is paused
+        vm.prank(bob);
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.permit(eve, bob, allowance, expiry, v, r, s);
     }
 }
