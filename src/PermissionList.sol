@@ -57,7 +57,7 @@ contract PermissionList {
      * @param addr The address to be updated
      * @param permission The permission status to set
      */
-    function setPermission(address addr, Permission memory permission) external {
+    function setPermission(address addr, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         permissions[addr] = permission;
@@ -91,9 +91,8 @@ contract PermissionList {
     function setIsAllowed(address addr, bool value) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
-        Permission memory perms = permissions[addr];
+        Permission storage perms = permissions[addr];
         perms.isAllowed = value;
-        permissions[addr] = perms;
 
         emit PermissionSet(addr, perms);
     }
@@ -109,9 +108,8 @@ contract PermissionList {
 
         for (uint i = 0; i < users.length; ) {
             address user = users[i];
-            Permission memory perms = permissions[user];
+            Permission storage perms = permissions[user];
             perms.isAllowed = values[i];
-            permissions[user] = perms;
 
             emit PermissionSet(user, perms);
 
