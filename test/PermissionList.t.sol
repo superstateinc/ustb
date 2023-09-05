@@ -17,19 +17,17 @@ contract PermissionListTest is Test {
 
     PermissionList public perms;
 
-    // Storage slot with the admin of the contract.
-    bytes32 internal constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-
     address alice = address(10);
     address bob = address(11);
 
     function setUp() public {
         PermissionList permsImplementation = new PermissionList(address(this));
-        // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
 
-        bytes32 proxyAdminAddress = vm.load(address(proxy), ADMIN_SLOT);
-        proxyAdmin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
+        // deploy proxy admin contract
+        proxyAdmin = new ProxyAdmin();
+
+        // deploy proxy contract and point it to implementation
+        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
         perms = PermissionList(address(proxy));
@@ -517,7 +515,7 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(bob), PermissionList.Permission(true, false, false, false, false, false));
 
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
-        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation), "");
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation));
         PermissionListV2 permsV2 = PermissionListV2(address(proxy));
 
         // check Permissions struct values are unchanged after upgrade

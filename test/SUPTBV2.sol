@@ -351,7 +351,7 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
         pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
 
         if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
         if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();
