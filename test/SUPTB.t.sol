@@ -20,14 +20,10 @@ contract SUPTBTest is Test {
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, uint256 amount);
 
+    ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
-    ProxyAdmin permsAdmin;
-
     PermissionList public perms;
-
     TransparentUpgradeableProxy tokenProxy;
-    ProxyAdmin tokenAdmin;
-
     SUPTB public token;
 
     // Storage slot with the admin of the contract.
@@ -47,11 +43,11 @@ contract SUPTBTest is Test {
 
         PermissionList permsImplementation = new PermissionList(address(this));
 
-        // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        // deploy proxy admin contract
+        proxyAdmin = new ProxyAdmin();
 
-        bytes32 permsAdminAddress = vm.load(address(permsProxy), ADMIN_SLOT);
-        permsAdmin = ProxyAdmin(address(uint160(uint256(permsAdminAddress))));
+        // deploy proxy contract and point it to implementation
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
         perms = PermissionList(address(permsProxy));
@@ -59,10 +55,7 @@ contract SUPTBTest is Test {
         SUPTB tokenImplementation = new SUPTB(address(this), perms);
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
-
-        bytes32 tokenAdminAddress = vm.load(address(tokenProxy), ADMIN_SLOT);
-        tokenAdmin = ProxyAdmin(address(uint160(uint256(tokenAdminAddress))));
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
         token = SUPTB(address(tokenProxy));
@@ -668,7 +661,7 @@ contract SUPTBTest is Test {
 
     function testUpgradingPermissionListDoesNotAffectToken() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
-        permsAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
 
         PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
 
@@ -709,11 +702,11 @@ contract SUPTBTest is Test {
 
     function testUpgradingPermissionListAndTokenWorks() public {
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
-        permsAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
         PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
 
         SUPTBV2 tokenV2Implementation = new SUPTBV2(address(this), permsV2);
-        tokenAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), "");
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation));
         SUPTBV2 tokenV2 = SUPTBV2(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,

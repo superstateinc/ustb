@@ -25,11 +25,12 @@ contract PermissionListTest is Test {
 
     function setUp() public {
         PermissionList permsImplementation = new PermissionList(address(this));
-        // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
 
-        bytes32 proxyAdminAddress = vm.load(address(proxy), ADMIN_SLOT);
-        proxyAdmin = ProxyAdmin(address(uint160(uint256(proxyAdminAddress))));
+        // deploy proxy admin contract
+        proxyAdmin = new ProxyAdmin();
+
+        // deploy proxy contract and point it to implementation
+        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
         perms = PermissionList(address(proxy));
@@ -517,7 +518,7 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(bob), PermissionList.Permission(true, false, false, false, false, false));
 
         PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
-        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation), "");
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation));
         PermissionListV2 permsV2 = PermissionListV2(address(proxy));
 
         // check Permissions struct values are unchanged after upgrade

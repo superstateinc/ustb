@@ -365,7 +365,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
 
         if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
         if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();
