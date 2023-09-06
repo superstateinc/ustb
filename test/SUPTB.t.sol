@@ -15,7 +15,6 @@ import "test/SUPTBV2.sol";
 contract SUPTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
-    event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, uint256 amount);
@@ -189,12 +188,10 @@ contract SUPTBTest is Test {
         assertEq(token.encumbrances(alice, bob), 60e6);
         assertEq(token.balanceOf(charlie), 0);
 
-        // emits EncumbranceSpend event
-        vm.expectEmit(true, true, true, true);
-        emit EncumbranceSpend(alice, bob, 40e6);
-
         // bob calls transfers from alice to charlie
         vm.prank(bob);
+        vm.expectEmit(true, true, true, true);
+        emit Release(alice, bob, 40e6);
         token.transferFrom(alice, charlie, 40e6);
 
         // alice balance is reduced
@@ -228,6 +225,8 @@ contract SUPTBTest is Test {
 
         // bob calls transfers from alice to charlie
         vm.prank(bob);
+        vm.expectEmit(true, true, true, true);
+        emit Release(alice, bob, 20e6);
         token.transferFrom(alice, charlie, 40e6);
 
         // alice balance is reduced
@@ -548,6 +547,8 @@ contract SUPTBTest is Test {
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
+        vm.expectEmit(true, true, true, true);
+        emit Release(mallory, bob, 20e6);
         token.transferFrom(mallory, alice, 30e6);
 
         assertEq(token.balanceOf(mallory), 70e6);
@@ -683,6 +684,8 @@ contract SUPTBTest is Test {
         token.approve(alice, 40e6);
 
         vm.prank(alice);
+        vm.expectEmit(true, true, true, true);
+        emit Release(bob, alice, 0e6);
         token.transferFrom(bob, charlie, 20e6);
 
         assertEq(token.balanceOf(bob), 90e6);
