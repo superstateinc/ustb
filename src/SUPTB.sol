@@ -176,7 +176,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             uint256 excessAmount = amount - encumberedToTaker;
 
             // Exceeds Encumbrance, so spend all of it
-            _spendEncumbrance(src, msg.sender, encumberedToTaker);
+            _releaseEncumbrance(src, msg.sender, encumberedToTaker);
 
             // Having spent all the tokens encumbered to the mover,
             // We are now moving only "available" tokens and must check
@@ -186,7 +186,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
-            _spendEncumbrance(src, msg.sender, amount);
+            _releaseEncumbrance(src, msg.sender, amount);
         }
 
         if (dst == address(0)) {
@@ -234,7 +234,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of tokens to decrease the encumbrance by
      */
     function release(address owner, uint256 amount) external whenNotPaused {
-        _release(owner, msg.sender, amount);
+        _releaseEncumbrance(owner, msg.sender, amount);
     }
 
     /**
@@ -315,22 +315,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @dev Spend `amount` of `owner`'s encumbrance to `taker`
-     */
-    function _spendEncumbrance(address owner, address taker, uint256 amount) internal {
-        uint256 currentEncumbrance = encumbrances[owner][taker];
-
-        if (currentEncumbrance < amount) revert InsufficientEncumbrance();
-
-        encumbrances[owner][taker] -= amount;
-        encumberedBalanceOf[owner] -= amount;
-        emit EncumbranceSpend(owner, taker, amount);
-    }
-
-    /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
-    function _release(address owner, address taker, uint256 amount) private {
+    function _releaseEncumbrance(address owner, address taker, uint256 amount) private {
         if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
 
         encumbrances[owner][taker] -= amount;

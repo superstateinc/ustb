@@ -17,12 +17,6 @@ interface IERC7246 {
     event Release(address indexed owner, address indexed taker, uint256 amount);
 
     /**
-     * @dev Emitted when `amount` of encumbrance of an `owner` to a `taker` is
-     * spent.
-     */
-    event EncumbranceSpend(address indexed owner, address indexed taker, uint256 amount);
-
-    /**
      * @dev Returns the total amount of tokens owned by `owner` that are
      * currently encumbered.  MUST never exceed `balanceOf(owner)`
      *

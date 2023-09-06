@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import { Pausable } from "openzeppelin-contracts/security/Pausable.sol";
+import { ERC20Upgradeable } from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { PausableUpgradeable } from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 import { IERC7246 } from "src/interfaces/IERC7246.sol";
@@ -13,7 +13,7 @@ import { PermissionListV2 } from "test/PermissionListV2.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the PermissionListV2 contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTBV2 is ERC20, IERC7246, Pausable {
+contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -74,10 +74,22 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
      * @param _admin The address designated as the admin with special privileges
      * @param _permissionList Address of the PermissionListV2 contract to use for permission checking
+     * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, PermissionListV2 _permissionList) ERC20("Superstate Treasuries Blockchain", "SUPTB") {
+    constructor(address _admin, PermissionListV2 _permissionList) {
         admin = _admin;
         permissionList = _permissionList;
+
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initialize the contract
+     * @param _name The token name
+     * @param _symbol The token symbol
+     */
+    function initialize(string calldata _name, string calldata _symbol) initializer public {
+        __ERC20_init(_name, _symbol);
     }
 
     /**
@@ -159,7 +171,7 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
             uint256 excessAmount = amount - encumberedToTaker;
 
             // Exceeds Encumbrance, so spend all of it
-            _spendEncumbrance(src, msg.sender, encumberedToTaker);
+            _releaseEncumbrance(src, msg.sender, encumberedToTaker);
 
             // Having spent all the tokens encumbered to the mover,
             // We are now moving only "available" tokens and must check
@@ -173,7 +185,7 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
-            _spendEncumbrance(src, msg.sender, amount);
+            _releaseEncumbrance(src, msg.sender, amount);
         }
 
         if (dst == address(0)) {
@@ -221,7 +233,7 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
      * @param amount Amount of tokens to decrease the encumbrance by
      */
     function release(address owner, uint256 amount) external whenNotPaused {
-        _release(owner, msg.sender, amount);
+        _releaseEncumbrance(owner, msg.sender, amount);
     }
 
     /**
@@ -301,22 +313,9 @@ contract SUPTBV2 is ERC20, IERC7246, Pausable {
     }
 
     /**
-     * @dev Spend `amount` of `owner`'s encumbrance to `taker`
-     */
-    function _spendEncumbrance(address owner, address taker, uint256 amount) internal {
-        uint256 currentEncumbrance = encumbrances[owner][taker];
-
-        if (currentEncumbrance < amount) revert InsufficientEncumbrance();
-
-        encumbrances[owner][taker] -= amount;
-        encumberedBalanceOf[owner] -= amount;
-        emit EncumbranceSpend(owner, taker, amount);
-    }
-
-    /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
-    function _release(address owner, address taker, uint256 amount) private {
+    function _releaseEncumbrance(address owner, address taker, uint256 amount) private {
         if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
 
         encumbrances[owner][taker] -= amount;
