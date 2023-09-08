@@ -257,8 +257,6 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (isValidSignature(owner, digest, v, r, s)) {
             nonces[owner]++;
             _approve(owner, spender, amount);
-        } else {
-            revert BadSignatory();
         }
     }
 
