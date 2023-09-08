@@ -132,7 +132,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the contract address
+     * @dev Includes extra functionality to burn tokens if `dst` is the zero address
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
@@ -228,8 +228,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @notice Reduces amount of tokens encumbered from `owner` to caller by
      * `amount`
-     * @dev Spends all of the encumbrance if `amount` is greater than `owner`'s
-     * current encumbrance to caller
+     * @dev Reverts if `amount` is greater than `owner`'s current encumbrance to caller
      * @param owner Address to decrease encumbrance from
      * @param amount Amount of tokens to decrease the encumbrance by
      */
