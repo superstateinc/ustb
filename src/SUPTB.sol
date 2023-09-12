@@ -247,7 +247,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
-        external whenNotPaused
+        external
     {
         if (block.timestamp >= expiry) revert SignatureExpired();
 
