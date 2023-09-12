@@ -138,6 +138,19 @@ contract SUPTBTest is Test {
         vm.stopPrank();
     }
 
+    function testTransferFromRevertInsufficentBalance() public {
+        deal(address(token), alice, 100e6);
+        vm.startPrank(alice);
+
+        // alice encumbers half her balance to charlie
+        token.encumber(charlie, 50e6);
+        vm.stopPrank();
+
+        // someone attempts to transfer alice's entire balance
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        token.transferFrom(alice, bob, 100e6);
+    }
+
     function testEncumberRevert() public {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
@@ -619,6 +632,9 @@ contract SUPTBTest is Test {
         vm.prank(charlie);
         vm.expectRevert(SUPTB.Unauthorized.selector);
         token.unpause();
+
+        // admin unpauses
+        token.unpause();
     }
 
     function testCannotUpdateBalancesIfTokenPaused() public {
@@ -1001,6 +1017,30 @@ contract SUPTBTest is Test {
         assertEq(token.nonces(eve), nonce);
     }
 
+    function testPermitRevertsForInvalidV() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve signs an authorization with an invalid nonce
+        uint256 allowance = 123e18;
+        uint256 nonce = token.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+        uint8 invalidV = 26; // should be 27 or 28
+
+        // bob calls permit with the signature with an invalid nonce
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.BadSignatory.selector);
+        token.permit(eve, bob, allowance, expiry, invalidV, r, s);
+
+        // bob's allowance from eve is unchanged
+        assertEq(token.allowance(eve, bob), 0);
+
+        // eve's nonce is not incremented
+        assertEq(token.nonces(eve), nonce);
+    }
+
     function testPermitRevertsWhenTokenPaused() public {
         token.pause();
 
@@ -1014,5 +1054,9 @@ contract SUPTBTest is Test {
         vm.prank(bob);
         vm.expectRevert(bytes("Pausable: paused"));
         token.permit(eve, bob, allowance, expiry, v, r, s);
+    }
+
+    function testHasSufficientPermissions() public {
+        assertTrue(token.hasSufficientPermissions(bob));
     }
 }
