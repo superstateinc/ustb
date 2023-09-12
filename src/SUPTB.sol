@@ -90,6 +90,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function initialize(string calldata _name, string calldata _symbol) initializer public {
         __ERC20_init(_name, _symbol);
+        __Pausable_init();
     }
 
     /**
