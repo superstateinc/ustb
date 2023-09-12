@@ -584,6 +584,28 @@ contract SUPTBTest is Test {
         token.transferFrom(mallory, alice, 10e6);
     }
 
+    function testTransferFromRevertsIfEncumbranceLessThanAmountAndSourceNotWhitelisted() public {
+        deal(address(token), mallory, 100e6);
+
+        // whitelist mallory for setting encumbrances
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        perms.setPermission(mallory, allowPerms);
+
+        vm.startPrank(mallory);
+        token.encumber(bob, 20e6);
+        token.approve(bob, 10e6);
+        vm.stopPrank();
+
+        // now un-whitelist mallory
+        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
+        perms.setPermission(mallory, forbidPerms);
+
+        // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        token.transferFrom(mallory, alice, 30e6);
+    }
+
     function testTransfersAndEncumbersRevertIfUnwhitelisted() public {
         deal(address(token), alice, 100e6);
         deal(address(token), bob, 100e6);
