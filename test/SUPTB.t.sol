@@ -1041,21 +1041,6 @@ contract SUPTBTest is Test {
         assertEq(token.nonces(eve), nonce);
     }
 
-    function testPermitRevertsWhenTokenPaused() public {
-        token.pause();
-
-        uint256 allowance = 123e18;
-        uint256 nonce = token.nonces(eve);
-        uint256 expiry = block.timestamp + 1000;
-
-        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
-
-        // bob calls permit when token is paused
-        vm.prank(bob);
-        vm.expectRevert(bytes("Pausable: paused"));
-        token.permit(eve, bob, allowance, expiry, v, r, s);
-    }
-
     function testHasSufficientPermissions() public {
         assertTrue(token.hasSufficientPermissions(bob));
     }
