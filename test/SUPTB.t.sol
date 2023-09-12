@@ -561,13 +561,15 @@ contract SUPTBTest is Test {
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
         vm.expectEmit(true, true, true, true);
-        emit Release(mallory, bob, 20e6);
-        token.transferFrom(mallory, alice, 30e6);
+        emit Release(mallory, bob, 15e6);
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(mallory, alice, 15e6);
+        token.transferFrom(mallory, alice, 15e6);
 
-        assertEq(token.balanceOf(mallory), 70e6);
-        assertEq(token.balanceOf(alice), 30e6);
+        assertEq(token.balanceOf(mallory), 85e6);
+        assertEq(token.balanceOf(alice), 15e6);
         assertEq(token.balanceOf(bob), 0e6);
-        assertEq(token.encumbrances(mallory, bob), 0e6);
+        assertEq(token.encumbrances(mallory, bob), 5e6);
     }
 
     function testTransferFromRevertsIfNotUsingEncumbrancesAndSourceNotWhitelisted() public {
