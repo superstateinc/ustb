@@ -78,6 +78,10 @@ contract SUPTBTest is Test {
         assertEq(token.decimals(), 6);
     }
 
+    function testTokenIsInitializedAsUnpaused() public {
+        assertEq(token.paused(), false);
+    }
+
     function testInitializeRevertIfCalledAgain() public {
         vm.expectRevert(bytes("Initializable: contract is already initialized"));
         token.initialize("new name", "new symbol");
