@@ -47,7 +47,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     event Mint(address indexed minter, address indexed to, uint256 amount);
 
     /// @dev Event emitted when tokens are burned
-    event Burn(address indexed from, uint256 amount);
+    event Burn(address indexed burner, address indexed from, uint256 amount);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -145,7 +145,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(msg.sender, amount);
-            emit Burn(msg.sender, amount);
+            emit Burn(msg.sender, msg.sender, amount);
         } else {
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
@@ -191,7 +191,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(src, amount);
-            emit Burn(src, amount);
+            emit Burn(msg.sender, src, amount);
         } else {
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
@@ -295,7 +295,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
-        emit Burn(src, amount);
+        emit Burn(msg.sender, src, amount);
     }
 
     /**

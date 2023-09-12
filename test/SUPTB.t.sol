@@ -17,7 +17,7 @@ contract SUPTBTest is Test {
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
-    event Burn(address indexed burner, uint256 amount);
+    event Burn(address indexed burner, address indexed from, uint256 amount);
 
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
@@ -405,7 +405,7 @@ contract SUPTBTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 100e6);
         vm.expectEmit();
-        emit Burn(alice, 100e6);
+        emit Burn(address(this), alice, 100e6);
 
         token.burn(alice, 100e6);
         assertEq(token.balanceOf(alice), 0);
@@ -420,7 +420,7 @@ contract SUPTBTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
-        emit Burn(alice, 50e6);
+        emit Burn(alice, alice, 50e6);
 
         // alice calls transfer(0, amount) to self-burn
         vm.prank(alice);
@@ -441,7 +441,7 @@ contract SUPTBTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
-        emit Burn(alice, 50e6);
+        emit Burn(bob, alice, 50e6);
 
         // bob calls transferFrom(alice, 0, amount) to self-burn
         vm.prank(bob);
