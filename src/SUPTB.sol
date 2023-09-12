@@ -47,7 +47,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     event Mint(address indexed minter, address indexed to, uint256 amount);
 
     /// @dev Event emitted when tokens are burned
-    event Burn(address indexed burner, uint256 amount);
+    event Burn(address indexed burner, address indexed from, uint256 amount);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -133,7 +133,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the contract address
+     * @dev Includes extra functionality to burn tokens if `dst` is the zero address
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
@@ -146,7 +146,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(msg.sender, amount);
-            emit Burn(msg.sender, amount);
+            emit Burn(msg.sender, msg.sender, amount);
         } else {
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
@@ -192,7 +192,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(src, amount);
-            emit Burn(src, amount);
+            emit Burn(msg.sender, src, amount);
         } else {
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
@@ -229,8 +229,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @notice Reduces amount of tokens encumbered from `owner` to caller by
      * `amount`
-     * @dev Spends all of the encumbrance if `amount` is greater than `owner`'s
-     * current encumbrance to caller
+     * @dev Reverts if `amount` is greater than `owner`'s current encumbrance to caller
      * @param owner Address to decrease encumbrance from
      * @param amount Amount of tokens to decrease the encumbrance by
      */
@@ -249,7 +248,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
-        external whenNotPaused
+        external
     {
         if (block.timestamp >= expiry) revert SignatureExpired();
 
@@ -259,8 +258,6 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (isValidSignature(owner, digest, v, r, s)) {
             nonces[owner]++;
             _approve(owner, spender, amount);
-        } else {
-            revert BadSignatory();
         }
     }
 
@@ -299,7 +296,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
-        emit Burn(src, amount);
+        emit Burn(msg.sender, src, amount);
     }
 
     /**
