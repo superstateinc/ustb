@@ -311,6 +311,18 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice), currentPerms);
     }
 
+    function testSetNthPermissionUnauthorized() public {
+        hoax(alice);
+
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setNthPermission(bob, 1, true);
+    }
+
+    function testSetNthPermissionBadData() public {
+        vm.expectRevert(PermissionList.BadData.selector);
+        perms.setNthPermission(bob, 6, true);
+    }
+
     function testSetNthPermissionToFalse() public {
         perms.setPermission(bob, PermissionList.Permission(true, true, true, true, true, true));
 
