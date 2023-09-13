@@ -174,7 +174,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         }
 
         if (amount > encumberedToTaker) {
-            uint256 excessAmount = amount - encumberedToTaker;
+            uint256 excessAmount;
+            unchecked {
+                excessAmount = amount - encumberedToTaker;
+            }
             // Ensure that `src` has enough available balance (funds not encumbered to others)
             // to cover the excess amount
             if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
