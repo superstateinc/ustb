@@ -168,7 +168,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
-        // check src permissions if transferFrom doesn't use any encumbrances
+        // check src permissions if amount encumbered is less than amount being transferred
         if (encumberedToTaker < amount && !permissionList.getPermission(src).isAllowed) {
             revert InsufficientPermissions();
         }
