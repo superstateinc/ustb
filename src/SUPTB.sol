@@ -175,15 +175,12 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (amount > encumberedToTaker) {
             uint256 excessAmount = amount - encumberedToTaker;
+            // Ensure that `src` has enough available balance (funds not encumbered to others)
+            // to cover the excess amount
+            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
             // Exceeds Encumbrance, so spend all of it
             _releaseEncumbrance(src, msg.sender, encumberedToTaker);
-
-            // Having spent all the tokens encumbered to the mover,
-            // We are now moving only "available" tokens and must check
-            // to not unfairly move tokens encumbered to others
-
-            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
