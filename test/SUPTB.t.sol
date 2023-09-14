@@ -546,6 +546,35 @@ contract SUPTBTest is Test {
         token.transferFrom(alice, mallory, 50e6);
     }
 
+    function testTransferFromRevertsIfSpendingTokensEncumberedToOthers() public {
+        deal(address(token), alice, 200e18);
+        vm.startPrank(alice);
+
+        // alice encumbers some of her balance to bob
+        token.encumber(bob, 50e18);
+
+        // she also grants him an approval
+        token.approve(bob, type(uint256).max);
+
+        // alice encumbers the remainder of her balance to charlie
+        token.encumber(charlie, 150e18);
+
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(alice), 200e18);
+        assertEq(token.availableBalanceOf(alice), 0);
+        assertEq(token.encumberedBalanceOf(alice), 200e18);
+        assertEq(token.encumbrances(alice, bob), 50e18);
+        assertEq(token.encumbrances(alice, charlie), 150e18);
+        assertEq(token.allowance(alice, bob), type(uint256).max);
+
+        // bob calls transfers from alice, attempting to transfer his encumbered
+        // tokens and also transfer tokens encumbered to charlie
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        token.transferFrom(alice, bob, 100e18);
+    }
+
     function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public {
         deal(address(token), mallory, 100e6);
 
