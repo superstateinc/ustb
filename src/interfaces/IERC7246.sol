@@ -60,7 +60,7 @@ interface IERC7246 {
      * MUST revert if `owner` does not have `amount` tokens available (e.g. if
      * `balanceOf(owner) - encumbrances(owner) < amount`).
      *
-     * Emits an {Encumbrance} event.
+     * Emits an {Encumber} event.
      */
     function encumberFrom(address owner, address taker, uint256 amount) external;
 
@@ -68,7 +68,7 @@ interface IERC7246 {
      * @dev Reduces amount of tokens encumbered from `owner` to caller by
      * `amount`.
      *
-     * Emits an {Encumbrance} event.
+     * Emits an {Release} event.
      */
     function release(address owner, uint256 amount) external;
 
