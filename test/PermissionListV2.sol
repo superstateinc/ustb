@@ -166,7 +166,7 @@ contract PermissionListV2 {
      * @param index The index of the permission to update
      * @param value The status to set
      */
-    function updateNthPermission(Permission memory perms, uint index, bool value) internal returns (Permission memory) {
+    function updateNthPermission(Permission memory perms, uint index, bool value) internal pure returns (Permission memory) {
         if (index == 0) {
             perms.isAllowed = value;
         } else if (index == 1) {
