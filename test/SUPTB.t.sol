@@ -192,6 +192,39 @@ contract SUPTBTest is Test {
         assertEq(token.encumberedBalanceOf(alice), 60e6);
     }
 
+    function testSelfEncumberance() public {
+        deal(address(token), alice, 100e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
+
+        // alice encumbers half her balance to herself
+        vm.prank(alice);
+        token.encumber(alice, 50e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 50e6);
+        assertEq(token.encumberedBalanceOf(alice), 50e6);
+        assertEq(token.encumbrances(alice, alice), 50e6);
+
+        vm.prank(alice);
+        // alice releases half her encumbrance to herself
+        token.release(alice, 25e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 75e6);
+        assertEq(token.encumberedBalanceOf(alice), 25e6);
+        assertEq(token.encumbrances(alice, alice), 25e6);
+
+        vm.prank(alice);
+        // alice transfers other half of encumbrance to bob
+        token.transferFrom(alice, bob, 25e6);
+
+        assertEq(token.balanceOf(alice), 75e6);
+        assertEq(token.availableBalanceOf(alice), 75e6);
+        assertEq(token.encumberedBalanceOf(alice), 0);
+        assertEq(token.encumbrances(alice, alice), 0);
+    }
+
     function testTransferFromSufficientEncumbrance() public {
         deal(address(token), alice, 100e6);
         vm.prank(alice);
@@ -423,6 +456,8 @@ contract SUPTBTest is Test {
         emit Transfer(alice, address(0), 100e6);
         vm.expectEmit();
         emit Burn(address(this), alice, 100e6);
+
+
 
         token.burn(alice, 100e6);
         assertEq(token.balanceOf(alice), 0);
