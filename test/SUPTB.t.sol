@@ -457,8 +457,6 @@ contract SUPTBTest is Test {
         vm.expectEmit();
         emit Burn(address(this), alice, 100e6);
 
-
-
         token.burn(alice, 100e6);
         assertEq(token.balanceOf(alice), 0);
     }
