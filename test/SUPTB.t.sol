@@ -727,6 +727,38 @@ contract SUPTBTest is Test {
         token.unpause();
     }
 
+    function testFunctionsStillWorkAfterUnpause() public {
+        // admin pause, then unpause, confirm a few user funcs still work
+        token.pause();  
+        token.unpause();
+
+        deal(address(token), alice, 100e6);
+        deal(address(token), bob, 100e6);
+
+        token.mint(bob, 30e6);
+        token.burn(bob, 30e6);
+
+        vm.prank(alice);
+        token.transfer(bob, 30e6);
+
+        vm.prank(bob);
+        token.approve(charlie, 50e6);
+
+        vm.prank(charlie);
+        token.transferFrom(bob, alice, 30e6);
+
+        vm.prank(alice);
+        token.encumber(bob, 30e6);
+
+        vm.prank(alice);
+        token.approve(bob, 50e6);
+        vm.prank(bob);
+        token.encumberFrom(alice, charlie, 30e6);
+
+        vm.prank(bob);
+        token.release(alice, 30e6);
+    }
+
     function testCannotUpdateBalancesIfTokenPaused() public {
         token.mint(alice, 100e6);
 
