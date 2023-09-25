@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
+// THIS IS A TEST CONTRACT DO NOT USE IN PRODUCTION
+
 import { ERC20Upgradeable } from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { PausableUpgradeable } from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
@@ -43,11 +45,11 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
-    /// @dev Extra log emitted when minting tokens
-    event Mint(address indexed dst, uint256 amount);
+    /// @dev Event emitted when tokens are minted
+    event Mint(address indexed minter, address indexed to, uint256 amount);
 
-    /// @dev Extra log emitted when burning tokens
-    event Burn(address indexed src, uint256 amount);
+    /// @dev Event emitted when tokens are burned
+    event Burn(address indexed burner, address indexed from, uint256 amount);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -90,6 +92,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function initialize(string calldata _name, string calldata _symbol) initializer public {
         __ERC20_init(_name, _symbol);
+        __Pausable_init();
     }
 
     /**
@@ -132,7 +135,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the contract address
+     * @dev Includes extra functionality to burn tokens if `dst` is the zero address
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
@@ -145,7 +148,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(msg.sender, amount);
-            emit Burn(msg.sender, amount);
+            emit Burn(msg.sender, msg.sender, amount);
         } else {
             PermissionListV2.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
@@ -167,21 +170,22 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
+        // check src permissions if amount encumbered is less than amount being transferred
+        if (encumberedToTaker < amount && !permissionList.getPermission(src).isAllowed) {
+            revert InsufficientPermissions();
+        }
+
         if (amount > encumberedToTaker) {
-            uint256 excessAmount = amount - encumberedToTaker;
+            uint256 excessAmount;
+            unchecked {
+                excessAmount = amount - encumberedToTaker;
+            }
+            // Ensure that `src` has enough available balance (funds not encumbered to others)
+            // to cover the excess amount
+            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
             // Exceeds Encumbrance, so spend all of it
             _releaseEncumbrance(src, msg.sender, encumberedToTaker);
-
-            // Having spent all the tokens encumbered to the mover,
-            // We are now moving only "available" tokens and must check
-            // to not unfairly move tokens encumbered to others
-
-            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
-            PermissionListV2.Permission memory srcPermissions = permissionList.getPermission(src);
-            if (excessAmount > 0 && !srcPermissions.isAllowed || !srcPermissions.state7) {
-                revert InsufficientPermissions();
-            }
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
@@ -190,7 +194,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         if (dst == address(0)) {
             _burn(src, amount);
-            emit Burn(src, amount);
+            emit Burn(msg.sender, src, amount);
         } else {
             PermissionListV2.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
@@ -227,8 +231,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @notice Reduces amount of tokens encumbered from `owner` to caller by
      * `amount`
-     * @dev Spends all of the encumbrance if `amount` is greater than `owner`'s
-     * current encumbrance to caller
+     * @dev Reverts if `amount` is greater than `owner`'s current encumbrance to caller
      * @param owner Address to decrease encumbrance from
      * @param amount Amount of tokens to decrease the encumbrance by
      */
@@ -257,8 +260,6 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (isValidSignature(owner, digest, v, r, s)) {
             nonces[owner]++;
             _approve(owner, spender, amount);
-        } else {
-            revert BadSignatory();
         }
     }
 
@@ -282,7 +283,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (msg.sender != admin) revert Unauthorized();
 
         _mint(dst, amount);
-        emit Mint(dst, amount);
+        emit Mint(msg.sender, dst, amount);
     }
 
     /**
@@ -296,7 +297,7 @@ contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
-        emit Burn(src, amount);
+        emit Burn(msg.sender, src, amount);
     }
 
     /**

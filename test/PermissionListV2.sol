@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.20;
 
+// THIS IS A TEST CONTRACT DO NOT USE IN PRODUCTION
+
 /**
  * @title PermissionListV2
  * @notice A contract that provides allowlist functionalities
@@ -59,7 +61,7 @@ contract PermissionListV2 {
      * @param addr The address to be updated
      * @param permission The permission status to set
      */
-    function setPermission(address addr, Permission memory permission) external {
+    function setPermission(address addr, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         permissions[addr] = permission;
@@ -132,7 +134,7 @@ contract PermissionListV2 {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         Permission memory perms = permissions[addr];
-        perms = updateNthPermission(perms, index, value);
+        perms = setPermissionAtIndex(perms, index, value);
         permissions[addr] = perms;
 
         emit PermissionSet(addr, perms);
@@ -151,7 +153,7 @@ contract PermissionListV2 {
         for (uint i = 0; i < users.length; ) {
             address user = users[i];
             Permission memory perms = permissions[user];
-            perms = updateNthPermission(perms, indices[i], values[i]);
+            perms = setPermissionAtIndex(perms, indices[i], values[i]);
             permissions[user] = perms;
 
             emit PermissionSet(user, perms);
@@ -166,7 +168,7 @@ contract PermissionListV2 {
      * @param index The index of the permission to update
      * @param value The status to set
      */
-    function updateNthPermission(Permission memory perms, uint index, bool value) internal pure returns (Permission memory) {
+    function setPermissionAtIndex(Permission memory perms, uint index, bool value) internal pure returns (Permission memory) {
         if (index == 0) {
             perms.isAllowed = value;
         } else if (index == 1) {
