@@ -1166,4 +1166,38 @@ contract SUPTBTest is Test {
     function testHasSufficientPermissions() public {
         assertTrue(token.hasSufficientPermissions(bob));
     }
+
+    function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
+        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+
+        // proxy admin cant use protocol
+        if (address(proxyAdmin) == recipient || address(proxyAdmin) == recipient2) {
+            return;
+        }
+
+        // whitelist spender and recipient
+        perms.setPermission(spender, allowPerms);
+        perms.setPermission(recipient, allowPerms);
+        perms.setPermission(recipient2, allowPerms);
+
+        // limit range of amount
+        uint256 amount = bound(amt, 1, type(uint128).max -1);
+        deal(address(token), spender, amount*2);
+
+        // encumber tokens to spender
+        vm.prank(spender);
+        token.encumber(recipient, amount);
+
+        // encumber tokens to spender
+        vm.prank(spender);
+        token.encumber(recipient2, amount);
+
+        // recipient calls transferFrom on spender
+        vm.prank(recipient);
+        token.transferFrom(spender, recipient, amount);
+
+        // recipient calls transferFrom on spender
+        vm.prank(recipient2);
+        token.transferFrom(spender, recipient2, amount);
+    }
 }
