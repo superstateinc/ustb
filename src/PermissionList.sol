@@ -35,6 +35,9 @@ contract PermissionList {
     /// @dev Thrown when the input for a function is invalid
     error BadData();
 
+    /// @dev Thrown when the input is already equivalent to the storage being set
+    error AlreadySet();
+
     /**
      * @notice Construct a new PermissionList instance
      * @param _permissionAdmin Address of the permission administrator
@@ -60,6 +63,9 @@ contract PermissionList {
     function setPermission(address addr, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
+        bytes32 currentPermission = keccak256(abi.encode(permissions[addr]));
+        if (currentPermission == keccak256(abi.encode(permission))) revert AlreadySet();
+
         permissions[addr] = permission;
 
         emit PermissionSet(addr, permission);
@@ -75,6 +81,9 @@ contract PermissionList {
         if (users.length != perms.length) revert BadData();
 
         for (uint i = 0; i < users.length; ) {
+            bytes32 currentPermission = keccak256(abi.encode(permissions[users[i]]));
+            if (currentPermission == keccak256(abi.encode(perms[i]))) revert AlreadySet();
+
             permissions[users[i]] = perms[i];
 
             emit PermissionSet(users[i], perms[i]);
@@ -92,6 +101,7 @@ contract PermissionList {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         Permission storage perms = permissions[addr];
+        if (perms.isAllowed == value) revert AlreadySet();
         perms.isAllowed = value;
 
         emit PermissionSet(addr, perms);
@@ -109,6 +119,7 @@ contract PermissionList {
         for (uint i = 0; i < users.length; ) {
             address user = users[i];
             Permission storage perms = permissions[user];
+            if (perms.isAllowed == values[i]) revert AlreadySet();
             perms.isAllowed = values[i];
 
             emit PermissionSet(user, perms);
@@ -157,6 +168,15 @@ contract PermissionList {
     }
 
     /**
+     * @notice Checks if the existing equals value and reverts if so
+     * @param existing The bool currently written to storage
+     * @param value The new bool passed in to change existing's storage to
+     */
+    function _checkAlreadySet(bool existing, bool value) internal pure {
+        if (existing == value) revert AlreadySet();
+    }
+
+    /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
      * @param perms The Permission to be updated
      * @param index The index of the permission to update
@@ -164,16 +184,22 @@ contract PermissionList {
      */
     function setPermissionAtIndex(Permission memory perms, uint index, bool value) internal pure returns (Permission memory) {
         if (index == 0) {
+            _checkAlreadySet(perms.isAllowed, value);
             perms.isAllowed = value;
         } else if (index == 1) {
+            _checkAlreadySet(perms.state1, value);
             perms.state1 = value;
         } else if (index == 2) {
+            _checkAlreadySet(perms.state2, value);
             perms.state2 = value;
         } else if (index == 3) {
+            _checkAlreadySet(perms.state3, value);
             perms.state3 = value;
         } else if (index == 4) {
+            _checkAlreadySet(perms.state4, value);
             perms.state4 = value;
         } else if (index == 5) {
+            _checkAlreadySet(perms.state5, value);
             perms.state5 = value;
         } else {
             revert BadData();
