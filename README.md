@@ -13,3 +13,10 @@ To run coverage
 ```sh
 forge coverage
 ```
+
+## Deployment
+
+* Deploy contracts `script/deploy.sh`. Be mindful, script sets the proxy admin to be the same as the PermissionList and SUPTB token. 
+In prod this will presumably be our fireblocks address
+
+* Create clean deployment file in `contract_deployment` out of foundry broadcast file `python script/gen_deploy.py broadcast/DeployScript.s.sol/11155111/run-latest.json sepolia.json`

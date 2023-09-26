@@ -1,0 +1,27 @@
+{
+    "ProxyAdmin": {
+        "address": "0x4EE34A42883B1DDAd0BFe691Eca21a30CcAE9DbB",
+        "deployBlock": 4363814,
+        "contractName": "ProxyAdmin"
+    },
+    "PermissionList": {
+        "address": "0x216F87fF09Ae7afdebBf5c86F56d6c1a29c8Eafd",
+        "deployBlock": 4363814,
+        "contractName": "PermissionList"
+    },
+    "PermissionListProxy": {
+        "address": "0x4b014fd6c9072bDECC40B00BA059Eb57d3a4b4ea",
+        "deployBlock": 4363814,
+        "contractName": "TransparentUpgradeableProxy"
+    },
+    "SUPTB": {
+        "address": "0x165099dA0691300DC9D9cb5A94b828a1E82e6514",
+        "deployBlock": 4363814,
+        "contractName": "SUPTB"
+    },
+    "SUPTBProxy": {
+        "address": "0xe1dEC72456243382dD957F2450FB73441B5D5b55",
+        "deployBlock": 4363814,
+        "contractName": "TransparentUpgradeableProxy"
+    }
+}
