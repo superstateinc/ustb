@@ -57,13 +57,21 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, true, false, true));
     }
 
-    function testSetPermissonsRevertsUnauthorized() public {
+    function testSetPermissionRevertsUnauthorized() public {
         vm.prank(alice);
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
         PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(alice, newPerms);
+    }
+
+    function testSetPermissionRevertsAlreadySet() public {
+        PermissionList.Permission memory samePerms = PermissionList.Permission(true, false, false, false, false, false);
+
+        // should revert, since bob's perms are already this
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setPermission(bob, samePerms);
     }
 
     function testSetDisallowPerms() public {
@@ -90,7 +98,7 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice).isAllowed, false);
     }
 
-    function testSetMultiplePermissons() public {
+    function testSetMultiplePermissions() public {
         assertEq(perms.getPermission(alice).isAllowed, false);
         assertEq(perms.getPermission(bob).isAllowed, true);
 
@@ -115,7 +123,7 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, true, false, false, false));
     }
 
-    function testSetMultiplePermissonsRevertsUnauthorized() public {
+    function testSetMultiplePermissionsRevertsUnauthorized() public {
         vm.prank(alice);
 
         address[] memory users = new address[](1);
@@ -138,6 +146,17 @@ contract PermissionListTest is Test {
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
         perms.setMultiplePermissions(users, newPerms);
+    }
+
+    function testSetMultiplePermissionsRevertsAlreadySet() public {
+        address[] memory users = new address[](1);
+        PermissionList.Permission[] memory samePerms = new PermissionList.Permission[](1);
+        users[0] = bob;
+        samePerms[0] = PermissionList.Permission(true, false, false, false, false, false);
+
+        // should revert, since bob's perms are already this
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultiplePermissions(users, samePerms);
     }
 
     function testSetIsAllowedToTrue() public {
@@ -174,6 +193,12 @@ contract PermissionListTest is Test {
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
         perms.setIsAllowed(alice, true);
+    }
+
+    function testSetIsAllowedRevertsAlreadySet() public {
+        // should revert, since `isAllowed` is already set to true for bob
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setIsAllowed(bob, true);
     }
 
     function testSetMultipleIsAllowed() public {
@@ -224,6 +249,17 @@ contract PermissionListTest is Test {
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
         perms.setMultipleIsAllowed(users, newValues);
+    }
+
+    function testSetMultipleIsAllowedRevertsAlreadySet() public {
+        address[] memory users = new address[](1);
+        bool[] memory sameValues = new bool[](1);
+        users[0] = bob;
+        sameValues[0] = true;
+
+        // should revert, since `isAllowed` is already set to true for bob
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleIsAllowed(users, sameValues);
     }
 
     function testSetNthPermissionToTrue() public {
@@ -321,6 +357,26 @@ contract PermissionListTest is Test {
     function testSetNthPermissionBadData() public {
         vm.expectRevert(PermissionList.BadData.selector);
         perms.setNthPermission(bob, 6, true);
+    }
+
+    function testSetNthPermissionAlreadySet() public {
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 0, true);
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 1, false);
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 2, false);
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 3, false);
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 4, false);
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setNthPermission(bob, 5, false);
     }
 
     function testSetNthPermissionToFalse() public {
@@ -502,6 +558,48 @@ contract PermissionListTest is Test {
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
         perms.setMultipleNthPermissions(users, indices, newValues);
+    }
+
+    function testSetMultipleNthPermissionsRevertsAlreadySet() public {
+        address[] memory users = new address[](1);
+        uint[] memory indices = new uint[](1);
+        bool[] memory sameValues = new bool[](1);
+        users[0] = bob;
+        indices[0] = 0;
+        sameValues[0] = true;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
+
+        indices[0] = 1;
+        sameValues[0] = false;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
+
+        indices[0] = 2;
+        sameValues[0] = false;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
+
+        indices[0] = 3;
+        sameValues[0] = false;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
+
+        indices[0] = 4;
+        sameValues[0] = false;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
+
+        indices[0] = 5;
+        sameValues[0] = false;
+
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setMultipleNthPermissions(users, indices, sameValues);
     }
 
     function testSetMultipleNthPermissionsRevertsBadData() public {

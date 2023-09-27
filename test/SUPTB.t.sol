@@ -862,7 +862,7 @@ contract SUPTBTest is Test {
         tokenV2.transfer(bob, 10e6);
 
         vm.prank(charlie);
-        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        vm.expectRevert("ERC20: insufficient allowance");
         tokenV2.transferFrom(alice, bob, 10e6);
 
         vm.prank(bob);
@@ -1170,10 +1170,14 @@ contract SUPTBTest is Test {
     function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
 
+        // cannot be address 0 - ERC20: transfer from the zero address
+        // spender cannot be alice bob or charlie, they already have their permissions set
+        vm.assume(spender != address(0) && spender != alice && spender != bob && spender != charlie);
+        vm.assume(recipient != alice && recipient != bob && recipient != charlie);
+        vm.assume(recipient2 != alice && recipient2 != bob && recipient2 != charlie);
+        vm.assume(spender != recipient && recipient != recipient2 && spender != recipient2);
         // proxy admin cant use protocol
-        if (address(proxyAdmin) == recipient || address(proxyAdmin) == recipient2) {
-            return;
-        }
+        vm.assume(address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2);
 
         // whitelist spender and recipient
         perms.setPermission(spender, allowPerms);

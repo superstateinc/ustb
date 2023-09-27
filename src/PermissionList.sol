@@ -35,12 +35,35 @@ contract PermissionList {
     /// @dev Thrown when the input for a function is invalid
     error BadData();
 
+    /// @dev Thrown when the input is already equivalent to the storage being set
+    error AlreadySet();
+
     /**
      * @notice Construct a new PermissionList instance
      * @param _permissionAdmin Address of the permission administrator
      */
     constructor(address _permissionAdmin) {
         permissionAdmin = _permissionAdmin;
+    }
+
+    /**
+     * @notice Checks if the currentValue equals newValue and reverts if so
+     * @param currentValue The bool currently written to storage
+     * @param newValue The new bool passed in to change currentValue's storage to
+     */
+    function _comparePermissionBooleans(bool currentValue, bool newValue) internal pure {
+        if (currentValue == newValue) revert AlreadySet();
+    }
+
+    /**
+     * @notice Checks if the currentPermission equals newPermission and reverts if so
+     * @param currentPermission The Permission currently written to storage
+     * @param newPermission The new Permission passed in to change currentPermission's storage to
+     */
+    function _comparePermissionStructs(Permission memory currentPermission, Permission memory newPermission) internal pure{
+        bytes32 currentHash = keccak256(abi.encode(currentPermission));
+        bytes32 newHash = keccak256(abi.encode(newPermission));
+        if (currentHash == newHash) revert AlreadySet();
     }
 
     /**
@@ -60,6 +83,8 @@ contract PermissionList {
     function setPermission(address addr, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
+        _comparePermissionStructs(permissions[addr], permission);
+
         permissions[addr] = permission;
 
         emit PermissionSet(addr, permission);
@@ -75,6 +100,8 @@ contract PermissionList {
         if (users.length != perms.length) revert BadData();
 
         for (uint i = 0; i < users.length; ) {
+            _comparePermissionStructs(permissions[users[i]], perms[i]);
+
             permissions[users[i]] = perms[i];
 
             emit PermissionSet(users[i], perms[i]);
@@ -92,6 +119,7 @@ contract PermissionList {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         Permission storage perms = permissions[addr];
+        _comparePermissionBooleans(perms.isAllowed, value);
         perms.isAllowed = value;
 
         emit PermissionSet(addr, perms);
@@ -109,6 +137,7 @@ contract PermissionList {
         for (uint i = 0; i < users.length; ) {
             address user = users[i];
             Permission storage perms = permissions[user];
+            _comparePermissionBooleans(perms.isAllowed, values[i]);
             perms.isAllowed = values[i];
 
             emit PermissionSet(user, perms);
@@ -156,6 +185,8 @@ contract PermissionList {
         }
     }
 
+
+
     /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
      * @param perms The Permission to be updated
@@ -164,16 +195,22 @@ contract PermissionList {
      */
     function setPermissionAtIndex(Permission memory perms, uint index, bool value) internal pure returns (Permission memory) {
         if (index == 0) {
+            _comparePermissionBooleans(perms.isAllowed, value);
             perms.isAllowed = value;
         } else if (index == 1) {
+            _comparePermissionBooleans(perms.state1, value);
             perms.state1 = value;
         } else if (index == 2) {
+            _comparePermissionBooleans(perms.state2, value);
             perms.state2 = value;
         } else if (index == 3) {
+            _comparePermissionBooleans(perms.state3, value);
             perms.state3 = value;
         } else if (index == 4) {
+            _comparePermissionBooleans(perms.state4, value);
             perms.state4 = value;
         } else if (index == 5) {
+            _comparePermissionBooleans(perms.state5, value);
             perms.state5 = value;
         } else {
             revert BadData();
