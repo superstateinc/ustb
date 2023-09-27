@@ -187,7 +187,6 @@ contract PermissionList {
 
 
 
-
     /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
      * @param perms The Permission to be updated
