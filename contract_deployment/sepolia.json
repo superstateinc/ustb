@@ -1,27 +1,32 @@
 {
     "ProxyAdmin": {
-        "address": "0x4EE34A42883B1DDAd0BFe691Eca21a30CcAE9DbB",
-        "deployBlock": 4363814,
+        "transactionHash": "0xf0aeb8476095e6f601691fc090e1bb9f8e0612b0072aaf68d252de4dbbc9f694",
+        "address": "0xF6E4d8a4b1736dE8218F4b25aB48fd937508805e",
+        "deployBlock": 4370202,
         "contractName": "ProxyAdmin"
     },
     "PermissionList": {
-        "address": "0x216F87fF09Ae7afdebBf5c86F56d6c1a29c8Eafd",
-        "deployBlock": 4363814,
+        "transactionHash": "0x2408f5ee2bade392fa05d53e19dd9ddbe4e936b4d25d28a2f37980c815a25627",
+        "address": "0x33f57189E434D9dBF84c29742CcC91241513edDF",
+        "deployBlock": 4370202,
         "contractName": "PermissionList"
     },
     "PermissionListProxy": {
-        "address": "0x4b014fd6c9072bDECC40B00BA059Eb57d3a4b4ea",
-        "deployBlock": 4363814,
+        "transactionHash": "0x7aa3b8d958877c938e68be31f2efe6cb024ac1544813ec41bbf180ae234744e4",
+        "address": "0x7660cFBa4f923c03a58fb02fd11ed932381afe01",
+        "deployBlock": 4370202,
         "contractName": "TransparentUpgradeableProxy"
     },
     "SUPTB": {
-        "address": "0x165099dA0691300DC9D9cb5A94b828a1E82e6514",
-        "deployBlock": 4363814,
+        "transactionHash": "0x7166f7f5b0e6974498a31cdc0b8287781979aca9483a9fa8c68080c2627b0b1e",
+        "address": "0x73034ec40f42321c52abA45A043B24f2620bC084",
+        "deployBlock": 4370202,
         "contractName": "SUPTB"
     },
     "SUPTBProxy": {
-        "address": "0xe1dEC72456243382dD957F2450FB73441B5D5b55",
-        "deployBlock": 4363814,
+        "transactionHash": "0xe434456f00750c9e1190377204f42d113300e4f872a72c09a4261660de262672",
+        "address": "0xfFc757f53FDF0a352C78C9B1b3fD026679989F60",
+        "deployBlock": 4370202,
         "contractName": "TransparentUpgradeableProxy"
     }
 }
