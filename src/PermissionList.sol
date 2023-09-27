@@ -187,14 +187,6 @@ contract PermissionList {
 
 
 
-    /**
-     * @notice Checks if the existing equals value and reverts if so
-     * @param existing The bool currently written to storage
-     * @param value The new bool passed in to change existing's storage to
-     */
-    function _checkAlreadySet(bool existing, bool value) internal pure {
-        if (existing == value) revert AlreadySet();
-    }
 
     /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
