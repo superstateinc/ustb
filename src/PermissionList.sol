@@ -57,8 +57,8 @@ contract PermissionList {
 
     /**
      * @notice Checks if the currentPermission equals newPermission and reverts if so
-     * @param currentPermission The bool currently written to storage
-     * @param newPermission The new bool passed in to change currentValue's storage to
+     * @param currentPermission The Permission currently written to storage
+     * @param newPermission The new Permission passed in to change currentPermission's storage to
      */
     function _comparePermissionStructs(Permission memory currentPermission, Permission memory newPermission) internal pure{
         bytes32 currentHash = keccak256(abi.encode(currentPermission));
