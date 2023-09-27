@@ -15,22 +15,23 @@ contract DeployScript is Script {
     SUPTB public tokenImplementation;
 
     function run() external {
-        vm.startBroadcast();
 
         // admin allowed to set permissions and mint / burn tokens
-        // TODO: Configure before running
-        address fireblocksAdmin = address(0x9825df3dc587BCc86b1365DA2E4EF07B0Cabfb9B);
+        address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
+        address admin = vm.envAddress("ADMIN_ADDRESS");
+
+        vm.startBroadcast(deployer);
 
         // deploy proxy admin contract
         proxyAdmin = new ProxyAdmin();
 
-        permsImplementation = new PermissionList(fireblocksAdmin);
+        permsImplementation = new PermissionList(admin);
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
         PermissionList wrappedPerms = PermissionList(address(permsProxy));
 
-        tokenImplementation = new SUPTB(fireblocksAdmin, wrappedPerms);
+        tokenImplementation = new SUPTB(admin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
@@ -38,6 +39,10 @@ contract DeployScript is Script {
 
         // initialize token contract
         wrappedToken.initialize("Superstate Short-Term Government Securities Fund", "SUPTB");
+
+        proxyAdmin.transferOwnership(admin);
+
+        require(proxyAdmin.owner() == admin, "Proxy admin ownership not transferred");
 
         vm.stopBroadcast();
     }

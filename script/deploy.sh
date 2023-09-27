@@ -9,10 +9,15 @@ else
   chain_id="--chain-id 5"
 fi
 
-if [ -n "$ETHEREUM_PK" ]; then
-  wallet_args="--private-key $ETHEREUM_PK"
+if [ -n "$DEPLOYER_PK" ]; then
+  wallet_args="--private-key $DEPLOYER_PK"
 else
   wallet_args="--unlocked"
+fi
+
+if [ -z "$ADMIN_ADDRESS" ]; then
+  echo "ADMIN_ADDRESS is not set"
+  exit 1
 fi
 
 if [ -n "$RPC_URL" ]; then
