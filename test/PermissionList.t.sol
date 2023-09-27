@@ -196,7 +196,7 @@ contract PermissionListTest is Test {
     }
 
     function testSetIsAllowedRevertsAlreadySet() public {
-        // should revert, since alice is not the permission admin
+        // should revert, since `isAllowed` is already set to true for bob
         vm.expectRevert(PermissionList.AlreadySet.selector);
         perms.setIsAllowed(bob, true);
     }
@@ -257,7 +257,7 @@ contract PermissionListTest is Test {
         users[0] = bob;
         sameValues[0] = true;
 
-        // should revert, since alice is not the permission admin
+        // should revert, since `isAllowed` is already set to true for bob
         vm.expectRevert(PermissionList.AlreadySet.selector);
         perms.setMultipleIsAllowed(users, sameValues);
     }
