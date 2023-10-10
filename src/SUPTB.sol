@@ -325,7 +325,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function mint(address dst, uint256 amount) external {
         if (msg.sender != admin) revert Unauthorized();
-        if (accountingPaused) revert WrongPausedState();
+        _requireNotAccountingPaused();
         if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
@@ -340,7 +340,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function burn(address src, uint256 amount) external {
         if (msg.sender != admin) revert Unauthorized();
-        if (accountingPaused) revert WrongPausedState();
+        _requireNotAccountingPaused();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
