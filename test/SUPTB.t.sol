@@ -18,6 +18,8 @@ contract SUPTBTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, address indexed from, uint256 amount);
+    event AccountingPaused(address account);
+    event AccountingUnpaused(address account);
 
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
@@ -727,8 +729,33 @@ contract SUPTBTest is Test {
         token.unpause();
     }
 
+    function testAdminPauseAndUnpauseRevertIfUnauthorized() public {
+        // try pausing contract from unauthorized sender
+        vm.prank(charlie);
+        vm.expectRevert(SUPTB.Unauthorized.selector);
+        token.accountingPause();
+
+        // admin pauses the contract
+        vm.expectEmit(false, false, false, true);
+        emit AccountingPaused(address(this));
+        token.accountingPause(); // TODO: event emit
+
+        // try unpausing contract from unauthorized sender
+        vm.prank(charlie);
+        vm.expectRevert(SUPTB.Unauthorized.selector);
+        token.accountingUnpause();
+
+        // admin unpauses
+        vm.expectEmit(false, false, false, true);
+        emit AccountingUnpaused(address(this));
+        token.accountingUnpause(); //TODO: event emit
+    }
+
     function testFunctionsStillWorkAfterUnpause() public {
         // admin pause, then unpause, confirm a few user funcs still work
+        token.accountingPause();
+        token.accountingUnpause();
+
         token.pause();  
         token.unpause();
 
@@ -759,18 +786,60 @@ contract SUPTBTest is Test {
         token.release(alice, 30e6);
     }
 
-    function testCannotUpdateBalancesIfTokenPaused() public {
-        token.mint(alice, 100e6);
+    // cannot double set any pause
+    function testCannotDoublePause() public {
+        token.accountingPause();
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        token.accountingPause();
+
+        token.pause();
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.pause();
+    }
+
+    function testCannotDoubleUnpause() public {
+        token.accountingPause();
+
+        token.accountingUnpause();
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        token.accountingUnpause();
 
         token.pause();
 
-        assertEq(token.balanceOf(alice), 100e6);
+        token.unpause();
+        vm.expectRevert(bytes("Pausable: not paused"));
+        token.unpause();
+    }
 
-        vm.expectRevert(bytes("Pausable: paused"));
+    function testCannotUpdateBalancesIfBothPaused() public {
         token.mint(alice, 100e6);
 
-        vm.expectRevert(bytes("Pausable: paused"));
+        vm.startPrank(alice);
+        token.approve(bob, 50e6);
+        token.approve(alice, 50e6);
+        token.encumber(bob, 50e6);
+        vm.stopPrank();
+
+        token.accountingPause();
+
+        assertEq(token.balanceOf(alice), 100e6);
+
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        token.mint(alice, 100e6);
+
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
         token.burn(alice, 100e6);
+
+        vm.prank(alice);
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        token.transfer(address(0), 50e6);
+
+        vm.prank(alice);
+        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        token.transferFrom(alice, address(0), 50e6);
+
+        token.accountingUnpause();
+        token.pause();
 
         vm.prank(alice);
         vm.expectRevert(bytes("Pausable: paused"));
@@ -789,7 +858,6 @@ contract SUPTBTest is Test {
         token.encumberFrom(alice, charlie, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(bytes("Pausable: paused"));
         token.release(alice, 50e6);
 
         assertEq(token.balanceOf(alice), 100e6);

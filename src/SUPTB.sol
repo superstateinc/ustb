@@ -40,6 +40,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice Amount encumbered from owner to taker (owner => taker => balance)
     mapping(address => mapping(address => uint256)) public encumbrances;
 
+    /// @notice If all minting and burning operations are paused
+    bool public accountingPaused;
+
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
@@ -48,6 +51,12 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
     /// @dev Event emitted when tokens are burned
     event Burn(address indexed burner, address indexed from, uint256 amount);
+
+    /// @dev Emitted when the admin pause is triggered by `account`.
+    event AccountingPaused(address account);
+
+    /// @dev Emitted when the admin pause is lifted by `account`.
+    event AccountingUnpaused(address account);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -69,6 +78,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
     /// @dev Thrown if the signature is invalid or its signer does not match the expected singer
     error BadSignatory();
+
+    /// @dev Thrown if action is in the wrong pause state
+    error WrongPausedState();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
@@ -93,12 +105,17 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         __Pausable_init();
     }
 
+    function _requireNotAccountingPaused() internal view {
+        if (accountingPaused) revert WrongPausedState();
+    }
+
     /**
      * @notice Invokes the {Pausable-_pause} internal function
      * @dev Can only be called by the admin
      */
     function pause() external {
         if (msg.sender != admin) revert Unauthorized();
+        _requireNotPaused();
 
         _pause();
     }
@@ -109,8 +126,33 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function unpause() external {
         if (msg.sender != admin) revert Unauthorized();
+        _requirePaused();
 
         _unpause();
+    }
+
+    /**
+     * @notice Pauses mint and burn
+     * @dev Can only be called by the admin
+     */
+    function accountingPause() external {
+        if (msg.sender != admin) revert Unauthorized();
+        _requireNotAccountingPaused();
+
+        accountingPaused = true;
+        emit AccountingPaused(msg.sender);
+    }
+
+    /**
+     * @notice Unpauses mint and burn
+     * @dev Can only be called by the admin
+     */
+    function accountingUnpause() external {
+        if (msg.sender != admin) revert Unauthorized();
+        if (!accountingPaused) revert WrongPausedState();
+
+        accountingPaused = false;
+        emit AccountingUnpaused(msg.sender);
     }
 
     /**
@@ -138,16 +180,18 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transfer(address dst, uint256 amount) public override whenNotPaused returns (bool) {
+    function transfer(address dst, uint256 amount) public override returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
 
         if (dst == address(0)) {
+            _requireNotAccountingPaused();
             _burn(msg.sender, amount);
             emit Burn(msg.sender, msg.sender, amount);
         } else {
+            _requireNotPaused();
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
@@ -166,7 +210,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
         if (encumberedToTaker < amount && !permissionList.getPermission(src).isAllowed) {
@@ -191,9 +235,11 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         }
 
         if (dst == address(0)) {
+            _requireNotAccountingPaused();
             _burn(src, amount);
             emit Burn(msg.sender, src, amount);
         } else {
+            _requireNotPaused();
             PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
             _transfer(src, dst, amount);
@@ -233,7 +279,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param owner Address to decrease encumbrance from
      * @param amount Amount of tokens to decrease the encumbrance by
      */
-    function release(address owner, uint256 amount) external whenNotPaused {
+    function release(address owner, uint256 amount) external {
         _releaseEncumbrance(owner, msg.sender, amount);
     }
 
@@ -277,8 +323,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param dst Recipient of the minted tokens
      * @param amount Amount of tokens to mint
      */
-    function mint(address dst, uint256 amount) external whenNotPaused {
+    function mint(address dst, uint256 amount) external {
         if (msg.sender != admin) revert Unauthorized();
+        if (accountingPaused) revert WrongPausedState();
         if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
@@ -291,8 +338,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param src Source address from which tokens will be burned
      * @param amount Amount of tokens to burn
      */
-    function burn(address src, uint256 amount) external whenNotPaused {
+    function burn(address src, uint256 amount) external {
         if (msg.sender != admin) revert Unauthorized();
+        if (accountingPaused) revert WrongPausedState();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
