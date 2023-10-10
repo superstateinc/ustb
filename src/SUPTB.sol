@@ -52,10 +52,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Event emitted when tokens are burned
     event Burn(address indexed burner, address indexed from, uint256 amount);
 
-    /// @dev Emitted when the admin pause is triggered by `account`.
+    /// @dev Emitted when the accounting pause is triggered by `account`.
     event AccountingPaused(address account);
 
-    /// @dev Emitted when the admin pause is lifted by `account`.
+    /// @dev Emitted when the accounting pause is lifted by `account`.
     event AccountingUnpaused(address account);
 
     /// @dev Thrown when a request is not sent by the authorized admin
