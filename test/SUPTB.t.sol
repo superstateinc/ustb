@@ -738,7 +738,7 @@ contract SUPTBTest is Test {
         // admin pauses the contract
         vm.expectEmit(false, false, false, true);
         emit AccountingPaused(address(this));
-        token.accountingPause(); // TODO: event emit
+        token.accountingPause();
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
@@ -748,7 +748,7 @@ contract SUPTBTest is Test {
         // admin unpauses
         vm.expectEmit(false, false, false, true);
         emit AccountingUnpaused(address(this));
-        token.accountingUnpause(); //TODO: event emit
+        token.accountingUnpause();
     }
 
     function testFunctionsStillWorkAfterUnpause() public {
