@@ -789,7 +789,7 @@ contract SUPTBTest is Test {
     // cannot double set any pause
     function testCannotDoublePause() public {
         token.accountingPause();
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
         token.accountingPause();
 
         token.pause();
@@ -801,7 +801,7 @@ contract SUPTBTest is Test {
         token.accountingPause();
 
         token.accountingUnpause();
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsNotPaused.selector);
         token.accountingUnpause();
 
         token.pause();
@@ -824,18 +824,18 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
         token.mint(alice, 100e6);
 
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
         token.burn(alice, 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
         token.transfer(address(0), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.WrongPausedState.selector);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
         token.transferFrom(alice, address(0), 50e6);
 
         token.accountingUnpause();
