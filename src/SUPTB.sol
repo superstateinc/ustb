@@ -82,8 +82,11 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown if the signature is invalid or its signer does not match the expected singer
     error BadSignatory();
 
-    /// @dev Thrown if action is in the wrong pause state
-    error WrongPausedState();
+    /// @dev Thrown if accounting pause is already on
+    error AccountingIsPaused();
+
+    /// @dev Thrown if accounting pause is already off
+    error AccountingIsNotPaused();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
@@ -109,7 +112,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     function _requireNotAccountingPaused() internal view {
-        if (accountingPaused) revert WrongPausedState();
+        if (accountingPaused) revert AccountingIsPaused();
     }
 
     /**
@@ -152,7 +155,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function accountingUnpause() external {
         if (msg.sender != admin) revert Unauthorized();
-        if (!accountingPaused) revert WrongPausedState();
+        if (!accountingPaused) revert AccountingIsNotPaused();
 
         accountingPaused = false;
         emit AccountingUnpaused(msg.sender);
