@@ -34,6 +34,8 @@ contract SUPTBTest is Test {
     uint256 evePrivateKey = 0x353;
     address eve; // see setup()
 
+    uint abcEntityId = 1;
+
     bytes32 internal constant AUTHORIZATION_TYPEHASH = keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
 
     function setUp() public {
@@ -64,10 +66,11 @@ contract SUPTBTest is Test {
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
 
-        perms.setEntityIdForAddress(alice, 1);
-        perms.setEntityIdForAddress(bob, 1);
-        perms.setEntityIdForAddress(charlie, 1);
-        perms.setPermission(1, allowPerms);
+
+        perms.setEntityIdForAddress(alice, abcEntityId);
+        perms.setEntityIdForAddress(bob, abcEntityId);
+        perms.setEntityIdForAddress(charlie, abcEntityId);
+        perms.setPermission(abcEntityId, allowPerms);
     }
 
     function testTokenName() public {
@@ -617,8 +620,8 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setEntityIdForAddress(mallory, 1);
-        perms.setPermission(1, allowPerms);
+        perms.setEntityIdForAddress(mallory, 2);
+        perms.setPermission(2, allowPerms);
 
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
@@ -627,7 +630,7 @@ contract SUPTBTest is Test {
 
         // now un-whitelist mallory
         PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(1, forbidPerms);
+        perms.setPermission(2, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
@@ -660,8 +663,8 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setEntityIdForAddress(mallory, 1);
-        perms.setPermission(1, allowPerms);
+        perms.setEntityIdForAddress(mallory, 2);
+        perms.setPermission(2, allowPerms);
 
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
@@ -670,7 +673,7 @@ contract SUPTBTest is Test {
 
         // now un-whitelist mallory
         PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(1, forbidPerms);
+        perms.setPermission(2, forbidPerms);
 
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
@@ -884,7 +887,6 @@ contract SUPTBTest is Test {
 
         deal(address(token), alice, 100e6);
         deal(address(token), bob, 100e6);
-
         // check Alice, Bob, and Charlie can still do whitelisted operations (transfer, transferFrom, encumber, encumberFrom)
         vm.prank(alice);
         token.transfer(bob, 10e6);
@@ -951,9 +953,7 @@ contract SUPTBTest is Test {
 
         // But when we whitelist all three according to the new criteria...
         PermissionListV2.Permission memory newPerms = PermissionListV2.Permission(true, false, false, false, false, false, false, true);
-        permsV2.setPermission(alice, newPerms);
-        permsV2.setPermission(bob, newPerms);
-        permsV2.setPermission(charlie, newPerms);
+        permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions
         assertEq(tokenV2.hasSufficientPermissions(alice), true);
@@ -1259,8 +1259,8 @@ contract SUPTBTest is Test {
         addrs[1] = recipient;
         addrs[2] = recipient2;
 
-        perms.setEntityIdForMultipleAddresses(addrs, 1);
-        perms.setPermission(1, allowPerms);
+        perms.setEntityIdForMultipleAddresses(addrs, 2);
+        perms.setPermission(2, allowPerms);
 
         // limit range of amount
         uint256 amount = bound(amt, 1, type(uint128).max -1);
