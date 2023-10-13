@@ -64,9 +64,9 @@ contract SUPTBTest is Test {
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
 
-        perms.setAddressEntityId(alice, 1);
-        perms.setAddressEntityId(bob, 1);
-        perms.setAddressEntityId(charlie, 1);
+        perms.setEntityIdForAddress(alice, 1);
+        perms.setEntityIdForAddress(bob, 1);
+        perms.setEntityIdForAddress(charlie, 1);
         perms.setPermission(1, allowPerms);
     }
 
@@ -617,7 +617,7 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setAddressEntityId(mallory, 1);
+        perms.setEntityIdForAddress(mallory, 1);
         perms.setPermission(1, allowPerms);
 
         vm.startPrank(mallory);
@@ -660,7 +660,7 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setAddressEntityId(mallory, 1);
+        perms.setEntityIdForAddress(mallory, 1);
         perms.setPermission(1, allowPerms);
 
         vm.startPrank(mallory);
@@ -685,7 +685,7 @@ contract SUPTBTest is Test {
 
         // un-whitelist alice
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setAddressEntityId(alice, 1);
+        perms.setEntityIdForAddress(alice, 1);
         perms.setPermission(1, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address
@@ -1259,7 +1259,7 @@ contract SUPTBTest is Test {
         addrs[1] = recipient;
         addrs[2] = recipient2;
 
-        perms.setMultipleAddressEntityId(addrs, 1);
+        perms.setEntityIdForMultipleAddresses(addrs, 1);
         perms.setPermission(1, allowPerms);
 
         // limit range of amount
