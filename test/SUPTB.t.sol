@@ -63,9 +63,11 @@ contract SUPTBTest is Test {
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(alice, allowPerms);
-        perms.setPermission(bob, allowPerms);
-        perms.setPermission(charlie, allowPerms);
+
+        perms.setAddressEntityId(alice, 1);
+        perms.setAddressEntityId(bob, 1);
+        perms.setAddressEntityId(charlie, 1);
+        perms.setPermission(1, allowPerms);
     }
 
     function testTokenName() public {
@@ -615,7 +617,8 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(mallory, allowPerms);
+        perms.setAddressEntityId(mallory, 1);
+        perms.setPermission(1, allowPerms);
 
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
@@ -624,7 +627,7 @@ contract SUPTBTest is Test {
 
         // now un-whitelist mallory
         PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(mallory, forbidPerms);
+        perms.setPermission(1, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
@@ -657,7 +660,8 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(mallory, allowPerms);
+        perms.setAddressEntityId(mallory, 1);
+        perms.setPermission(1, allowPerms);
 
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
@@ -666,7 +670,8 @@ contract SUPTBTest is Test {
 
         // now un-whitelist mallory
         PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(mallory, forbidPerms);
+        perms.setPermission(1, forbidPerms);
+
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
@@ -680,7 +685,8 @@ contract SUPTBTest is Test {
 
         // un-whitelist alice
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(alice, disallowPerms);
+        perms.setAddressEntityId(alice, 1);
+        perms.setPermission(1, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address
         vm.prank(alice);
@@ -1247,10 +1253,14 @@ contract SUPTBTest is Test {
         // proxy admin cant use protocol
         vm.assume(address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2);
 
-        // whitelist spender and recipient
-        perms.setPermission(spender, allowPerms);
-        perms.setPermission(recipient, allowPerms);
-        perms.setPermission(recipient2, allowPerms);
+        // whitelist spender and recipients
+        address[] memory addrs = new address[](3);
+        addrs[0] = spender;
+        addrs[1] = recipient;
+        addrs[2] = recipient2;
+
+        perms.setMultipleAddressEntityId(addrs, 1);
+        perms.setPermission(1, allowPerms);
 
         // limit range of amount
         uint256 amount = bound(amt, 1, type(uint128).max -1);

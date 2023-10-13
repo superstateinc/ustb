@@ -46,6 +46,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
+    /// @notice Max percent of total supply that one entity is allowed to hold
+    uint public constant entityMaxPercentWad = 2e17;
+
     /// @dev Event emitted when tokens are minted
     event Mint(address indexed minter, address indexed to, uint256 amount);
 
@@ -160,6 +163,13 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function decimals() public pure override returns (uint8) {
         return DECIMALS;
+    }
+
+    /**
+    * @notice The maximum balance for an entity. Enforced off-chain
+     */
+    function entityMaxBalance() public view returns (uint) {
+        return totalSupply() * entityMaxPercentWad / 1e18;
     }
 
     /**

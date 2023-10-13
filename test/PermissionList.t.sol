@@ -10,7 +10,8 @@ import "src/PermissionList.sol";
 import "test/PermissionListV2.sol";
 
 contract PermissionListTest is Test {
-    event PermissionSet(address indexed addr, PermissionList.Permission permission);
+    event PermissionSet(uint indexed addr, PermissionList.Permission permission);
+    event EntityIdSet(address addr, uint entityId);
 
     TransparentUpgradeableProxy proxy;
     ProxyAdmin proxyAdmin;
@@ -19,6 +20,7 @@ contract PermissionListTest is Test {
 
     address alice = address(10);
     address bob = address(11);
+    uint bobEntityId = 11;
 
     function setUp() public {
         PermissionList permsImplementation = new PermissionList(address(this));
@@ -33,8 +35,9 @@ contract PermissionListTest is Test {
         perms = PermissionList(address(proxy));
 
         // whitelist bob
+        perms.setAddressEntityId(bob, bobEntityId);
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(bob, allowPerms);
+        perms.setPermission(1, allowPerms);
     }
 
     function testInitialize() public {
@@ -46,12 +49,16 @@ contract PermissionListTest is Test {
 
         PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, true, false, true);
 
+        vm.expectEmit(true, true, true, true);
+        emit EntityIdSet(alice, 1);
+        perms.setAddressEntityId(alice, 1);
+
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, newPerms);
+        emit PermissionSet(1, newPerms);
 
-        // allow alice
-        perms.setPermission(alice, newPerms);
+        // allow alice's entity
+        perms.setPermission(1, newPerms);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
         assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, true, false, true));
@@ -63,7 +70,7 @@ contract PermissionListTest is Test {
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
         PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(alice, newPerms);
+        perms.setPermission(1, newPerms);
     }
 
     function testSetPermissionRevertsAlreadySet() public {
@@ -71,7 +78,7 @@ contract PermissionListTest is Test {
 
         // should revert, since bob's perms are already this
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setPermission(bob, samePerms);
+        perms.setPermission(bobEntityId, samePerms);
     }
 
     function testSetDisallowPerms() public {
@@ -79,7 +86,7 @@ contract PermissionListTest is Test {
 
         // disallow bob
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(bob, disallowPerms);
+        perms.setPermission(bobEntityId, disallowPerms);
 
         assertEq(perms.getPermission(bob).isAllowed, false);
     }
@@ -89,12 +96,13 @@ contract PermissionListTest is Test {
 
         // allow alice
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setPermission(alice, allowPerms);
+        perms.setAddressEntityId(alice, 1);
+        perms.setPermission(1, allowPerms);
         assertEq(perms.getPermission(alice).isAllowed, true);
 
         // now disallow alice
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(alice, disallowPerms);
+        perms.setPermission(1, disallowPerms);
         assertEq(perms.getPermission(alice).isAllowed, false);
     }
 
@@ -102,20 +110,22 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice).isAllowed, false);
         assertEq(perms.getPermission(bob).isAllowed, true);
 
-        address[] memory users = new address[](2);
+        perms.setAddressEntityId(alice, 1);
+
+        uint[] memory entityIds = new uint[](2);
         PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](2);
-        users[0] = alice;
-        users[1] = bob;
+        entityIds[0] = 1;
+        entityIds[1] = bobEntityId;
         newPerms[0] = PermissionList.Permission(true, false, false, false, false, true);
         newPerms[1] = PermissionList.Permission(false, false, true, false, false, false);
 
         // emits multiple PermissionSet events
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, newPerms[0]);
+        emit PermissionSet(1, newPerms[0]);
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, newPerms[1]);
+        emit PermissionSet(bobEntityId, newPerms[1]);
 
-        perms.setMultiplePermissions(users, newPerms);
+        perms.setMultiplePermissions(entityIds, newPerms);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
         assertEq(perms.getPermission(bob).isAllowed, false);
@@ -126,48 +136,49 @@ contract PermissionListTest is Test {
     function testSetMultiplePermissionsRevertsUnauthorized() public {
         vm.prank(alice);
 
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](1);
-        users[0] = alice;
+        entityIds[0] = 1;
         newPerms[0] = PermissionList.Permission(true, false, false, false, false, false);
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        perms.setMultiplePermissions(users, newPerms);
+        perms.setMultiplePermissions(entityIds, newPerms);
     }
 
     function testSetMultiplePermissonsRevertsBadData() public {
-        address[] memory users = new address[](2);
+        uint[] memory entityIds = new uint[](2);
         PermissionList.Permission[] memory newPerms = new PermissionList.Permission[](1);
-        users[0] = alice;
-        users[1] = bob;
+        entityIds[0] = 1;
+        entityIds[1] = bobEntityId;
         newPerms[0] = PermissionList.Permission(true, false, false, false, false, false);
 
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
-        perms.setMultiplePermissions(users, newPerms);
+        perms.setMultiplePermissions(entityIds, newPerms);
     }
 
     function testSetMultiplePermissionsRevertsAlreadySet() public {
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         PermissionList.Permission[] memory samePerms = new PermissionList.Permission[](1);
-        users[0] = bob;
+        entityIds[0] = bobEntityId;
         samePerms[0] = PermissionList.Permission(true, false, false, false, false, false);
 
         // should revert, since bob's perms are already this
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultiplePermissions(users, samePerms);
+        perms.setMultiplePermissions(entityIds, samePerms);
     }
 
     function testSetIsAllowedToTrue() public {
         assertEq(perms.getPermission(alice).isAllowed, false);
 
+        perms.setAddressEntityId(alice, 1);
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+        emit PermissionSet(1, PermissionList.Permission(true, false, false, false, false, false));
 
         // allow alice
-        perms.setIsAllowed(alice, true);
+        perms.setIsAllowed(1, true);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
         assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, false, false, false));
@@ -178,10 +189,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, false, false, false));
 
         // disallow bob
-        perms.setIsAllowed(bob, false);
+        perms.setIsAllowed(bobEntityId, false);
 
         assertEq(perms.getPermission(bob).isAllowed, false);
         assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
@@ -192,33 +203,34 @@ contract PermissionListTest is Test {
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        perms.setIsAllowed(alice, true);
+        perms.setIsAllowed(1, true);
     }
 
     function testSetIsAllowedRevertsAlreadySet() public {
         // should revert, since `isAllowed` is already set to true for bob
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setIsAllowed(bob, true);
+        perms.setIsAllowed(bobEntityId, true);
     }
 
     function testSetMultipleIsAllowed() public {
         assertEq(perms.getPermission(alice).isAllowed, false);
         assertEq(perms.getPermission(bob).isAllowed, true);
 
-        address[] memory users = new address[](2);
+        perms.setAddressEntityId(alice, 1);
+        uint[] memory entityIds = new uint[](2);
         bool[] memory newValues = new bool[](2);
-        users[0] = alice;
-        users[1] = bob;
+        entityIds[0] = 1;
+        entityIds[1] = bobEntityId;
         newValues[0] = true;
         newValues[1] = false;
 
         // emits multiple PermissionSet events
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+        emit PermissionSet(1, PermissionList.Permission(true, false, false, false, false, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, false, false, false));
 
-        perms.setMultipleIsAllowed(users, newValues);
+        perms.setMultipleIsAllowed(entityIds, newValues);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
         assertEq(perms.getPermission(bob).isAllowed, false);
@@ -229,37 +241,39 @@ contract PermissionListTest is Test {
     function testSetMultipleIsAllowedRevertsUnauthorized() public {
         vm.prank(alice);
 
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         bool[] memory newValues = new bool[](1);
-        users[0] = alice;
+        perms.setAddressEntityId(alice, 1);
+        entityIds[0] = 1;
         newValues[0] = false;
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        perms.setMultipleIsAllowed(users, newValues);
+        perms.setMultipleIsAllowed(entityIds, newValues);
     }
 
     function testSetMultipleIsAllowedRevertsBadData() public {
-        address[] memory users = new address[](2);
+        uint[] memory entityIds = new uint[](2);
         bool[] memory newValues = new bool[](1);
-        users[0] = alice;
-        users[1] = bob;
+        perms.setAddressEntityId(alice, 1);
+        entityIds[0] = 1;
+        entityIds[1] = bobEntityId;
         newValues[0] = false;
 
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
-        perms.setMultipleIsAllowed(users, newValues);
+        perms.setMultipleIsAllowed(entityIds, newValues);
     }
 
     function testSetMultipleIsAllowedRevertsAlreadySet() public {
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         bool[] memory sameValues = new bool[](1);
-        users[0] = bob;
+        entityIds[0] = bobEntityId;
         sameValues[0] = true;
 
         // should revert, since `isAllowed` is already set to true for bob
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleIsAllowed(users, sameValues);
+        perms.setMultipleIsAllowed(entityIds, sameValues);
     }
 
     function testSetNthPermissionToTrue() public {
@@ -272,11 +286,13 @@ contract PermissionListTest is Test {
         currentPerms.isAllowed = true;
 
         // emits PermissionSet event
+        uint aliceId = 1;
+        perms.setAddressEntityId(alice, 1);
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 0, true);
+        perms.setNthPermission(aliceId, 0, true);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -286,10 +302,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 1, true);
+        perms.setNthPermission(1, 1, true);
 
         assertEq(perms.getPermission(alice).state1, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -299,10 +315,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 2, true);
+        perms.setNthPermission(1, 2, true);
 
         assertEq(perms.getPermission(alice).state2, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -312,10 +328,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 3, true);
+        perms.setNthPermission(1, 3, true);
 
         assertEq(perms.getPermission(alice).state3, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -325,10 +341,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 4, true);
+        perms.setNthPermission(1, 4, true);
 
         assertEq(perms.getPermission(alice).state4, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -338,10 +354,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, currentPerms);
+        emit PermissionSet(aliceId, currentPerms);
 
         // allow alice
-        perms.setNthPermission(alice, 5, true);
+        perms.setNthPermission(1, 5, true);
 
         assertEq(perms.getPermission(alice).state5, true);
         assertEq(perms.getPermission(alice), currentPerms);
@@ -351,36 +367,36 @@ contract PermissionListTest is Test {
         hoax(alice);
 
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        perms.setNthPermission(bob, 1, true);
+        perms.setNthPermission(bobEntityId, 1, true);
     }
 
     function testSetNthPermissionBadData() public {
         vm.expectRevert(PermissionList.BadData.selector);
-        perms.setNthPermission(bob, 6, true);
+        perms.setNthPermission(bobEntityId, 6, true);
     }
 
     function testSetNthPermissionAlreadySet() public {
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 0, true);
+        perms.setNthPermission(bobEntityId, 0, true);
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 1, false);
+        perms.setNthPermission(bobEntityId, 1, false);
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 2, false);
+        perms.setNthPermission(bobEntityId, 2, false);
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 3, false);
+        perms.setNthPermission(bobEntityId, 3, false);
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 4, false);
+        perms.setNthPermission(bobEntityId, 4, false);
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setNthPermission(bob, 5, false);
+        perms.setNthPermission(bobEntityId, 5, false);
     }
 
     function testSetNthPermissionToFalse() public {
-        perms.setPermission(bob, PermissionList.Permission(true, true, true, true, true, true));
+        perms.setPermission(bobEntityId, PermissionList.Permission(true, true, true, true, true, true));
 
         assertEq(perms.getPermission(bob).isAllowed, true);
         assertEq(perms.getPermission(bob), PermissionList.Permission(true, true, true, true, true, true));
@@ -392,10 +408,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 0, false);
+        perms.setNthPermission(bobEntityId, 0, false);
 
         assertEq(perms.getPermission(bob).isAllowed, false);
         assertEq(perms.getPermission(bob), currentPerms);
@@ -405,10 +421,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 1, false);
+        perms.setNthPermission(bobEntityId, 1, false);
 
         assertEq(perms.getPermission(bob).state1, false);
         assertEq(perms.getPermission(bob), currentPerms);
@@ -418,10 +434,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 2, false);
+        perms.setNthPermission(bobEntityId, 2, false);
 
         assertEq(perms.getPermission(bob).state2, false);
         assertEq(perms.getPermission(bob), currentPerms);
@@ -431,10 +447,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 3, false);
+        perms.setNthPermission(bobEntityId, 3, false);
 
         assertEq(perms.getPermission(bob).state3, false);
         assertEq(perms.getPermission(bob), currentPerms);
@@ -444,10 +460,10 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 4, false);
+        perms.setNthPermission(bobEntityId, 4, false);
 
         assertEq(perms.getPermission(bob).state4, false);
         assertEq(perms.getPermission(bob), currentPerms);
@@ -457,37 +473,38 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, currentPerms);
+        emit PermissionSet(bobEntityId, currentPerms);
 
         // allow bob
-        perms.setNthPermission(bob, 5, false);
+        perms.setNthPermission(bobEntityId, 5, false);
 
         assertEq(perms.getPermission(bob).state5, false);
         assertEq(perms.getPermission(bob), currentPerms);
     }
 
     function testSetMultipleNthPermissions() public {
-        perms.setPermission(bob, PermissionList.Permission(true, true, true, true, true, true));
+        perms.setPermission(bobEntityId, PermissionList.Permission(true, true, true, true, true, true));
 
         assertEq(perms.getPermission(alice), PermissionList.Permission(false, false, false, false, false, false));
         assertEq(perms.getPermission(bob), PermissionList.Permission(true, true, true, true, true, true));
 
         // we'll be iteratively setting alice's permissions to true and bob's to false, starting from the 0 index
-        address[] memory users = new address[](12);
+        uint aliceId = 1;
+        uint[] memory entityIds = new uint[](12);
         uint[] memory indices = new uint[](12);
         bool[] memory newValues = new bool[](12);
-        users[0] = alice;
-        users[1] = alice;
-        users[2] = alice;
-        users[3] = alice;
-        users[4] = alice;
-        users[5] = alice;
-        users[6] = bob;
-        users[7] = bob;
-        users[8] = bob;
-        users[9] = bob;
-        users[10] = bob;
-        users[11] = bob;
+        entityIds[0] = aliceId;
+        entityIds[1] = aliceId;
+        entityIds[2] = aliceId;
+        entityIds[3] = aliceId;
+        entityIds[4] = aliceId;
+        entityIds[5] = aliceId;
+        entityIds[6] = bobEntityId;
+        entityIds[7] = bobEntityId;
+        entityIds[8] = bobEntityId;
+        entityIds[9] = bobEntityId;
+        entityIds[10] = bobEntityId;
+        entityIds[11] = bobEntityId;
         indices[0] = 0;
         indices[1] = 1;
         indices[2] = 2;
@@ -515,31 +532,31 @@ contract PermissionListTest is Test {
 
         // emits multiple PermissionSet events
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, false, false, false, false, false));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, false, false, false, false, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, true, false, false, false, false));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, true, false, false, false, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, true, true, false, false, false));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, true, true, false, false, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, false, false));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, true, true, true, false, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, true, false));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, true, true, true, true, false));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(alice, PermissionList.Permission(true, true, true, true, true, true));
+        emit PermissionSet(aliceId, PermissionList.Permission(true, true, true, true, true, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, true, true, true, true, true));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, true, true, true, true, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, true, true, true, true));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, true, true, true, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, true, true, true));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, true, true, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, true, true));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, false, true, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, true));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, false, false, true));
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(bob, PermissionList.Permission(false, false, false, false, false, false));
+        emit PermissionSet(bobEntityId, PermissionList.Permission(false, false, false, false, false, false));
 
-        perms.setMultipleNthPermissions(users, indices, newValues);
+        perms.setMultipleNthPermissions(entityIds, indices, newValues);
 
         assertEq(perms.getPermission(alice), PermissionList.Permission(true, true, true, true, true, true));
         assertEq(perms.getPermission(bob), PermissionList.Permission(false, false, false, false, false, false));
@@ -548,76 +565,76 @@ contract PermissionListTest is Test {
     function testSetMultipleNthPermissionsRevertsUnauthorized() public {
         vm.prank(alice);
 
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         uint[] memory indices = new uint[](1);
         bool[] memory newValues = new bool[](1);
-        users[0] = alice;
+        entityIds[0] = 1;
         indices[0] = 0;
         newValues[0] = false;
 
         // should revert, since alice is not the permission admin
         vm.expectRevert(PermissionList.Unauthorized.selector);
-        perms.setMultipleNthPermissions(users, indices, newValues);
+        perms.setMultipleNthPermissions(entityIds, indices, newValues);
     }
 
     function testSetMultipleNthPermissionsRevertsAlreadySet() public {
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         uint[] memory indices = new uint[](1);
         bool[] memory sameValues = new bool[](1);
-        users[0] = bob;
+        entityIds[0] = bobEntityId;
         indices[0] = 0;
         sameValues[0] = true;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
 
         indices[0] = 1;
         sameValues[0] = false;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
 
         indices[0] = 2;
         sameValues[0] = false;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
 
         indices[0] = 3;
         sameValues[0] = false;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
 
         indices[0] = 4;
         sameValues[0] = false;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
 
         indices[0] = 5;
         sameValues[0] = false;
 
         vm.expectRevert(PermissionList.AlreadySet.selector);
-        perms.setMultipleNthPermissions(users, indices, sameValues);
+        perms.setMultipleNthPermissions(entityIds, indices, sameValues);
     }
 
     function testSetMultipleNthPermissionsRevertsBadData() public {
-        address[] memory users = new address[](1);
+        uint[] memory entityIds = new uint[](1);
         uint[] memory indices = new uint[](2);
         bool[] memory newValues = new bool[](1);
 
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
-        perms.setMultipleNthPermissions(users, indices, newValues);
+        perms.setMultipleNthPermissions(entityIds, indices, newValues);
 
-        address[] memory usersB = new address[](1);
+        uint[] memory entityIdsB = new uint[](1);
         uint[] memory indicesB = new uint[](1);
         bool[] memory newValuesB = new bool[](2);
 
         // should revert, since the input lists are different lengths
         vm.expectRevert(PermissionList.BadData.selector);
-        perms.setMultipleNthPermissions(usersB, indicesB, newValuesB);
+        perms.setMultipleNthPermissions(entityIdsB, indicesB, newValuesB);
     }
 
     function testUpgradePermissions() public {
