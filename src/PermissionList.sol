@@ -23,10 +23,10 @@ contract PermissionList {
         bool state5;
     }
 
-    /// @notice A record of permissions for each entityId determining if they are allowed
+    /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
     mapping(uint => Permission) public permissions;
 
-    /// @notice A record of entityIds associated with each address
+    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the permissionList. 
     mapping(address => uint) public addressEntityIds;
 
     /// @notice An event emitted when an entityId's permission status is changed
@@ -44,7 +44,7 @@ contract PermissionList {
     /// @dev Thrown when the input is already equivalent to the storage being set
     error AlreadySet();
 
-    /// @dev Can not use zero for entityIds, as 0 is the default value for all addresses in the addressEntityIds mapping
+    /// @dev Default value for the addressEntityIds mapping is 0, so entityIds are 1 indexed and setting permissions for 0 is not allowed
     error ZeroEntityId();
 
     /**
@@ -86,21 +86,24 @@ contract PermissionList {
     }
 
     /**
-    * @notice Sets the entity Id for a given address
+    * @notice Sets the entity Id for a given address. Setting to 0 removes the address from the permissionList
     * @param addr The address to associate with an entityId
     * @param entityId The entityId to associate with an address
     */
     function setAddressEntityId(address addr, uint entityId) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityId == 0) revert ZeroEntityId();
 
         addressEntityIds[addr] = entityId;
         emit EntityIdSet(addr, entityId);
     }
 
+    /**
+    * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
+    * @param addresses The addresses to associate with an entityId
+    * @param entityId The entityId to associate with an address
+    */
     function setMultipleAddressEntityId(address[] calldata addresses, uint entityId) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityId == 0) revert ZeroEntityId();
 
         for (uint i = 0; i < addresses.length; ) {
             addressEntityIds[addresses[i]] = entityId;
