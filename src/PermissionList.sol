@@ -47,6 +47,9 @@ contract PermissionList {
     /// @dev Default value for the addressEntityIds mapping is 0, so entityIds are 1 indexed and setting permissions for 0 is not allowed
     error ZeroEntityIdNotAllowed();
 
+    /// @dev An adresses's entity ID can not be changed once set, it can only be unset and then set to a new value
+    error EntityIdAlreadySet();
+
     /**
      * @notice Construct a new PermissionList instance
      * @param _permissionAdmin Address of the permission administrator
@@ -85,6 +88,20 @@ contract PermissionList {
         return permissions[entityId];
     }
 
+    // caller must check auth before calling this function
+    function _setEntityAddressInternal(address addr, uint256 entityId) internal {
+        uint256 prevId = addressEntityIds[addr];
+
+        if (prevId == entityId) revert EntityIdAlreadySet();
+
+        // must set entityId to 0 before setting to a new value
+        // if prev id is nonzero 0, entityId must be 0
+        if (prevId != 0 && entityId != 0) revert EntityIdAlreadySet();
+
+        addressEntityIds[addr] = entityId;
+        emit EntityIdSet(addr, entityId);
+    }
+
     /**
     * @notice Sets the entity Id for a given address. Setting to 0 removes the address from the permissionList
     * @param addr The address to associate with an entityId
@@ -92,9 +109,7 @@ contract PermissionList {
     */
     function setEntityIdForAddress(address addr, uint256 entityId) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
-
-        addressEntityIds[addr] = entityId;
-        emit EntityIdSet(addr, entityId);
+        _setEntityAddressInternal(addr, entityId);
     }
 
     /**
@@ -106,11 +121,21 @@ contract PermissionList {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
         for (uint256 i = 0; i < addresses.length; ) {
-            addressEntityIds[addresses[i]] = entityId;
-            emit EntityIdSet(addresses[i], entityId);
-
+            _setEntityAddressInternal(addresses[i], entityId);
             unchecked { ++i; }
         }
+    }
+    
+
+    // Internal function to set permissions for a given entityId, auth must be checked by caller
+    function _setPermissionInternal(uint256 entityId, Permission calldata permission) internal {
+        if (entityId == 0) revert ZeroEntityIdNotAllowed();
+
+        _comparePermissionStructs(permissions[entityId], permission);
+
+        permissions[entityId] = permission;
+
+        emit PermissionSet(entityId, permission);
     }
 
     /**
@@ -120,13 +145,7 @@ contract PermissionList {
      */
     function setPermission(uint256 entityId, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityId == 0) revert ZeroEntityIdNotAllowed();
-
-        _comparePermissionStructs(permissions[entityId], permission);
-
-        permissions[entityId] = permission;
-
-        emit PermissionSet(entityId, permission);
+        _setPermissionInternal(entityId, permission);
     }
 
     /**
@@ -146,6 +165,16 @@ contract PermissionList {
 
             emit PermissionSet(entityIds[i], perms[i]);
 
+            unchecked { ++i; }
+        }
+    }
+
+    function setEntityPermsAndAddresses(uint256 entityId, address[] calldata addresses, Permission calldata permission) external {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+        _setPermissionInternal(entityId, permission);
+
+        for (uint256 i = 0; i < addresses.length; ) {
+            _setEntityAddressInternal(addresses[i], entityId);
             unchecked { ++i; }
         }
     }

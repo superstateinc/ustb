@@ -21,6 +21,8 @@ contract PermissionListTest is Test {
     address alice = address(10);
     address bob = address(11);
     uint bobEntityId = 11;
+    
+    PermissionList.Permission public allowPerms = PermissionList.Permission(true, false, false, false, false, false);
 
     function setUp() public {
         PermissionList permsImplementation = new PermissionList(address(this));
@@ -36,7 +38,7 @@ contract PermissionListTest is Test {
 
         // whitelist bob
         perms.setEntityIdForAddress(bob, bobEntityId);
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        // PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setPermission(bobEntityId, allowPerms);
     }
 
@@ -44,10 +46,8 @@ contract PermissionListTest is Test {
         assertEq(perms.permissionAdmin(), address(this));
     }
 
-    function testSetPermission() public {
+    function testSetEntityIdPermission() public {
         assertEq(perms.getPermission(alice).isAllowed, false);
-
-        PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, true, false, true);
 
         vm.expectEmit(true, true, false, true);
         emit EntityIdSet(alice, 1);
@@ -55,13 +55,136 @@ contract PermissionListTest is Test {
 
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
-        emit PermissionSet(1, newPerms);
+        emit PermissionSet(1, allowPerms);
 
         // allow alice's entity
-        perms.setPermission(1, newPerms);
+        perms.setPermission(1, allowPerms);
 
         assertEq(perms.getPermission(alice).isAllowed, true);
-        assertEq(perms.getPermission(alice), PermissionList.Permission(true, false, false, true, false, true));
+        assertEq(perms.getPermission(alice), allowPerms);
+    }
+
+    function testSetEntityIdRevertsAlreadySet() public {
+        perms.setEntityIdForAddress(alice, 1);
+        
+        vm.expectRevert(PermissionList.EntityIdAlreadySet.selector);
+        perms.setEntityIdForAddress(alice, 2);
+    }
+
+    function testSetEntityIdRevertsAlreadySetZero() public {
+        perms.setEntityIdForAddress(bob, 0);
+        
+        vm.expectRevert(PermissionList.EntityIdAlreadySet.selector);
+        perms.setEntityIdForAddress(bob, 0);
+    }
+
+    function testRemoveAddressFromEntityRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setEntityIdForAddress(alice, 0);
+    }
+
+    function testRemoveAddressFromEntity() public {
+        PermissionList.Permission memory newPerms = PermissionList.Permission(true, false, false, true, false, true);
+
+        perms.setEntityIdForAddress(alice, 1);
+        perms.setPermission(1, newPerms);
+        assertEq(perms.getPermission(alice).isAllowed, true);
+
+        perms.setEntityIdForAddress(alice, 0);
+
+        assertEq(perms.getPermission(alice).isAllowed, false);
+    }
+
+    function testSetEntityIdForMultipleAddresses() public {
+        address[] memory addrs = new address[](2);
+
+        address charlie = address(2);
+        addrs[0] = alice;
+        addrs[1] = charlie;
+
+        assertEq(perms.addressEntityIds(alice), 0);
+        assertEq(perms.addressEntityIds(charlie), 0);
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.getPermission(charlie).isAllowed, false);
+
+        vm.expectEmit(true, true, true, true);
+        emit EntityIdSet(alice, 1);
+        emit EntityIdSet(charlie, 1);
+        perms.setEntityIdForMultipleAddresses(addrs, 1);
+
+        assertEq(perms.addressEntityIds(alice), 1);
+        assertEq(perms.addressEntityIds(charlie), 1);
+        
+        perms.setPermission(1, allowPerms);
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(charlie).isAllowed, true);
+    }
+
+    function testSetEntityIdForMultipleAddressesRevertsUnauthorized() public {
+        vm.prank(alice);
+
+        address[] memory addrs = new address[](2);
+        addrs[0] = alice;
+        addrs[1] = bob;
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setEntityIdForMultipleAddresses(addrs, 1);
+    }
+
+    function testSetEntityIdForMultipleAddressesRevertsAlreadySet() public {
+        address[] memory addrs = new address[](2);
+        address charlie = address(2);
+
+        addrs[0] = alice;
+        addrs[1] = charlie;
+
+        perms.setEntityIdForAddress(alice, 2);
+        perms.setEntityIdForAddress(charlie, 1);
+
+        // reverts if only one is duplicated
+        vm.expectRevert(PermissionList.EntityIdAlreadySet.selector);
+        perms.setEntityIdForMultipleAddresses(addrs, 1);
+    }
+    // TODO: reverts if set to zero
+
+    function setEntityPermissionAndAddresses() public {
+        address[] memory addrs = new address[](2);
+        
+        address charlie = address(2);
+        addrs[0] = alice;
+        addrs[1] = charlie;
+
+        assertEq(perms.addressEntityIds(alice), 0);
+        assertEq(perms.addressEntityIds(charlie), 0);
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.getPermission(charlie).isAllowed, false);
+
+        vm.expectEmit(true, true, true, true);
+        emit EntityIdSet(alice, 1);
+        emit EntityIdSet(charlie, 1);
+        emit PermissionSet(1, allowPerms);
+        perms.setEntityPermissionAndAddresses(1, addrs, allowPerms);
+
+        assertEq(perms.addressEntityIds(alice), 1);
+        assertEq(perms.addressEntityIds(charlie), 1);
+        
+        assertEq(perms.getPermission(alice).isAllowed, true);
+        assertEq(perms.getPermission(charlie).isAllowed, true);
+    }
+
+    function testSetEntityPermissionsAndAddressesRevertsUnauthorized() public {
+        vm.prank(alice);
+        address[] memory addrs = new address[](2);
+        addrs[0] = alice;
+        addrs[1] = bob;
+
+        // should revert, since alice is not the permission admin
+        vm.expectRevert(PermissionList.Unauthorized.selector);
+        perms.setEntityPermissionAndAddresses(1, addrs, allowPerms);
     }
 
     function testSetPermissionRevertsUnauthorized() public {
@@ -95,7 +218,6 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice).isAllowed, false);
 
         // allow alice
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
         perms.setEntityIdForAddress(alice, 1);
         perms.setPermission(1, allowPerms);
         assertEq(perms.getPermission(alice).isAllowed, true);

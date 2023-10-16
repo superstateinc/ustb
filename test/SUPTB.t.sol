@@ -85,6 +85,12 @@ contract SUPTBTest is Test {
         assertEq(token.decimals(), 6);
     }
 
+    function testEntityMaxPercent() public {
+        assertEq(token.entityMaxBalance(), 0);
+        token.mint(alice, 100e6);
+        assertEq(token.entityMaxBalance(), 20e6);
+    }
+
     function testTokenIsInitializedAsUnpaused() public {
         assertEq(token.paused(), false);
     }
@@ -688,7 +694,6 @@ contract SUPTBTest is Test {
 
         // un-whitelist alice
         PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setEntityIdForAddress(alice, 1);
         perms.setPermission(1, disallowPerms);
 
         // alice can't transfer tokens to a whitelisted address

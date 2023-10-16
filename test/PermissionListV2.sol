@@ -77,24 +77,6 @@ contract PermissionListV2 {
     }
 
     /**
-     * @notice Sets permissions for a list of entityIds
-     * @param entityIds The entityIds to be updated
-     * @param perms The permission statuses to set
-     */
-    function setMultiplePermissions(uint256[] calldata entityIds, Permission[] calldata perms) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != perms.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            permissions[entityIds[i]] = perms[i];
-
-            emit PermissionSet(entityIds[i], perms[i]);
-
-            unchecked { ++i; }
-        }
-    }
-
-    /**
      * @notice Sets isAllowed permissions for a given entityId
      * @param entityId The entityId to be updated
      * @param value The isAllowed status to set
