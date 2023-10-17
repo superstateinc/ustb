@@ -25,8 +25,9 @@ contract SeedTestStateScript is Script {
         vm.startBroadcast(admin);
 
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setEntityIdForAddress(alice,1);
-        perms.setPermission(1, allowPerms);
+        address[] memory addrs = new address[](1);
+        addrs[0] = alice;
+        perms.setEntityPermissionAndAddresses(1, addrs, allowPerms);
 
         token.mint(alice, 100e6);
 

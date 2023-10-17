@@ -47,8 +47,8 @@ contract PermissionList {
     /// @dev Default value for the addressEntityIds mapping is 0, so entityIds are 1 indexed and setting permissions for 0 is not allowed
     error ZeroEntityIdNotAllowed();
 
-    /// @dev An adresses's entity ID can not be changed once set, it can only be unset and then set to a new value
-    error EntityIdAlreadySet();
+    /// @dev An adress's entityId can not be changed once set, it can only be unset and then set to a new value
+    error EntityIdChangedToNonZero();
 
     /**
      * @notice Construct a new PermissionList instance
@@ -68,11 +68,18 @@ contract PermissionList {
     }
 
     /**
+     * @notice Checks if the caller is the permissionAdmin
+     */
+    function _requireAuthorized() internal view {
+        if (msg.sender != permissionAdmin) revert Unauthorized();
+    }
+
+    /**
      * @notice Checks if the currentPermission equals newPermission and reverts if so
      * @param currentPermission The Permission currently written to storage
      * @param newPermission The new Permission passed in to change currentPermission's storage to
      */
-    function _comparePermissionStructs(Permission memory currentPermission, Permission memory newPermission) internal pure{
+    function _comparePermissionStructs(Permission memory currentPermission, Permission memory newPermission) internal pure {
         bytes32 currentHash = keccak256(abi.encode(currentPermission));
         bytes32 newHash = keccak256(abi.encode(newPermission));
         if (currentHash == newHash) revert AlreadySet();
@@ -88,40 +95,45 @@ contract PermissionList {
         return permissions[entityId];
     }
 
-    // caller must check auth before calling this function
-    function _setEntityAddressInternal(address addr, uint256 entityId) internal {
+    /**
+     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
+     * @param addr The address to set entity for
+     * @param entityId The entityId whose permissions are to be set
+     * @dev the caller must check if msg.sender is authenticated
+     */
+    function _setEntityAddressInternal(uint256 entityId, address addr) internal {
         uint256 prevId = addressEntityIds[addr];
 
-        if (prevId == entityId) revert EntityIdAlreadySet();
+        if (prevId == entityId) revert AlreadySet();
 
-        // must set entityId to 0 before setting to a new value
-        // if prev id is nonzero, revert if entityId is not zero 0
-        if (prevId != 0 && entityId != 0) revert EntityIdAlreadySet();
+        // Must set entityId to zero before setting to a new value.
+        // If prev id is nonzero, revert if entityId is not zero.
+        if (prevId != 0 && entityId != 0) revert EntityIdChangedToNonZero();
 
         addressEntityIds[addr] = entityId;
         emit EntityIdSet(addr, entityId);
     }
 
     /**
-    * @notice Sets the entity Id for a given address. Setting to 0 removes the address from the permissionList
-    * @param addr The address to associate with an entityId
-    * @param entityId The entityId to associate with an address
-    */
-    function setEntityIdForAddress(address addr, uint256 entityId) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        _setEntityAddressInternal(addr, entityId);
+     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
+     * @param addr The address to associate with an entityId
+     * @param entityId The entityId to associate with an address
+     */
+    function setEntityIdForAddress(uint256 entityId, address addr) external {
+        _requireAuthorized();
+        _setEntityAddressInternal(entityId, addr);
     }
 
     /**
-    * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
-    * @param addresses The addresses to associate with an entityId
-    * @param entityId The entityId to associate with an address
-    */
-    function setEntityIdForMultipleAddresses(address[] calldata addresses, uint256 entityId) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+     * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
+     * @param addresses The addresses to associate with an entityId
+     * @param entityId The entityId to associate with an address
+     */
+    function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
+        _requireAuthorized();
 
         for (uint256 i = 0; i < addresses.length; ) {
-            _setEntityAddressInternal(addresses[i], entityId);
+            _setEntityAddressInternal(entityId, addresses[i]);
             unchecked { ++i; }
         }
     }
@@ -147,7 +159,7 @@ contract PermissionList {
      * @param permission The permission status to set
      */
     function setPermission(uint256 entityId, Permission calldata permission) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+        _requireAuthorized();
         _setPermissionInternal(entityId, permission);
     }
 
@@ -158,11 +170,11 @@ contract PermissionList {
      * @param permission The permissions to set
      */
     function setEntityPermissionAndAddresses(uint256 entityId, address[] calldata addresses, Permission calldata permission) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+        _requireAuthorized();
         _setPermissionInternal(entityId, permission);
 
         for (uint256 i = 0; i < addresses.length; ) {
-            _setEntityAddressInternal(addresses[i], entityId);
+            _setEntityAddressInternal(entityId, addresses[i]);
             unchecked { ++i; }
         }
     }
@@ -173,7 +185,7 @@ contract PermissionList {
      * @param value The isAllowed status to set
      */
     function setIsAllowed(uint256 entityId, bool value) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+        _requireAuthorized();
         if (entityId == 0) revert ZeroEntityIdNotAllowed();
 
         Permission storage perms = permissions[entityId];
@@ -191,7 +203,7 @@ contract PermissionList {
      * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
      */
     function setNthPermission(uint256 entityId, uint256 index, bool value) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+        _requireAuthorized();
         if (entityId == 0) revert ZeroEntityIdNotAllowed();
 
         Permission memory perms = permissions[entityId];

@@ -66,11 +66,11 @@ contract SUPTBTest is Test {
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
 
-
-        perms.setEntityIdForAddress(alice, abcEntityId);
-        perms.setEntityIdForAddress(bob, abcEntityId);
-        perms.setEntityIdForAddress(charlie, abcEntityId);
-        perms.setPermission(abcEntityId, allowPerms);
+        perms.setEntityIdForAddress(abcEntityId, alice);
+        perms.setEntityIdForAddress(abcEntityId, bob);
+        address[] memory addrs = new address[](1);
+        addrs[0] = charlie;
+        perms.setEntityPermissionAndAddresses(abcEntityId, addrs, allowPerms);
     }
 
     function testTokenName() public {
@@ -626,9 +626,9 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setEntityIdForAddress(mallory, 2);
-        perms.setPermission(2, allowPerms);
-
+        address[] memory addrs = new address[](1);
+        addrs[0] = mallory;
+        perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
         token.approve(bob, 10e6);
@@ -669,9 +669,9 @@ contract SUPTBTest is Test {
 
         // whitelist mallory for setting encumbrances
         PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
-        perms.setEntityIdForAddress(mallory, 2);
-        perms.setPermission(2, allowPerms);
-
+        address[] memory addrs = new address[](1);
+        addrs[0] = mallory;
+        perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
         vm.startPrank(mallory);
         token.encumber(bob, 20e6);
         token.approve(bob, 10e6);
@@ -1264,7 +1264,7 @@ contract SUPTBTest is Test {
         addrs[1] = recipient;
         addrs[2] = recipient2;
 
-        perms.setEntityIdForMultipleAddresses(addrs, 2);
+        perms.setEntityIdForMultipleAddresses(2, addrs);
         perms.setPermission(2, allowPerms);
 
         // limit range of amount
