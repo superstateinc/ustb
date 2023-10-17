@@ -92,26 +92,6 @@ contract PermissionListV2 {
 
 
     /**
-     * @notice Sets isAllowed permissions for a list of entityIds
-     * @param entityIds The entityId to be updated
-     * @param values The isAllowed statuses to set
-     */
-    function setMultipleIsAllowed(uint256[] calldata entityIds, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != values.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            uint256 entityId = entityIds[i];
-            Permission storage perms = permissions[entityId];
-            perms.isAllowed = values[i];
-
-            emit PermissionSet(entityId, perms);
-
-            unchecked { ++i; }
-        }
-    }
-
-    /**
      * @notice Sets the nth permission for a given entityId
      * @param entityId The entityId to be updated
      * @param index The index of the permission to update
@@ -128,28 +108,6 @@ contract PermissionListV2 {
         emit PermissionSet(entityId, perms);
     }
 
-    /**
-     * @notice Sets the nth permissions for a list of entityIds
-     * @param entityIds The entityIds to be updated
-     * @param indices The indices of the permissions to update
-     * @param values The statuses to set
-     */
-    function setMultipleNthPermissions(uint256[] calldata entityIds, uint256[] calldata indices, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != indices.length || entityIds.length != values.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            uint256 entityId = entityIds[i];
-
-            Permission memory perms = permissions[entityId];
-            perms = setPermissionAtIndex(perms, indices[i], values[i]);
-            permissions[entityId] = perms;
-
-            emit PermissionSet(entityId, perms);
-
-            unchecked { ++i; }
-        }
-    }
     /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
      * @param perms The Permission to be updated
