@@ -95,7 +95,7 @@ contract PermissionList {
         if (prevId == entityId) revert EntityIdAlreadySet();
 
         // must set entityId to 0 before setting to a new value
-        // if prev id is nonzero 0, entityId must be 0
+        // if prev id is nonzero, revert if entityId is not zero 0
         if (prevId != 0 && entityId != 0) revert EntityIdAlreadySet();
 
         addressEntityIds[addr] = entityId;
@@ -125,9 +125,12 @@ contract PermissionList {
             unchecked { ++i; }
         }
     }
-    
 
-    // Internal function to set permissions for a given entityId, auth must be checked by caller
+    /**
+     * @notice Sets permissions for a given entityId. Admin check must be done by caller
+     * @param entityId The entityId to be updated
+     * @param permission The permission status to set
+     */
     function _setPermissionInternal(uint256 entityId, Permission calldata permission) internal {
         if (entityId == 0) revert ZeroEntityIdNotAllowed();
 
@@ -148,28 +151,13 @@ contract PermissionList {
         _setPermissionInternal(entityId, permission);
     }
 
-    /**
-     * @notice Sets permissions for a list of entityIds
-     * @param entityIds The entityIds to be updated
-     * @param perms The permission statuses to set
+    /** 
+     * @notice Sets addresses and permissions for an entity
+     * @param entityId The entityId to be updated
+     * @param addresses The addresses to associate with an entityId
+     * @param permission The permissions to set
      */
-    function setMultiplePermissions(uint256[] calldata entityIds, Permission[] calldata perms) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != perms.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            _comparePermissionStructs(permissions[entityIds[i]], perms[i]);
-            if (entityIds[i] == 0) revert ZeroEntityIdNotAllowed();
-
-            permissions[entityIds[i]] = perms[i];
-
-            emit PermissionSet(entityIds[i], perms[i]);
-
-            unchecked { ++i; }
-        }
-    }
-
-    function setEntityPermsAndAddresses(uint256 entityId, address[] calldata addresses, Permission calldata permission) external {
+    function setEntityPermissionAndAddresses(uint256 entityId, address[] calldata addresses, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
         _setPermissionInternal(entityId, permission);
 
@@ -196,28 +184,6 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets isAllowed permissions for a list of entityIds
-     * @param entityIds The entityId to be updated
-     * @param values The isAllowed statuses to set
-     */
-    function setMultipleIsAllowed(uint256[] calldata entityIds, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != values.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            uint256 entityId = entityIds[i];
-            if (entityId == 0) revert ZeroEntityIdNotAllowed();
-            Permission storage perms = permissions[entityId];
-            _comparePermissionBooleans(perms.isAllowed, values[i]);
-            perms.isAllowed = values[i];
-
-            emit PermissionSet(entityId, perms);
-
-            unchecked { ++i; }
-        }
-    }
-
-    /**
      * @notice Sets the nth permission for a given entityId
      * @param entityId The entityId to be updated
      * @param index The index of the permission to update
@@ -234,32 +200,6 @@ contract PermissionList {
 
         emit PermissionSet(entityId, perms);
     }
-
-    /**
-     * @notice Sets the nth permissions for a list of entityIds
-     * @param entityIds The entityIds to be updated
-     * @param indices The indices of the permissions to update
-     * @param values The statuses to set
-     */
-    function setMultipleNthPermissions(uint256[] calldata entityIds, uint256[] calldata indices, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (entityIds.length != indices.length || entityIds.length != values.length) revert BadData();
-
-        for (uint256 i = 0; i < entityIds.length; ) {
-            uint256 entityId = entityIds[i];
-            if (entityId == 0) revert ZeroEntityIdNotAllowed();
-
-            Permission memory perms = permissions[entityId];
-            perms = setPermissionAtIndex(perms, indices[i], values[i]);
-            permissions[entityId] = perms;
-
-            emit PermissionSet(entityId, perms);
-
-            unchecked { ++i; }
-        }
-    }
-
-
 
     /**
      * @dev Sets the nth permission for a Permission and returns the updated struct
