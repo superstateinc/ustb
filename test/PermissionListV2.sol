@@ -27,11 +27,17 @@ contract PermissionListV2 {
         bool state7;
     }
 
-    /// @notice A record of permissions for each address determining if they are allowed
-    mapping(address => Permission) public permissions;
+    /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
+    mapping(uint256 => Permission) public permissions;
 
-    /// @notice An event emitted when an address's permission status is changed
-    event PermissionSet(address indexed addr, Permission permission);
+    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the permissionList. 
+    mapping(address => uint256) public addressEntityIds;
+
+    /// @notice An event emitted when an entityId's permission status is changed
+    event PermissionSet(uint256 indexed entityId, Permission permission);
+
+    /// @notice An event emitted when an address is associated with an entityId
+    event EntityIdSet(address indexed addr, uint256 indexed entityId);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -49,117 +55,57 @@ contract PermissionListV2 {
 
     /**
      * @notice Fetches the permissions for a given address
-     * @param addr The address whose permissions are to be fetched
+     * @param addr The entityId whose permissions are to be fetched
      * @return Permission The permissions of the address
      */
     function getPermission(address addr) external view returns (Permission memory) {
-        return permissions[addr];
+        uint256 entityId = addressEntityIds[addr];
+        return permissions[entityId];
     }
 
     /**
-     * @notice Sets permissions for a given address
-     * @param addr The address to be updated
+     * @notice Sets permissions for a given entityId
+     * @param entityId The entityId to be updated
      * @param permission The permission status to set
      */
-    function setPermission(address addr, Permission calldata permission) external {
+    function setPermission(uint256 entityId, Permission calldata permission) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
-        permissions[addr] = permission;
+        permissions[entityId] = permission;
 
-        emit PermissionSet(addr, permission);
+        emit PermissionSet(entityId, permission);
     }
 
     /**
-     * @notice Sets permissions for a list of addresses
-     * @param users The addresses to be updated
-     * @param perms The permission statuses to set
-     */
-    function setMultiplePermissions(address[] calldata users, Permission[] calldata perms) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (users.length != perms.length) revert BadData();
-
-        for (uint i = 0; i < users.length; ) {
-            permissions[users[i]] = perms[i];
-
-            emit PermissionSet(users[i], perms[i]);
-
-            unchecked { i++; }
-        }
-    }
-
-    /**
-     * @notice Sets isAllowed permissions for a given address
-     * @param addr The address to be updated
+     * @notice Sets isAllowed permissions for a given entityId
+     * @param entityId The entityId to be updated
      * @param value The isAllowed status to set
      */
-    function setIsAllowed(address addr, bool value) external {
+    function setIsAllowed(uint256 entityId, bool value) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
-        Permission memory perms = permissions[addr];
+        Permission storage perms = permissions[entityId];
         perms.isAllowed = value;
-        permissions[addr] = perms;
 
-        emit PermissionSet(addr, perms);
+        emit PermissionSet(entityId, perms);
     }
 
-    /**
-     * @notice Sets isAllowed permissions for a list of addresses
-     * @param users The addresses to be updated
-     * @param values The isAllowed statuses to set
-     */
-    function setMultipleIsAllowed(address[] calldata users, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (users.length != values.length) revert BadData();
-
-        for (uint i = 0; i < users.length; ) {
-            address user = users[i];
-            Permission memory perms = permissions[user];
-            perms.isAllowed = values[i];
-            permissions[user] = perms;
-
-            emit PermissionSet(user, perms);
-
-            unchecked { i++; }
-        }
-    }
 
     /**
-     * @notice Sets the nth permission for a given address
-     * @param addr The address to be updated
+     * @notice Sets the nth permission for a given entityId
+     * @param entityId The entityId to be updated
      * @param index The index of the permission to update
      * @param value The status to set
      * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
      */
-    function setNthPermission(address addr, uint index, bool value) external {
+    function setNthPermission(uint256 entityId, uint256 index, bool value) external {
         if (msg.sender != permissionAdmin) revert Unauthorized();
 
-        Permission memory perms = permissions[addr];
+        Permission memory perms = permissions[entityId];
         perms = setPermissionAtIndex(perms, index, value);
-        permissions[addr] = perms;
+        permissions[entityId] = perms;
 
-        emit PermissionSet(addr, perms);
-    }
-
-    /**
-     * @notice Sets the nth permissions for a list of addresses
-     * @param users The addresses to be updated
-     * @param indices The indices of the permissions to update
-     * @param values The statuses to set
-     */
-    function setMultipleNthPermissions(address[] calldata users, uint[] calldata indices, bool[] calldata values) external {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
-        if (users.length != indices.length || users.length != values.length) revert BadData();
-
-        for (uint i = 0; i < users.length; ) {
-            address user = users[i];
-            Permission memory perms = permissions[user];
-            perms = setPermissionAtIndex(perms, indices[i], values[i]);
-            permissions[user] = perms;
-
-            emit PermissionSet(user, perms);
-
-            unchecked { i++; }
-        }
+        emit PermissionSet(entityId, perms);
     }
 
     /**
