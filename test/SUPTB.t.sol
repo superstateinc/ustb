@@ -18,8 +18,8 @@ contract SUPTBTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event Burn(address indexed burner, address indexed from, uint256 amount);
-    event AccountingPaused(address account);
-    event AccountingUnpaused(address account);
+    event AccountingPaused(address admin);
+    event AccountingUnpaused(address admin);
 
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
@@ -205,37 +205,21 @@ contract SUPTBTest is Test {
         assertEq(token.encumberedBalanceOf(alice), 60e6);
     }
 
-    function testSelfEncumberance() public {
+    function testSelfEncumberanceReverts() public {
         deal(address(token), alice, 100e6);
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        // alice encumbers half her balance to herself
         vm.prank(alice);
+        vm.expectRevert(SUPTB.SelfEncumber.selector);
         token.encumber(alice, 50e6);
 
-        assertEq(token.balanceOf(alice), 100e6);
-        assertEq(token.availableBalanceOf(alice), 50e6);
-        assertEq(token.encumberedBalanceOf(alice), 50e6);
-        assertEq(token.encumbrances(alice, alice), 50e6);
-
         vm.prank(alice);
-        // alice releases half her encumbrance to herself
-        token.release(alice, 25e6);
+        token.approve(bob, 50e6);
 
-        assertEq(token.balanceOf(alice), 100e6);
-        assertEq(token.availableBalanceOf(alice), 75e6);
-        assertEq(token.encumberedBalanceOf(alice), 25e6);
-        assertEq(token.encumbrances(alice, alice), 25e6);
-
-        vm.prank(alice);
-        // alice transfers other half of encumbrance to bob
-        token.transferFrom(alice, bob, 25e6);
-
-        assertEq(token.balanceOf(alice), 75e6);
-        assertEq(token.availableBalanceOf(alice), 75e6);
-        assertEq(token.encumberedBalanceOf(alice), 0);
-        assertEq(token.encumbrances(alice, alice), 0);
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.SelfEncumber.selector);
+        token.encumberFrom(alice, alice, 10e6);
     }
 
     function testTransferFromSufficientEncumbrance() public {
@@ -689,40 +673,36 @@ contract SUPTBTest is Test {
     }
 
     function testTransfersAndEncumbersRevertIfUnwhitelisted() public {
-        deal(address(token), alice, 100e6);
         deal(address(token), bob, 100e6);
+        deal(address(token), mallory, 100e6);
 
-        // un-whitelist alice
-        PermissionList.Permission memory disallowPerms = PermissionList.Permission(false, false, false, false, false, false);
-        perms.setPermission(1, disallowPerms);
-
-        // alice can't transfer tokens to a whitelisted address
-        vm.prank(alice);
+        // mallory can't transfer tokens to a whitelisted address
+        vm.prank(mallory);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.transfer(bob, 30e6);
 
-        // whitelisted addresses can't transfer tokens to alice
+        // whitelisted addresses can't transfer tokens to mallory
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        token.transfer(alice, 30e6);
+        token.transfer(mallory, 30e6);
 
         vm.prank(bob);
         token.approve(charlie, 50e6);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         vm.prank(charlie);
-        token.transferFrom(bob, alice, 30e6);
+        token.transferFrom(bob, mallory, 30e6);
 
-        // alice can't encumber tokens to anyone
-        vm.prank(alice);
+        // mallory can't encumber tokens to anyone
+        vm.prank(mallory);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumber(bob, 30e6);
 
-        // others can't encumber alice's tokens, even if she's approved them
-        vm.prank(alice);
+        // others can't encumber mallory's tokens, even if she's approved them
+        vm.prank(mallory);
         token.approve(bob, 50e6);
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
-        token.encumberFrom(alice, charlie, 30e6);
+        token.encumberFrom(mallory, charlie, 30e6);
     }
 
     function testPauseAndUnpauseRevertIfUnauthorized() public {
@@ -798,6 +778,41 @@ contract SUPTBTest is Test {
 
         vm.prank(bob);
         token.release(alice, 30e6);
+    }
+
+    // transfer, encumber, release should still work, but mint and burn should not
+    function testAccountingPauseCorrectFunctionsWork() public {
+        deal(address(token), alice, 100e6);
+        deal(address(token), bob, 100e6);
+
+        token.accountingPause();
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        token.mint(alice, 30e6);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        token.burn(bob, 30e6);
+
+        vm.prank(alice);
+        token.encumber(bob, 10e6);
+
+        vm.prank(alice);
+        token.transfer(bob, 10e6);
+    
+        vm.prank(alice);
+        token.approve(bob, 10e6);
+
+        vm.prank(bob);
+        token.encumberFrom(alice, charlie, 10e6);
+
+        vm.prank(charlie);
+        token.release(alice, 10e6);
+
+        vm.prank(bob);
+        token.transferFrom(alice, bob, 10e6);
+    }
+
+    // mint/burn should still work, but transfer, encumber, release should not
+    function testRegularPauseCorrectFunctionsWork() public {
+
     }
 
     // cannot double set any pause

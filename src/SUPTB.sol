@@ -55,11 +55,11 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Event emitted when tokens are burned
     event Burn(address indexed burner, address indexed from, uint256 amount);
 
-    /// @dev Emitted when the accounting pause is triggered by `account`.
-    event AccountingPaused(address account);
+    /// @dev Emitted when the accounting pause is triggered by `admin`.
+    event AccountingPaused(address admin);
 
-    /// @dev Emitted when the accounting pause is lifted by `account`.
-    event AccountingUnpaused(address account);
+    /// @dev Emitted when the accounting pause is lifted by `admin`.
+    event AccountingUnpaused(address admin);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -88,6 +88,9 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown if accounting pause is already off
     error AccountingIsNotPaused();
 
+    /// @dev Thrown if an address tries to encumber tokens to itself
+    error SelfEncumber();
+
     /**
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
      * @param _admin The address designated as the admin with special privileges
@@ -111,6 +114,10 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         __Pausable_init();
     }
 
+    function _requireAuthorized() internal view {
+        if (msg.sender != admin) revert Unauthorized();
+    }
+
     function _requireNotAccountingPaused() internal view {
         if (accountingPaused) revert AccountingIsPaused();
     }
@@ -120,7 +127,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Can only be called by the admin
      */
     function pause() external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         _requireNotPaused();
 
         _pause();
@@ -131,7 +138,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Can only be called by the admin
      */
     function unpause() external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         _requirePaused();
 
         _unpause();
@@ -142,7 +149,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Can only be called by the admin
      */
     function accountingPause() external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         _requireNotAccountingPaused();
 
         accountingPaused = true;
@@ -154,7 +161,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Can only be called by the admin
      */
     function accountingUnpause() external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         if (!accountingPaused) revert AccountingIsNotPaused();
 
         accountingPaused = false;
@@ -337,7 +344,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         _requireNotAccountingPaused();
         if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
@@ -352,7 +359,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        if (msg.sender != admin) revert Unauthorized();
+        _requireAuthorized();
         _requireNotAccountingPaused();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
@@ -364,6 +371,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
     function _encumber(address owner, address taker, uint256 amount) private {
+        if  (owner == taker) revert SelfEncumber();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         PermissionList.Permission memory permissions = permissionList.getPermission(owner);
         if (!permissions.isAllowed) revert InsufficientPermissions();

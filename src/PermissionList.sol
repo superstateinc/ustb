@@ -87,7 +87,7 @@ contract PermissionList {
 
     /**
      * @notice Fetches the permissions for a given address
-     * @param addr The entityId whose permissions are to be fetched
+     * @param addr The address whose permissions are to be fetched
      * @return Permission The permissions of the address
      */
     function getPermission(address addr) external view returns (Permission memory) {
@@ -164,7 +164,7 @@ contract PermissionList {
     }
 
     /** 
-     * @notice Sets addresses and permissions for an entity
+     * @notice Sets entity for an array of addresses and sets permissions for an entity
      * @param entityId The entityId to be updated
      * @param addresses The addresses to associate with an entityId
      * @param permission The permissions to set
