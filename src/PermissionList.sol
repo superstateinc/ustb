@@ -47,7 +47,7 @@ contract PermissionList {
     /// @dev Default value for the addressEntityIds mapping is 0, so entityIds are 1 indexed and setting permissions for 0 is not allowed
     error ZeroEntityIdNotAllowed();
 
-    /// @dev An adress's entityId can not be changed once set, it can only be unset and then set to a new value
+    /// @dev An address's entityId can not be changed once set, it can only be unset and then set to a new value
     error EntityIdChangedToNonZero();
 
     /**
