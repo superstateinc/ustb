@@ -812,7 +812,42 @@ contract SUPTBTest is Test {
 
     // mint/burn should still work, but transfer, encumber, release should not
     function testRegularPauseCorrectFunctionsWork() public {
+        token.mint(alice, 100e6);
+        token.burn(alice, 1e6);
 
+        vm.prank(alice);
+        token.encumber(bob, 20e6);
+
+        token.pause();
+        
+        vm.prank(alice);
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.transfer(bob, 1e6);
+
+        vm.prank(bob);
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.transferFrom(alice, bob, 10e6);
+
+        vm.prank(alice);
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.encumber(bob, 10e6);
+
+        vm.prank(bob);
+        vm.expectRevert(bytes("Pausable: paused"));
+        token.encumberFrom(alice, charlie, 10e6);
+
+        // burn via transfer to 0, approve & release still works
+        vm.prank(alice);
+        token.transfer(address(0), 1e6);
+
+        vm.prank(alice);
+        token.approve(bob, 10e6);
+
+        vm.prank(bob);
+        token.transferFrom(alice, address(0), 1e6);
+
+        vm.prank(bob);
+        token.release(alice, 10e6);
     }
 
     // cannot double set any pause
