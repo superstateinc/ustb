@@ -371,7 +371,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
     function _encumber(address owner, address taker, uint256 amount) private {
-        if  (owner == taker) revert SelfEncumberNotAllowed();
+        if (owner == taker) revert SelfEncumberNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         PermissionList.Permission memory permissions = permissionList.getPermission(owner);
         if (!permissions.isAllowed) revert InsufficientPermissions();
