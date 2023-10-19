@@ -211,14 +211,14 @@ contract SUPTBTest is Test {
         assertEq(token.balanceOf(alice), 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.SelfEncumber.selector);
+        vm.expectRevert(SUPTB.SelfEncumberNotAllowed.selector);
         token.encumber(alice, 50e6);
 
         vm.prank(alice);
         token.approve(bob, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(SUPTB.SelfEncumber.selector);
+        vm.expectRevert(SUPTB.SelfEncumberNotAllowed.selector);
         token.encumberFrom(alice, alice, 10e6);
     }
 

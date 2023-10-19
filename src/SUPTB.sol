@@ -89,7 +89,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     error AccountingIsNotPaused();
 
     /// @dev Thrown if an address tries to encumber tokens to itself
-    error SelfEncumber();
+    error SelfEncumberNotAllowed();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and PermissionList
@@ -371,7 +371,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
     function _encumber(address owner, address taker, uint256 amount) private {
-        if  (owner == taker) revert SelfEncumber();
+        if  (owner == taker) revert SelfEncumberNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         PermissionList.Permission memory permissions = permissionList.getPermission(owner);
         if (!permissions.isAllowed) revert InsufficientPermissions();
