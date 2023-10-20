@@ -97,8 +97,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
-     * @param addr The address to set entity for
      * @param entityId The entityId whose permissions are to be set
+     * @param addr The address to set entity for
      * @dev the caller must check if msg.sender is authenticated
      */
     function _setEntityAddressInternal(uint256 entityId, address addr) internal {
@@ -116,8 +116,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
-     * @param addr The address to associate with an entityId
      * @param entityId The entityId to associate with an address
+     * @param addr The address to associate with an entityId
      */
     function setEntityIdForAddress(uint256 entityId, address addr) external {
         _requireAuthorized();
@@ -126,8 +126,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
-     * @param addresses The addresses to associate with an entityId
      * @param entityId The entityId to associate with an address
+     * @param addresses The addresses to associate with an entityId
      */
     function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
         _requireAuthorized();
