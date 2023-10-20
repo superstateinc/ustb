@@ -55,6 +55,8 @@ contract PermissionListTest is Test {
         emit EntityIdSet(alice, aliceEntityId);
         perms.setEntityIdForAddress(aliceEntityId, alice);
 
+        assertEq(perms.addressEntityIds(alice), aliceEntityId);
+
         // emits PermissionSet event
         vm.expectEmit(true, true, true, true);
         emit PermissionSet(aliceEntityId, allowPerms);
@@ -108,8 +110,13 @@ contract PermissionListTest is Test {
         assertEq(perms.getPermission(alice).isAllowed, true);
 
         perms.setEntityIdForAddress(0, alice);
+        assertEq(perms.addressEntityIds(alice), 0);
 
         assertEq(perms.getPermission(alice).isAllowed, false);
+
+        perms.setEntityIdForAddress(2, alice);
+        assertEq(perms.getPermission(alice).isAllowed, false);
+        assertEq(perms.addressEntityIds(alice), 2);
     }
 
     function testSetEntityIdForMultipleAddresses() public {
