@@ -48,7 +48,7 @@ contract PermissionList {
     error ZeroEntityIdNotAllowed();
 
     /// @dev An address's entityId can not be changed once set, it can only be unset and then set to a new value
-    error EntityIdChangedToNonZero();
+    error NonZeroEntityIdMustBeChangedToZero();
 
     /**
      * @notice Construct a new PermissionList instance
@@ -87,7 +87,7 @@ contract PermissionList {
 
     /**
      * @notice Fetches the permissions for a given address
-     * @param addr The entityId whose permissions are to be fetched
+     * @param addr The address whose permissions are to be fetched
      * @return Permission The permissions of the address
      */
     function getPermission(address addr) external view returns (Permission memory) {
@@ -97,8 +97,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
-     * @param addr The address to set entity for
      * @param entityId The entityId whose permissions are to be set
+     * @param addr The address to set entity for
      * @dev the caller must check if msg.sender is authenticated
      */
     function _setEntityAddressInternal(uint256 entityId, address addr) internal {
@@ -108,7 +108,7 @@ contract PermissionList {
 
         // Must set entityId to zero before setting to a new value.
         // If prev id is nonzero, revert if entityId is not zero.
-        if (prevId != 0 && entityId != 0) revert EntityIdChangedToNonZero();
+        if (prevId != 0 && entityId != 0) revert NonZeroEntityIdMustBeChangedToZero();
 
         addressEntityIds[addr] = entityId;
         emit EntityIdSet(addr, entityId);
@@ -116,8 +116,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
-     * @param addr The address to associate with an entityId
      * @param entityId The entityId to associate with an address
+     * @param addr The address to associate with an entityId
      */
     function setEntityIdForAddress(uint256 entityId, address addr) external {
         _requireAuthorized();
@@ -126,8 +126,8 @@ contract PermissionList {
 
     /**
      * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
-     * @param addresses The addresses to associate with an entityId
      * @param entityId The entityId to associate with an address
+     * @param addresses The addresses to associate with an entityId
      */
     function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
         _requireAuthorized();
@@ -164,7 +164,7 @@ contract PermissionList {
     }
 
     /** 
-     * @notice Sets addresses and permissions for an entity
+     * @notice Sets entity for an array of addresses and sets permissions for an entity
      * @param entityId The entityId to be updated
      * @param addresses The addresses to associate with an entityId
      * @param permission The permissions to set
