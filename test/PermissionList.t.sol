@@ -74,7 +74,7 @@ contract PermissionListTest is Test {
     function testSetEntityIdRevertsChangedNonZero() public {
         perms.setEntityIdForAddress(1, alice);
         
-        vm.expectRevert(PermissionList.EntityIdChangedToNonZero.selector);
+        vm.expectRevert(PermissionList.NonZeroEntityIdMustBeChangedToZero.selector);
         perms.setEntityIdForAddress(2, alice);
     }
 
@@ -151,21 +151,28 @@ contract PermissionListTest is Test {
         perms.setEntityIdForMultipleAddresses(1, addrs);
     }
 
-    function testSetEntityIdForMultipleAddressesRevertsAlreadySet() public {
-        address[] memory addrs = new address[](2);
+    function testSetEntityIdForMultipleAddressesRevertsCorrectly() public {
         address charlie = address(2);
 
+        address[] memory addrs = new address[](2);
         addrs[0] = alice;
         addrs[1] = charlie;
+
+        address[] memory addrsReversed = new address[](2);
+        addrsReversed[0] = charlie;
+        addrsReversed[1] = alice;
 
         perms.setEntityIdForAddress(2, alice);
         perms.setEntityIdForAddress(1, charlie);
 
-        // reverts if only one is duplicated
-        vm.expectRevert(PermissionList.EntityIdChangedToNonZero.selector);
+        // test setting alice's perms revert because changing from 2 => 1
+        vm.expectRevert(PermissionList.NonZeroEntityIdMustBeChangedToZero.selector);
         perms.setEntityIdForMultipleAddresses(1, addrs);
+
+        // test setting charlie's perms revert because changing from 1 => 1
+        vm.expectRevert(PermissionList.AlreadySet.selector);
+        perms.setEntityIdForMultipleAddresses(1, addrsReversed);
     }
-    // TODO: reverts if set to zero
 
     function testSetEntityPermissionAndAddresses() public {
         address[] memory addrs = new address[](2);

@@ -48,7 +48,7 @@ contract PermissionList {
     error ZeroEntityIdNotAllowed();
 
     /// @dev An address's entityId can not be changed once set, it can only be unset and then set to a new value
-    error EntityIdChangedToNonZero();
+    error NonZeroEntityIdMustBeChangedToZero();
 
     /**
      * @notice Construct a new PermissionList instance
@@ -108,7 +108,7 @@ contract PermissionList {
 
         // Must set entityId to zero before setting to a new value.
         // If prev id is nonzero, revert if entityId is not zero.
-        if (prevId != 0 && entityId != 0) revert EntityIdChangedToNonZero();
+        if (prevId != 0 && entityId != 0) revert NonZeroEntityIdMustBeChangedToZero();
 
         addressEntityIds[addr] = entityId;
         emit EntityIdSet(addr, entityId);
