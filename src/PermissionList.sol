@@ -207,7 +207,7 @@ contract PermissionList {
         if (entityId == 0) revert ZeroEntityIdNotAllowed();
 
         Permission memory perms = permissions[entityId];
-        perms = setPermissionAtIndex(perms, index, value);
+        perms = _setPermissionAtIndex(perms, index, value);
         permissions[entityId] = perms;
 
         emit PermissionSet(entityId, perms);
@@ -219,7 +219,7 @@ contract PermissionList {
      * @param index The index of the permission to update
      * @param value The status to set
      */
-    function setPermissionAtIndex(Permission memory perms, uint256 index, bool value) internal pure returns (Permission memory) {
+    function _setPermissionAtIndex(Permission memory perms, uint256 index, bool value) internal pure returns (Permission memory) {
         if (index == 0) {
             _comparePermissionBooleans(perms.isAllowed, value);
             perms.isAllowed = value;
