@@ -6,6 +6,6 @@ PROXY_FILE="out/TransparentUpgradeableProxy.sol/ITransparentUpgradeableProxy.jso
 
 # only event abi
 jq -s '.[0].abi + .[1].abi | map(select(.type == "event"))' out/SUPTB.sol/SUPTB.json $PROXY_FILE > suptbAbi.json
-jq -s '.[0].abi + .[1].abi | map(select(.type == "event"))' out/PermissionList.sol/PermissionList.json $PROXY_FILE > permissionlistAbi.json
+jq -s '.[0].abi + .[1].abi | map(select(.type == "event"))' out/AllowList.sol/AllowList.json $PROXY_FILE > allowlistAbi.json
 
-echo "sucessfully generated suptbAbi.json and permissionlistAbi.json"
+echo "sucessfully generated suptbAbi.json and allowlistAbi.json"
