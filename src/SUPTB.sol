@@ -195,7 +195,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the zero address
+     * @dev Includes extra functionality to burn tokens if `dst` is the SUPTB token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
