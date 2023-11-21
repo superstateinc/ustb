@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 
 import { SUPTB } from "../src/SUPTB.sol";
-import { PermissionList } from "../src/PermissionList.sol";
+import { AllowList } from "../src/AllowList.sol";
 
 // Just add some example state for testing
 contract SeedTestStateScript is Script {
@@ -14,17 +14,17 @@ contract SeedTestStateScript is Script {
         address admin = vm.rememberKey(vm.envUint("ADMIN_PRIVATE_KEY"));
         address alice = vm.rememberKey(vm.envUint("ALICE_PRIVATE_KEY"));
 
-        address permissionList = vm.envAddress("PERMISSION_LIST_ADDRESS");
+        address allowList = vm.envAddress("PERMISSION_LIST_ADDRESS");
         address supTB = vm.envAddress("SUPTB_ADDRESS");
         
-        PermissionList perms = PermissionList(permissionList);
+        AllowList perms = AllowList(allowList);
         SUPTB token = SUPTB(supTB);
         
         require(perms.permissionAdmin() == admin, "Wrong admin address");
 
         vm.startBroadcast(admin);
 
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = alice;
         perms.setEntityPermissionAndAddresses(1, addrs, allowPerms);
