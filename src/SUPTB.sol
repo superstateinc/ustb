@@ -206,7 +206,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
 
-        if (dst == address(0)) {
+        if (dst == address(this)) {
             _requireNotAccountingPaused();
             _burn(msg.sender, amount);
             emit Burn(msg.sender, msg.sender, amount);
@@ -254,7 +254,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             _releaseEncumbrance(src, msg.sender, amount);
         }
 
-        if (dst == address(0)) {
+        if (dst == address(this)) {
             _requireNotAccountingPaused();
             _burn(src, amount);
             emit Burn(msg.sender, src, amount);
@@ -365,6 +365,21 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         _burn(src, amount);
         emit Burn(msg.sender, src, amount);
+    }
+
+    /**
+     * @notice Burn tokens from the caller's address
+     * @param amount Amount of tokens to burn
+     */
+    function burn(uint256 amount) external {
+        // check but dont spend encumbrance
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
+        PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
+        if (!senderPermissions.isAllowed) revert InsufficientPermissions();
+
+        _requireNotAccountingPaused();
+        _burn(msg.sender, amount);
+        emit Burn(msg.sender, msg.sender, amount);
     }
 
     /**

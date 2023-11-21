@@ -471,7 +471,25 @@ contract SUPTBTest is Test {
 
         // alice calls transfer(0, amount) to self-burn
         vm.prank(alice);
-        token.transfer(address(0), 50e6);
+        token.transfer(address(tokenProxy), 50e6);
+
+        assertEq(token.balanceOf(alice), 50e6);
+    }
+
+    function testSelfBurnUsingBurn() public {
+        deal(address(token), alice, 100e6);
+
+        assertEq(token.balanceOf(alice), 100e6);
+
+        // emits Transfer and Burn events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(alice, address(0), 50e6);
+        vm.expectEmit();
+        emit Burn(alice, alice, 50e6);
+
+        // alice calls burn(amount) to self-burn
+        vm.prank(alice);
+        token.burn(50e6);
 
         assertEq(token.balanceOf(alice), 50e6);
     }
@@ -492,7 +510,7 @@ contract SUPTBTest is Test {
 
         // bob calls transferFrom(alice, 0, amount) to self-burn
         vm.prank(bob);
-        token.transferFrom(alice, address(0), 50e6);
+        token.transferFrom(alice, address(tokenProxy), 50e6);
 
         assertEq(token.balanceOf(alice), 50e6);
         assertEq(token.allowance(alice, bob), 0e6);
@@ -502,6 +520,21 @@ contract SUPTBTest is Test {
         vm.prank(alice);
         vm.expectRevert(SUPTB.Unauthorized.selector);
         token.burn(bob, 100e6);
+    }
+
+    function testSelfBurnRevertInsufficientBalance() public {
+        deal(address(token), alice, 100e6);
+
+        // alice tries to burn more than her balance
+        vm.prank(alice);
+        token.encumber(bob, 50e6);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.availableBalanceOf(alice), 50e6);
+        assertEq(token.encumberedBalanceOf(alice), 50e6);
+        assertEq(token.encumbrances(alice, bob), 50e6);
+        
+        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        token.burn(200e6);
     }
 
     function testBurnRevertInsufficientBalance() public {
@@ -519,6 +552,15 @@ contract SUPTBTest is Test {
         // alice tries to burn more than her available balance
         vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
         token.burn(alice, 60e6);
+    }
+
+    function testSelfBurnRevertOwnerInsufficientPermissions() public {
+        deal(address(token), mallory, 100e6);
+
+        // mallory tries to burn her tokens, but isn't whitelisted
+        vm.prank(mallory);
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        token.burn(50e6);
     }
 
     function testEncumberRevertOwnerInsufficientPermissions() public {
@@ -543,6 +585,22 @@ contract SUPTBTest is Test {
         vm.prank(bob);
         vm.expectRevert(SUPTB.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
+    }
+
+    function testTransferToZeroReverts() public {
+        deal(address(token), alice, 100e6);
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.prank(alice);
+        token.transfer(address(0), 10e6);
+    }
+
+    function testTransferFromToZeroReverts() public {
+        deal(address(token), alice, 100e6);
+        vm.prank(alice);
+        token.approve(bob, 50e6);
+        vm.prank(bob);
+        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        token.transferFrom(alice, address(0), 10e6);
     }
 
     function testTransferRevertSenderInsufficientPermissions() public {
@@ -838,13 +896,16 @@ contract SUPTBTest is Test {
 
         // burn via transfer to 0, approve & release still works
         vm.prank(alice);
-        token.transfer(address(0), 1e6);
+        token.transfer(address(tokenProxy), 1e6);
+
+        vm.prank(alice);
+        token.burn(1e6);
 
         vm.prank(alice);
         token.approve(bob, 10e6);
 
         vm.prank(bob);
-        token.transferFrom(alice, address(0), 1e6);
+        token.transferFrom(alice, address(tokenProxy), 1e6);
 
         vm.prank(bob);
         token.release(alice, 10e6);
@@ -896,11 +957,15 @@ contract SUPTBTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(SUPTB.AccountingIsPaused.selector);
-        token.transfer(address(0), 50e6);
+        token.transfer(address(tokenProxy), 50e6);
 
         vm.prank(alice);
         vm.expectRevert(SUPTB.AccountingIsPaused.selector);
-        token.transferFrom(alice, address(0), 50e6);
+        token.transferFrom(alice, address(tokenProxy), 50e6);
+
+        vm.prank(alice);
+        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        token.burn(10e6);
 
         token.accountingUnpause();
         token.pause();
@@ -1305,6 +1370,7 @@ contract SUPTBTest is Test {
         vm.assume(recipient != alice && recipient != bob && recipient != charlie);
         vm.assume(recipient2 != alice && recipient2 != bob && recipient2 != charlie);
         vm.assume(spender != recipient && recipient != recipient2 && spender != recipient2);
+        vm.assume(recipient != address(0) && recipient2 != address(0));
         // proxy admin cant use protocol
         vm.assume(address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2);
 
