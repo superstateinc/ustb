@@ -195,7 +195,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the zero address
+     * @dev Includes extra functionality to burn tokens if `dst` is the SUPTB token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
@@ -206,7 +206,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
 
-        if (dst == address(0)) {
+        if (dst == address(this)) {
             _requireNotAccountingPaused();
             _burn(msg.sender, amount);
             emit Burn(msg.sender, msg.sender, amount);
@@ -254,7 +254,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             _releaseEncumbrance(src, msg.sender, amount);
         }
 
-        if (dst == address(0)) {
+        if (dst == address(this)) {
             _requireNotAccountingPaused();
             _burn(src, amount);
             emit Burn(msg.sender, src, amount);
@@ -365,6 +365,20 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
         _burn(src, amount);
         emit Burn(msg.sender, src, amount);
+    }
+
+    /**
+     * @notice Burn tokens from the caller's address
+     * @param amount Amount of tokens to burn
+     */
+    function burn(uint256 amount) external {
+        _requireNotAccountingPaused();
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
+        AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
+        if (!senderPermissions.isAllowed) revert InsufficientPermissions();
+
+        _burn(msg.sender, amount);
+        emit Burn(msg.sender, msg.sender, amount);
     }
 
     /**
