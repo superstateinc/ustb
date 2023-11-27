@@ -8,8 +8,8 @@ import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
 import { SUPTB } from "src/SUPTB.sol";
-import { PermissionList } from "src/PermissionList.sol";
-import "test/PermissionListV2.sol";
+import { AllowList } from "src/AllowList.sol";
+import "test/AllowListV2.sol";
 import "test/SUPTBV2.sol";
 
 contract SUPTBTest is Test {
@@ -23,7 +23,7 @@ contract SUPTBTest is Test {
 
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
-    PermissionList public perms;
+    AllowList public perms;
     TransparentUpgradeableProxy tokenProxy;
     SUPTB public token;
 
@@ -41,7 +41,7 @@ contract SUPTBTest is Test {
     function setUp() public {
         eve = vm.addr(evePrivateKey);
 
-        PermissionList permsImplementation = new PermissionList(address(this));
+        AllowList permsImplementation = new AllowList(address(this));
 
         // deploy proxy admin contract
         proxyAdmin = new ProxyAdmin();
@@ -50,7 +50,7 @@ contract SUPTBTest is Test {
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        perms = PermissionList(address(permsProxy));
+        perms = AllowList(address(permsProxy));
 
         SUPTB tokenImplementation = new SUPTB(address(this), perms);
 
@@ -64,7 +64,7 @@ contract SUPTBTest is Test {
         token.initialize("Superstate Short-Term Government Securities Fund", "SUPTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
@@ -667,7 +667,7 @@ contract SUPTBTest is Test {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -677,7 +677,7 @@ contract SUPTBTest is Test {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
+        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
@@ -710,7 +710,7 @@ contract SUPTBTest is Test {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -720,7 +720,7 @@ contract SUPTBTest is Test {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        PermissionList.Permission memory forbidPerms = PermissionList.Permission(false, false, false, false, false, false);
+        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
 
@@ -992,13 +992,13 @@ contract SUPTBTest is Test {
         assertEq(token.balanceOf(alice), 100e6);
     }
 
-    function testUpgradingPermissionListDoesNotAffectToken() public {
-        PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
+    function testUpgradingAllowListDoesNotAffectToken() public {
+        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
 
-        PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
+        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
-        assertEq(address(token.permissionList()), address(permsProxy));
+        assertEq(address(token.allowList()), address(permsProxy));
 
         // check Alice, Bob, and Charlie still whitelisted
         assertEq(permsV2.getPermission(alice).isAllowed, true);
@@ -1034,10 +1034,10 @@ contract SUPTBTest is Test {
         assertEq(token.encumbrances(bob, charlie), 30e6);
     }
 
-    function testUpgradingPermissionListAndTokenWorks() public {
-        PermissionListV2 permsV2Implementation = new PermissionListV2(address(this));
+    function testUpgradingAllowListAndTokenWorks() public {
+        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
-        PermissionListV2 permsV2 = PermissionListV2(address(permsProxy));
+        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
         SUPTBV2 tokenV2Implementation = new SUPTBV2(address(this), permsV2);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation));
@@ -1072,7 +1072,7 @@ contract SUPTBTest is Test {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        PermissionListV2.Permission memory newPerms = PermissionListV2.Permission(true, false, false, false, false, false, false, true);
+        AllowListV2.Permission memory newPerms = AllowListV2.Permission(true, false, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions
@@ -1362,7 +1362,7 @@ contract SUPTBTest is Test {
     }
 
     function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
-        PermissionList.Permission memory allowPerms = PermissionList.Permission(true, false, false, false, false, false);
+        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address
         // spender cannot be alice bob or charlie, they already have their permissions set

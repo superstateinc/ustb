@@ -2,11 +2,11 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title PermissionList
+ * @title AllowList
  * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract PermissionList {
+contract AllowList {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -26,7 +26,7 @@ contract PermissionList {
     /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
     mapping(uint256 => Permission) public permissions;
 
-    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the permissionList. 
+    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the allowList. 
     mapping(address => uint256) public addressEntityIds;
 
     /// @notice An event emitted when an entityId's permission status is changed
@@ -51,7 +51,7 @@ contract PermissionList {
     error NonZeroEntityIdMustBeChangedToZero();
 
     /**
-     * @notice Construct a new PermissionList instance
+     * @notice Construct a new AllowList instance
      * @param _permissionAdmin Address of the permission administrator
      */
     constructor(address _permissionAdmin) {
@@ -96,7 +96,7 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
+     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the allowList
      * @param entityId The entityId whose permissions are to be set
      * @param addr The address to set entity for
      * @dev the caller must check if msg.sender is authenticated
@@ -115,7 +115,7 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the permissionList
+     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the allowList
      * @param entityId The entityId to associate with an address
      * @param addr The address to associate with an entityId
      */
@@ -125,7 +125,7 @@ contract PermissionList {
     }
 
     /**
-     * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the permissionList
+     * @notice Sets the entity Id for a list of addresses. Setting to 0 removes the address from the allowList
      * @param entityId The entityId to associate with an address
      * @param addresses The addresses to associate with an entityId
      */

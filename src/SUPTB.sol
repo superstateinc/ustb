@@ -6,11 +6,11 @@ import { PausableUpgradeable } from "openzeppelin-contracts-upgradeable/security
 import { ECDSA } from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
 import { IERC7246 } from "src/interfaces/IERC7246.sol";
-import { PermissionList } from "src/PermissionList.sol";
+import { AllowList } from "src/AllowList.sol";
 
 /**
  * @title SUPTB
- * @notice A Pausable ERC7246 token contract that interacts with the PermissionList contract to check if transfers are allowed
+ * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Compound
  */
 contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
@@ -28,8 +28,8 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice Admin address with exclusive privileges for minting and burning
     address public immutable admin;
 
-    /// @notice Address of the PermissionList contract which determines permissions for transfers
-    PermissionList public immutable permissionList;
+    /// @notice Address of the AllowList contract which determines permissions for transfers
+    AllowList public immutable allowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -64,7 +64,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
 
-    /// @dev Thrown when an address does not have sufficient permissions, as dicatated by the PermissionList
+    /// @dev Thrown when an address does not have sufficient permissions, as dicatated by the AllowList
     error InsufficientPermissions();
 
     /// @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
@@ -92,14 +92,14 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     error SelfEncumberNotAllowed();
 
     /**
-     * @notice Construct a new ERC20 token instance with the given admin and PermissionList
+     * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
-     * @param _permissionList Address of the PermissionList contract to use for permission checking
+     * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, PermissionList _permissionList) {
+    constructor(address _admin, AllowList _allowList) {
         admin = _admin;
-        permissionList = _permissionList;
+        allowList = _allowList;
 
         _disableInitializers();
     }
@@ -203,7 +203,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function transfer(address dst, uint256 amount) public override returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
+        AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
 
         if (dst == address(this)) {
@@ -212,7 +212,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             emit Burn(msg.sender, msg.sender, amount);
         } else {
             _requireNotPaused();
-            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
+            AllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
@@ -233,7 +233,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
-        if (encumberedToTaker < amount && !permissionList.getPermission(src).isAllowed) {
+        if (encumberedToTaker < amount && !allowList.getPermission(src).isAllowed) {
             revert InsufficientPermissions();
         }
 
@@ -260,7 +260,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             emit Burn(msg.sender, src, amount);
         } else {
             _requireNotPaused();
-            PermissionList.Permission memory dstPermissions = permissionList.getPermission(dst);
+            AllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.isAllowed) revert InsufficientPermissions();
             _transfer(src, dst, amount);
         }
@@ -333,7 +333,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view returns (bool) {
-        PermissionList.Permission memory permissions = permissionList.getPermission(addr);
+        AllowList.Permission memory permissions = allowList.getPermission(addr);
         return permissions.isAllowed;
     }
 
@@ -346,7 +346,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function mint(address dst, uint256 amount) external {
         _requireAuthorized();
         _requireNotAccountingPaused();
-        if (!permissionList.getPermission(dst).isAllowed) revert InsufficientPermissions();
+        if (!allowList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
         emit Mint(msg.sender, dst, amount);
@@ -387,7 +387,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function _encumber(address owner, address taker, uint256 amount) private {
         if (owner == taker) revert SelfEncumberNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-        PermissionList.Permission memory permissions = permissionList.getPermission(owner);
+        AllowList.Permission memory permissions = allowList.getPermission(owner);
         if (!permissions.isAllowed) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;

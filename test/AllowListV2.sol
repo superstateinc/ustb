@@ -4,11 +4,11 @@ pragma solidity ^0.8.20;
 // THIS IS A TEST CONTRACT DO NOT USE IN PRODUCTION
 
 /**
- * @title PermissionListV2
+ * @title AllowListV2
  * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract PermissionListV2 {
+contract AllowListV2 {
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 
@@ -30,7 +30,7 @@ contract PermissionListV2 {
     /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
     mapping(uint256 => Permission) public permissions;
 
-    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the permissionList. 
+    /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the allowList. 
     mapping(address => uint256) public addressEntityIds;
 
     /// @notice An event emitted when an entityId's permission status is changed
@@ -46,7 +46,7 @@ contract PermissionListV2 {
     error BadData();
 
     /**
-     * @notice Construct a new PermissionList instance
+     * @notice Construct a new AllowList instance
      * @param _permissionAdmin Address of the permission administrator
      */
     constructor(address _permissionAdmin) {
