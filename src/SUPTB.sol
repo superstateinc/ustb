@@ -373,8 +373,6 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function burn(uint256 amount) external {
         _requireNotAccountingPaused();
-        
-        // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         PermissionList.Permission memory senderPermissions = permissionList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
