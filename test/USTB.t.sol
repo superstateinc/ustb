@@ -7,12 +7,12 @@ import { PausableUpgradeable } from "openzeppelin-contracts-upgradeable/security
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 
-import { SUPTB } from "src/SUPTB.sol";
+import { USTB } from "src/USTB.sol";
 import { AllowList } from "src/AllowList.sol";
 import "test/AllowListV2.sol";
-import "test/SUPTBV2.sol";
+import "test/USTBV2.sol";
 
-contract SUPTBTest is Test {
+contract USTBTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -25,7 +25,7 @@ contract SUPTBTest is Test {
     TransparentUpgradeableProxy permsProxy;
     AllowList public perms;
     TransparentUpgradeableProxy tokenProxy;
-    SUPTB public token;
+    USTB public token;
 
     address alice = address(10);
     address bob = address(11);
@@ -52,16 +52,16 @@ contract SUPTBTest is Test {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        SUPTB tokenImplementation = new SUPTB(address(this), perms);
+        USTB tokenImplementation = new USTB(address(this), perms);
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        token = SUPTB(address(tokenProxy));
+        token = USTB(address(tokenProxy));
 
         // initialize token contract
-        token.initialize("Superstate Short-Term Government Securities Fund", "SUPTB");
+        token.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
@@ -78,7 +78,7 @@ contract SUPTBTest is Test {
     }
 
     function testTokenSymbol() public {
-        assertEq(token.symbol(), "SUPTB");
+        assertEq(token.symbol(), "USTB");
     }
 
     function testTokenDecimals() public {
@@ -149,7 +149,7 @@ contract SUPTBTest is Test {
         token.encumber(charlie, 50e6);
 
         // alice attempts to transfer her entire balance
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.transfer(bob, 100e6);
 
         vm.stopPrank();
@@ -164,7 +164,7 @@ contract SUPTBTest is Test {
         vm.stopPrank();
 
         // someone attempts to transfer alice's entire balance
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.transferFrom(alice, bob, 100e6);
     }
 
@@ -176,7 +176,7 @@ contract SUPTBTest is Test {
         token.encumber(bob, 50e6);
 
         // alice attempts to encumber more than her remaining available balance
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.encumber(charlie, 60e6);
 
         vm.stopPrank();
@@ -211,14 +211,14 @@ contract SUPTBTest is Test {
         assertEq(token.balanceOf(alice), 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.SelfEncumberNotAllowed.selector);
+        vm.expectRevert(USTB.SelfEncumberNotAllowed.selector);
         token.encumber(alice, 50e6);
 
         vm.prank(alice);
         token.approve(bob, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(SUPTB.SelfEncumberNotAllowed.selector);
+        vm.expectRevert(USTB.SelfEncumberNotAllowed.selector);
         token.encumberFrom(alice, alice, 10e6);
     }
 
@@ -409,7 +409,7 @@ contract SUPTBTest is Test {
 
         // bob releases a greater amount than is encumbered to him
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientEncumbrance.selector);
+        vm.expectRevert(USTB.InsufficientEncumbrance.selector);
         token.release(alice, 200e6);
 
         assertEq(token.balanceOf(alice), 100e6);
@@ -431,7 +431,7 @@ contract SUPTBTest is Test {
 
     function testMintRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.mint(bob, 100e6);
 
         assertEq(token.balanceOf(bob), 0);
@@ -439,7 +439,7 @@ contract SUPTBTest is Test {
 
     function testMintRevertInsufficientPermissions() public {
         // cannot mint to Mallory since un-whitelisted
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.mint(mallory, 100e6);
     }
 
@@ -518,7 +518,7 @@ contract SUPTBTest is Test {
 
     function testBurnRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.burn(bob, 100e6);
     }
 
@@ -533,7 +533,7 @@ contract SUPTBTest is Test {
         assertEq(token.encumberedBalanceOf(alice), 50e6);
         assertEq(token.encumbrances(alice, bob), 50e6);
         
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.burn(200e6);
     }
 
@@ -550,7 +550,7 @@ contract SUPTBTest is Test {
         assertEq(token.encumbrances(alice, bob), 50e6);
 
         // alice tries to burn more than her available balance
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.burn(alice, 60e6);
     }
 
@@ -559,7 +559,7 @@ contract SUPTBTest is Test {
 
         // mallory tries to burn her tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.burn(50e6);
     }
 
@@ -568,7 +568,7 @@ contract SUPTBTest is Test {
         vm.startPrank(mallory);
 
         // mallory tries to encumber to bob, without being whitelisted
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.encumber(bob, 50e6);
 
         vm.stopPrank();
@@ -583,13 +583,13 @@ contract SUPTBTest is Test {
 
         // bob tries to encumber to charlie on behalf of mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
     }
 
     function testTransferToZeroReverts() public {
         deal(address(token), alice, 100e6);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         vm.prank(alice);
         token.transfer(address(0), 10e6);
     }
@@ -599,7 +599,7 @@ contract SUPTBTest is Test {
         vm.prank(alice);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(alice, address(0), 10e6);
     }
 
@@ -608,7 +608,7 @@ contract SUPTBTest is Test {
 
         // mallory tries to transfer tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transfer(charlie, 30e6);
     }
 
@@ -617,7 +617,7 @@ contract SUPTBTest is Test {
 
         // alice tries to transfer tokens to mallory, but mallory isn't whitelisted
         vm.prank(alice);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
     }
 
@@ -630,7 +630,7 @@ contract SUPTBTest is Test {
 
         // bob tries to transfer alice's tokens to mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(alice, mallory, 50e6);
     }
 
@@ -659,7 +659,7 @@ contract SUPTBTest is Test {
         // bob calls transfers from alice, attempting to transfer his encumbered
         // tokens and also transfer tokens encumbered to charlie
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientAvailableBalance.selector);
+        vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.transferFrom(alice, bob, 100e18);
     }
 
@@ -702,7 +702,7 @@ contract SUPTBTest is Test {
 
         // reverts because encumbrances[src][bob] == 0 and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 10e6);
     }
 
@@ -726,7 +726,7 @@ contract SUPTBTest is Test {
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 
@@ -736,37 +736,37 @@ contract SUPTBTest is Test {
 
         // mallory can't transfer tokens to a whitelisted address
         vm.prank(mallory);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transfer(bob, 30e6);
 
         // whitelisted addresses can't transfer tokens to mallory
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
 
         vm.prank(bob);
         token.approve(charlie, 50e6);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         vm.prank(charlie);
         token.transferFrom(bob, mallory, 30e6);
 
         // mallory can't encumber tokens to anyone
         vm.prank(mallory);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.encumber(bob, 30e6);
 
         // others can't encumber mallory's tokens, even if she's approved them
         vm.prank(mallory);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InsufficientPermissions.selector);
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
     }
 
     function testPauseAndUnpauseRevertIfUnauthorized() public {
         // try pausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.pause();
 
         // admin pauses the contract
@@ -774,7 +774,7 @@ contract SUPTBTest is Test {
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.unpause();
 
         // admin unpauses
@@ -784,7 +784,7 @@ contract SUPTBTest is Test {
     function testAdminPauseAndUnpauseRevertIfUnauthorized() public {
         // try pausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.accountingPause();
 
         // admin pauses the contract
@@ -794,7 +794,7 @@ contract SUPTBTest is Test {
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(SUPTB.Unauthorized.selector);
+        vm.expectRevert(USTB.Unauthorized.selector);
         token.accountingUnpause();
 
         // admin unpauses
@@ -844,9 +844,9 @@ contract SUPTBTest is Test {
         deal(address(token), bob, 100e6);
 
         token.accountingPause();
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.mint(alice, 30e6);
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.burn(bob, 30e6);
 
         vm.prank(alice);
@@ -914,7 +914,7 @@ contract SUPTBTest is Test {
     // cannot double set any pause
     function testCannotDoublePause() public {
         token.accountingPause();
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.accountingPause();
 
         token.pause();
@@ -926,7 +926,7 @@ contract SUPTBTest is Test {
         token.accountingPause();
 
         token.accountingUnpause();
-        vm.expectRevert(SUPTB.AccountingIsNotPaused.selector);
+        vm.expectRevert(USTB.AccountingIsNotPaused.selector);
         token.accountingUnpause();
 
         token.pause();
@@ -949,22 +949,22 @@ contract SUPTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.mint(alice, 100e6);
 
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.burn(alice, 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.transfer(address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.transferFrom(alice, address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(SUPTB.AccountingIsPaused.selector);
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
         token.burn(10e6);
 
         token.accountingUnpause();
@@ -1039,9 +1039,9 @@ contract SUPTBTest is Test {
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
-        SUPTBV2 tokenV2Implementation = new SUPTBV2(address(this), permsV2);
+        USTBV2 tokenV2Implementation = new USTBV2(address(this), permsV2);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation));
-        SUPTBV2 tokenV2 = SUPTBV2(address(tokenProxy));
+        USTBV2 tokenV2 = USTBV2(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
         // so Alice, Bob, and Charlie no longer have sufficient permissions...
@@ -1054,7 +1054,7 @@ contract SUPTBTest is Test {
 
         // ...and cannot do regular token operations (transfer, transferFrom, encumber, encumberFrom)
         vm.prank(alice);
-        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
         tokenV2.transfer(bob, 10e6);
 
         vm.prank(charlie);
@@ -1062,13 +1062,13 @@ contract SUPTBTest is Test {
         tokenV2.transferFrom(alice, bob, 10e6);
 
         vm.prank(bob);
-        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
         tokenV2.encumber(charlie, 10e6);
 
         vm.prank(bob);
         tokenV2.approve(alice, 40e6);
         vm.prank(alice);
-        vm.expectRevert(SUPTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
@@ -1146,7 +1146,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature, but he manipulates the owner
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(charlie, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1168,7 +1168,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature, but he manipulates the spender
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, charlie, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1190,7 +1190,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature, but he manipulates the allowance
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, bob, allowance + 1 wei, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1212,7 +1212,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature, but he manipulates the expiry
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry + 1, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1236,7 +1236,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1273,7 +1273,7 @@ contract SUPTBTest is Test {
 
         // bob tries to reuse the same signature twice
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1298,7 +1298,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature after the expiry
         vm.prank(bob);
-        vm.expectRevert(SUPTB.SignatureExpired.selector);
+        vm.expectRevert(USTB.SignatureExpired.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1323,7 +1323,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature with invalid `s` value
         vm.prank(bob);
-        vm.expectRevert(SUPTB.InvalidSignatureS.selector);
+        vm.expectRevert(USTB.InvalidSignatureS.selector);
         token.permit(eve, bob, allowance, expiry, v, r, invalidS);
 
         // bob's allowance from eve is unchanged
@@ -1347,7 +1347,7 @@ contract SUPTBTest is Test {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(SUPTB.BadSignatory.selector);
+        vm.expectRevert(USTB.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, invalidV, r, s);
 
         // bob's allowance from eve is unchanged

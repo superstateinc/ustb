@@ -11,11 +11,11 @@ import { IERC7246 } from "src/interfaces/IERC7246.sol";
 import { AllowListV2 } from "test/AllowListV2.sol";
 
 /**
- * @title SUPTBV2
+ * @title USTBV2
  * @notice A Pausable ERC7246 token contract that interacts with the AllowListV2 contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 

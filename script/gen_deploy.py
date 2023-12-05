@@ -8,15 +8,15 @@ def parse(data):
     output = {}
 
     permission_list_address = None
-    sup_tb_address = None
+    us_tb_address = None
 
     # find addresses so we know which proxy is which
     for tx in broadcast_json['transactions']:
         if tx['transactionType'] == "CREATE":
             if tx['contractName'] == "AllowList":
                 permission_list_address = tx['contractAddress']
-            if tx['contractName'] == "SUPTB":
-                sup_tb_address = tx['contractAddress']
+            if tx['contractName'] == "USTB":
+                us_tb_address = tx['contractAddress']
 
     for tx in broadcast_json['transactions']:
         # only look for txs that deploy the contract 
@@ -25,8 +25,8 @@ def parse(data):
             if tx['contractName'] == "TransparentUpgradeableProxy":
                 if tx['arguments'][0] == permission_list_address:
                     contract_name = "AllowListProxy"
-                elif tx['arguments'][0] == sup_tb_address:
-                    contract_name = "SUPTBProxy"
+                elif tx['arguments'][0] == us_tb_address:
+                    contract_name = "USTBProxy"
                 else:
                     raise ValueError("Unknown proxy address")
             else:
