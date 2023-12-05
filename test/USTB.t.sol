@@ -74,7 +74,7 @@ contract USTBTest is Test {
     }
 
     function testTokenName() public {
-        assertEq(token.name(), "Superstate Short-Term Government Securities Fund");
+        assertEq(token.name(), "Superstate Short Duration US Government Securities Fund");
     }
 
     function testTokenSymbol() public {
