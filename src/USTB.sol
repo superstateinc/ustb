@@ -9,11 +9,11 @@ import { IERC7246 } from "src/interfaces/IERC7246.sol";
 import { AllowList } from "src/AllowList.sol";
 
 /**
- * @title SUPTB
+ * @title USTB
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Compound
  */
-contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -195,7 +195,7 @@ contract SUPTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the SUPTB token address, namely its TransparentUpgradeableProxy
+     * @dev Includes extra functionality to burn tokens if `dst` is the USTB token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
