@@ -1,4 +1,5 @@
 {
+    "chain_id": 1,
     "ProxyAdmin": {
         "transactionHash": "0x82821750748f0bb39e13e850b812c8e19384826c15b6a6f317a8eaa066164924",
         "address": "0xCb8d325C0Af19697B8454481602097f93aa9040F",
