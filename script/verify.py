@@ -4,8 +4,7 @@ import os
 import subprocess
 import time
 
-# verifies already-deployed contracts using the foundry broadcast file and the output of gen_deploy.py
-
+# verifies already-deployed contracts using the foundry broadcast file
 
 def read_file(path):
     try:
@@ -23,7 +22,7 @@ def verify_env_var(var_name):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python ./broadcast/DeployScript.s.sol/5/run-latest.json")
+        print("Usage: python script/verify.py ./broadcast/DeployScript.s.sol/5/run-latest.json")
         sys.exit(1)
 
     if not verify_env_var("ETHERSCAN_API_KEY"):
@@ -33,8 +32,8 @@ if __name__ == "__main__":
         print("Error: CHAIN_ID environment variable not set.")
         sys.exit(1)
 
+    chain_id = os.getenv("CHAIN_ID")
     broadcast_file = read_file(sys.argv[1])
-    
 
     for tx in broadcast_file['transactions']:
         constructor_args = "" 
@@ -56,17 +55,19 @@ if __name__ == "__main__":
             for arg in tx["arguments"]:
                 arg_str += f"{arg} "
 
-            fn_sig_arg = f"contructor({abi_types_str})"
-            command = f"cast abi-encode \"{fn_sig_arg}\" {arg_str}"
+            fn_sig_arg = f"contructor({abi_types_str})".strip()
+            command = f"cast abi-encode \"{fn_sig_arg}\" {arg_str}".strip()
             res = subprocess.run(command, shell=True, text=True, capture_output=True)
-            constructor_args = f"--constructor-args {res.stdout}"
+            constructor_args = f"--constructor-args {res.stdout}".strip()
 
         addr = tx['contractAddress']
         contract_name = tx['contractName']
-        command = f"forge verify-contract --chain-id $CHAIN_ID {constructor_args} {addr} {contract_name}"
-        print("sent verification for " + addr)
+        command = f"forge verify-contract --chain {chain_id} {constructor_args} {addr} {contract_name}"
+        print("\n", "Sending verification for: " + addr)
         res = subprocess.run(command, shell=True, text=True, capture_output=True)
-        print(res.stdout)
-        time.sleep(5)
+        print("Output: ", "\n", res.stdout, "\n")
+        if len(res.stderr) != 0:
+            print("Error: ", res.stderr, "\n")
+        time.sleep(10)
 
     print("done")

@@ -1,11 +1,13 @@
 #!/bin/bash
 
+# usage: ./check_verify.sh <GUID>
+
 if [ -z "$ETHERSCAN_API_KEY" ]; then
     echo "ETHERSCAN_API_KEY is not set"
     exit 1
 fi
 
-if [ -z "$GUID" ]; then
+if [ -z "$1" ]; then
     echo "GUID is not set"
     exit 1
 fi
@@ -14,7 +16,7 @@ URL="https://api.etherscan.io/api"
 
 response=$(curl -s -G \
     --data-urlencode "apikey=$ETHERSCAN_API_KEY" \
-    --data-urlencode "guid=$GUID" \
+    --data-urlencode "guid=$1" \
     --data-urlencode "module=contract" \
     --data-urlencode "action=checkverifystatus" \
     "$URL")
