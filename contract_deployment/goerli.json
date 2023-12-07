@@ -18,13 +18,13 @@
         "deployBlock": 10141774,
         "contractName": "TransparentUpgradeableProxy"
     },
-    "SUPTB": {
+    "USTB": {
         "transactionHash": "0xbded85cc556623b2c466ea996c78c5cbcc6917b6d136c76d82ee94a21dc183c8",
         "address": "0x5C9bd489e6dbd88421f9448f6A3C58fcAED69ad6",
         "deployBlock": 10141774,
         "contractName": "SUPTB"
     },
-    "SUPTBProxy": {
+    "USTBProxy": {
         "transactionHash": "0x470eaf2e3e57d3e17513409b15da47cb06efcab3deeb4eaaf1cf48219ccba440",
         "address": "0x6899e4B3693E6b5f59cAB72C9C19A018f20dcEeb",
         "deployBlock": 10141774,
