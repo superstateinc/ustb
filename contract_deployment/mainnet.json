@@ -1,0 +1,33 @@
+{
+    "chain_id": 1,
+    "ProxyAdmin": {
+        "transactionHash": "0x82821750748f0bb39e13e850b812c8e19384826c15b6a6f317a8eaa066164924",
+        "address": "0xCb8d325C0Af19697B8454481602097f93aa9040F",
+        "deployBlock": 18725909,
+        "contractName": "ProxyAdmin"
+    },
+    "AllowList": {
+        "transactionHash": "0x7cd67bb01630dcb6f3293706a5a0ad506e00240415f34194f8cfdf619381aa9e",
+        "address": "0x783c279157d22Cc5116800666BA477d466983FC0",
+        "deployBlock": 18725909,
+        "contractName": "AllowList"
+    },
+    "AllowListProxy": {
+        "transactionHash": "0x64681476422c2b2444454776c37e2497951b55c8f2a079355e899c1f2b390093",
+        "address": "0x42d75C8FdBBF046DF0Fe1Ff388DA16fF99dE8149",
+        "deployBlock": 18725909,
+        "contractName": "TransparentUpgradeableProxy"
+    },
+    "USTB": {
+        "transactionHash": "0xee991ae087e034acab30f6937daecfb4e0c03dbfb49bf40a3fc52d9d6a378dc7",
+        "address": "0x3986A1475F3c7786973e1B83cD6240521c51a1AF",
+        "deployBlock": 18725909,
+        "contractName": "USTB"
+    },
+    "USTBProxy": {
+        "transactionHash": "0x3a206d4b8e68446c957b570f23e54ff7833c9420d3e9755e52887b7fcafacf02",
+        "address": "0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e",
+        "deployBlock": 18725909,
+        "contractName": "TransparentUpgradeableProxy"
+    }
+}

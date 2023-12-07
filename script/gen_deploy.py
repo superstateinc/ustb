@@ -43,6 +43,7 @@ def parse(data):
                         'contractName': tx['contractName']
                     }
     
+    output["chain_id"] = broadcast_json["chain"]
     return output
 
 if __name__ == "__main__":
