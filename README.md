@@ -1,6 +1,6 @@
 # SUPTB Token Contract
 
-Repository for the SUPTB Token contract. Contains contracts for an upgradeable AllowList (`src/AllowList.sol`) and a upgradeable ERC7246 token that interacts with the AllowList to check if transfers and encumbers are allowed (`src/SUPTB.sol`).
+Repository for the SUPTB Token contract. Contains contracts for an upgradeable AllowList (`src/AllowList.sol`) and a upgradeable ERC7246 token that interacts with the AllowList to check if transfers and pledges are allowed (`src/SUPTB.sol`).
 
 ## Running tests
 

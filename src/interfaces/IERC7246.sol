@@ -6,50 +6,50 @@ pragma solidity ^0.8.20;
  */
 interface IERC7246 {
     /**
-     * @dev Emitted when `amount` tokens are encumbered from `owner` to `taker`.
+     * @dev Emitted when `amount` tokens are pledged from `owner` to `taker`.
      */
-    event Encumber(address indexed owner, address indexed taker, uint256 amount);
+    event Pledge(address indexed owner, address indexed taker, uint256 amount);
 
     /**
-     * @dev Emitted when the encumbrance of an `owner` to a `taker` is reduced
+     * @dev Emitted when the pledge of an `owner` to a `taker` is reduced
      * by `amount`.
      */
     event Release(address indexed owner, address indexed taker, uint256 amount);
 
     /**
      * @dev Returns the total amount of tokens owned by `owner` that are
-     * currently encumbered.  MUST never exceed `balanceOf(owner)`
+     * currently pledged.  MUST never exceed `balanceOf(owner)`
      *
      * Any function which would reduce balanceOf(owner) below
-     * encumberedBalanceOf(owner) MUST revert
+     * pledgedBalanceOf(owner) MUST revert
      */
-    function encumberedBalanceOf(address owner) external view returns (uint256);
+    function pledgedBalanceOf(address owner) external view returns (uint256);
 
     /**
-     * @dev Returns the number of tokens that `owner` has encumbered to `taker`.
+     * @dev Returns the number of tokens that `owner` has pledged to `taker`.
      *
-     * This value increases when {encumber} or {encumberFrom} are called by the
+     * This value increases when {pledge} or {pledgeFrom} are called by the
      * `owner` or by another permitted account.
      * This value decreases when {release} and {transferFrom} are called by
      * `taker`.
      */
-    function encumbrances(address owner, address taker) external view returns (uint256);
+    function pledgedAmounts(address owner, address taker) external view returns (uint256);
 
     /**
-     * @dev Increases the amount of tokens that the caller has encumbered to
+     * @dev Increases the amount of tokens that the caller has pledged to
      * `taker` by `amount`.
      * Grants to `taker` a guaranteed right to transfer `amount` from the
      * caller's balance by using `transferFrom`.
      *
      * MUST revert if caller does not have `amount` tokens available (e.g. if
-     * `balanceOf(caller) - encumbrances(caller) < amount`).
+     * `balanceOf(caller) - pledges(caller) < amount`).
      *
-     * Emits an {Encumber} event.
+     * Emits an {Pledge} event.
      */
-    function encumber(address taker, uint256 amount) external;
+    function pledge(address taker, uint256 amount) external;
 
     /**
-     * @dev Increases the amount of tokens that `owner` has encumbered to
+     * @dev Increases the amount of tokens that `owner` has pledged to
      * `taker` by `amount`.
      * Grants to `taker` a guaranteed right to transfer `amount` from `owner`
      * using transferFrom
@@ -58,14 +58,14 @@ interface IERC7246 {
      * authorized the sender of the message via some mechanism.
      *
      * MUST revert if `owner` does not have `amount` tokens available (e.g. if
-     * `balanceOf(owner) - encumbrances(owner) < amount`).
+     * `balanceOf(owner) - pledges(owner) < amount`).
      *
-     * Emits an {Encumber} event.
+     * Emits an {Pledge} event.
      */
-    function encumberFrom(address owner, address taker, uint256 amount) external;
+    function pledgeFrom(address owner, address taker, uint256 amount) external;
 
     /**
-     * @dev Reduces amount of tokens encumbered from `owner` to caller by
+     * @dev Reduces amount of tokens pledged from `owner` to caller by
      * `amount`.
      *
      * Emits an {Release} event.
@@ -73,8 +73,8 @@ interface IERC7246 {
     function release(address owner, uint256 amount) external;
 
     /**
-     * @dev Convenience function for reading the unencumbered balance of an address.
-     * Trivially implemented as `balanceOf(owner) - encumberedBalanceOf(owner)`
+     * @dev Convenience function for reading the unpledged balance of an address.
+     * Trivially implemented as `balanceOf(owner) - pledgedBalanceOf(owner)`
      */
     function availableBalanceOf(address owner) external view returns (uint256);
 }

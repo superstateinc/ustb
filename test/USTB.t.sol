@@ -13,7 +13,7 @@ import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
 contract USTBTest is Test {
-    event Encumber(address indexed owner, address indexed taker, uint256 amount);
+    event Pledge(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
@@ -106,13 +106,13 @@ contract USTBTest is Test {
         // availableBalanceOf is 0 by default
         assertEq(token.availableBalanceOf(alice), 0);
 
-        // reflects balance when there are no encumbrances
+        // reflects balance when there are no pledgedAmounts
         deal(address(token), alice, 100e6);
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 100e6);
 
-        // is reduced by encumbrances
-        token.encumber(bob, 20e6);
+        // is reduced by pledgedAmounts
+        token.pledge(bob, 20e6);
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 80e6);
 
@@ -125,18 +125,18 @@ contract USTBTest is Test {
 
         vm.startPrank(bob);
 
-        // is NOT reduced by transferFrom (from an encumbered address)
+        // is NOT reduced by transferFrom (from an pledged address)
         token.transferFrom(alice, charlie, 10e6);
         assertEq(token.balanceOf(alice), 70e6);
         assertEq(token.availableBalanceOf(alice), 60e6);
-        assertEq(token.encumbrances(alice, bob), 10e6);
+        assertEq(token.pledgedAmounts(alice, bob), 10e6);
         assertEq(token.balanceOf(charlie), 10e6);
 
         // is increased by a release
         token.release(alice, 5e6);
         assertEq(token.balanceOf(alice), 70e6);
         assertEq(token.availableBalanceOf(alice), 65e6);
-        assertEq(token.encumbrances(alice, bob), 5e6);
+        assertEq(token.pledgedAmounts(alice, bob), 5e6);
 
         vm.stopPrank();
     }
@@ -145,8 +145,8 @@ contract USTBTest is Test {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
-        // alice encumbers half her balance to charlie
-        token.encumber(charlie, 50e6);
+        // alice pledges half her balance to charlie
+        token.pledge(charlie, 50e6);
 
         // alice attempts to transfer her entire balance
         vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
@@ -159,8 +159,8 @@ contract USTBTest is Test {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
-        // alice encumbers half her balance to charlie
-        token.encumber(charlie, 50e6);
+        // alice pledges half her balance to charlie
+        token.pledge(charlie, 50e6);
         vm.stopPrank();
 
         // someone attempts to transfer alice's entire balance
@@ -168,71 +168,71 @@ contract USTBTest is Test {
         token.transferFrom(alice, bob, 100e6);
     }
 
-    function testEncumberRevert() public {
+    function testPledgeRevert() public {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
-        // alice encumbers half her balance to bob
-        token.encumber(bob, 50e6);
+        // alice pledges half her balance to bob
+        token.pledge(bob, 50e6);
 
-        // alice attempts to encumber more than her remaining available balance
+        // alice attempts to pledge more than her remaining available balance
         vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
-        token.encumber(charlie, 60e6);
+        token.pledge(charlie, 60e6);
 
         vm.stopPrank();
     }
 
-    function testEncumber() public {
+    function testPledge() public {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
-        // emits Encumber event
+        // emits Pledge event
         vm.expectEmit(true, true, true, true);
-        emit Encumber(alice, bob, 60e6);
+        emit Pledge(alice, bob, 60e6);
 
-        // alice encumbers some of her balance to bob
-        token.encumber(bob, 60e6);
+        // alice pledges some of her balance to bob
+        token.pledge(bob, 60e6);
 
         // balance is unchanged
         assertEq(token.balanceOf(alice), 100e6);
         // available balance is reduced
         assertEq(token.availableBalanceOf(alice), 40e6);
 
-        // creates encumbrance for taker
-        assertEq(token.encumbrances(alice, bob), 60e6);
+        // creates pledgedAmount for taker
+        assertEq(token.pledgedAmounts(alice, bob), 60e6);
 
-        // updates encumbered balance of owner
-        assertEq(token.encumberedBalanceOf(alice), 60e6);
+        // updates pledged balance of owner
+        assertEq(token.pledgedBalanceOf(alice), 60e6);
     }
 
-    function testSelfEncumberanceReverts() public {
+    function testSelfPledgeReverts() public {
         deal(address(token), alice, 100e6);
 
         assertEq(token.balanceOf(alice), 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(USTB.SelfEncumberNotAllowed.selector);
-        token.encumber(alice, 50e6);
+        vm.expectRevert(USTB.SelfPledgeNotAllowed.selector);
+        token.pledge(alice, 50e6);
 
         vm.prank(alice);
         token.approve(bob, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(USTB.SelfEncumberNotAllowed.selector);
-        token.encumberFrom(alice, alice, 10e6);
+        vm.expectRevert(USTB.SelfPledgeNotAllowed.selector);
+        token.pledgeFrom(alice, alice, 10e6);
     }
 
-    function testTransferFromSufficientEncumbrance() public {
+    function testTransferFromSufficientPledgedAmount() public {
         deal(address(token), alice, 100e6);
         vm.prank(alice);
 
-        // alice encumbers some of her balance to bob
-        token.encumber(bob, 60e6);
+        // alice pledges some of her balance to bob
+        token.pledge(bob, 60e6);
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 40e6);
-        assertEq(token.encumberedBalanceOf(alice), 60e6);
-        assertEq(token.encumbrances(alice, bob), 60e6);
+        assertEq(token.pledgedBalanceOf(alice), 60e6);
+        assertEq(token.pledgedAmounts(alice, bob), 60e6);
         assertEq(token.balanceOf(charlie), 0);
 
         // bob calls transfers from alice to charlie
@@ -243,20 +243,20 @@ contract USTBTest is Test {
 
         // alice balance is reduced
         assertEq(token.balanceOf(alice), 60e6);
-        // alice encumbrance to bob is reduced
+        // alice pledgedAmount to bob is reduced
         assertEq(token.availableBalanceOf(alice), 40e6);
-        assertEq(token.encumberedBalanceOf(alice), 20e6);
-        assertEq(token.encumbrances(alice, bob), 20e6);
+        assertEq(token.pledgedBalanceOf(alice), 20e6);
+        assertEq(token.pledgedAmounts(alice, bob), 20e6);
         // transfer is completed
         assertEq(token.balanceOf(charlie), 40e6);
     }
 
-    function testTransferFromEncumbranceAndAllowance() public {
+    function testTransferFromPledgedAmountAndAllowance() public {
         deal(address(token), alice, 100e6);
         vm.startPrank(alice);
 
-        // alice encumbers some of her balance to bob
-        token.encumber(bob, 20e6);
+        // alice pledges some of her balance to bob
+        token.pledge(bob, 20e6);
 
         // she also grants him an approval
         token.approve(bob, 30e6);
@@ -265,8 +265,8 @@ contract USTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 80e6);
-        assertEq(token.encumberedBalanceOf(alice), 20e6);
-        assertEq(token.encumbrances(alice, bob), 20e6);
+        assertEq(token.pledgedBalanceOf(alice), 20e6);
+        assertEq(token.pledgedAmounts(alice, bob), 20e6);
         assertEq(token.allowance(alice, bob), 30e6);
         assertEq(token.balanceOf(charlie), 0);
 
@@ -279,10 +279,10 @@ contract USTBTest is Test {
         // alice balance is reduced
         assertEq(token.balanceOf(alice), 60e6);
 
-        // her encumbrance to bob has been fully spent
+        // her pledgedAmount to bob has been fully spent
         assertEq(token.availableBalanceOf(alice), 60e6);
-        assertEq(token.encumberedBalanceOf(alice), 0);
-        assertEq(token.encumbrances(alice, bob), 0);
+        assertEq(token.pledgedBalanceOf(alice), 0);
+        assertEq(token.pledgedAmounts(alice, bob), 0);
 
         // her allowance to bob has been partially spent
         assertEq(token.allowance(alice, bob), 10e6);
@@ -294,14 +294,14 @@ contract USTBTest is Test {
     function testTransferFromInsufficientAllowance() public {
         deal(address(token), alice, 100e6);
 
-        uint256 encumberedAmount = 10e6;
+        uint256 pledgedAmount = 10e6;
         uint256 approvedAmount = 20e6;
         uint256 transferAmount = 40e6;
 
         vm.startPrank(alice);
 
-        // alice encumbers some of her balance to bob
-        token.encumber(bob, encumberedAmount);
+        // alice pledges some of her balance to bob
+        token.pledge(bob, pledgedAmount);
 
         // she also grants him an approval
         token.approve(bob, approvedAmount);
@@ -310,31 +310,31 @@ contract USTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 90e6);
-        assertEq(token.encumberedBalanceOf(alice), 10e6);
-        assertEq(token.encumbrances(alice, bob), encumberedAmount);
+        assertEq(token.pledgedBalanceOf(alice), 10e6);
+        assertEq(token.pledgedAmounts(alice, bob), pledgedAmount);
         assertEq(token.allowance(alice, bob), approvedAmount);
         assertEq(token.balanceOf(charlie), 0);
 
-        // bob tries to transfer more than his encumbered and allowed balances
+        // bob tries to transfer more than his pledged and allowed balances
         vm.prank(bob);
         vm.expectRevert();
         token.transferFrom(alice, charlie, transferAmount);
     }
 
-    function testEncumberFromInsufficientAllowance() public {
+    function testPledgeFromInsufficientAllowance() public {
         deal(address(token), alice, 100e6);
 
         // alice grants bob an approval
         vm.prank(alice);
         token.approve(bob, 50e6);
 
-        // but bob tries to encumber more than his allowance
+        // but bob tries to pledge more than his allowance
         vm.prank(bob);
         vm.expectRevert();
-        token.encumberFrom(alice, charlie, 60e6);
+        token.pledgeFrom(alice, charlie, 60e6);
     }
 
-    function testEncumberFrom() public {
+    function testPledgeFrom() public {
         deal(address(token), alice, 100e6);
 
         // alice grants bob an approval
@@ -343,27 +343,27 @@ contract USTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 100e6);
-        assertEq(token.encumberedBalanceOf(alice), 0e6);
-        assertEq(token.encumbrances(alice, bob), 0e6);
+        assertEq(token.pledgedBalanceOf(alice), 0e6);
+        assertEq(token.pledgedAmounts(alice, bob), 0e6);
         assertEq(token.allowance(alice, bob), 100e6);
         assertEq(token.balanceOf(charlie), 0);
 
-        // bob encumbers part of his allowance from alice to charlie
+        // bob pledges part of his allowance from alice to charlie
         vm.prank(bob);
-        // emits an Encumber event
+        // emits an Pledge event
         vm.expectEmit(true, true, true, true);
-        emit Encumber(alice, charlie, 60e6);
-        token.encumberFrom(alice, charlie, 60e6);
+        emit Pledge(alice, charlie, 60e6);
+        token.pledgeFrom(alice, charlie, 60e6);
 
         // no balance is transferred
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.balanceOf(charlie), 0);
         // but available balance is reduced
         assertEq(token.availableBalanceOf(alice), 40e6);
-        // encumbrance to charlie is created
-        assertEq(token.encumberedBalanceOf(alice), 60e6);
-        assertEq(token.encumbrances(alice, bob), 0e6);
-        assertEq(token.encumbrances(alice, charlie), 60e6);
+        // pledgedAmount to charlie is created
+        assertEq(token.pledgedBalanceOf(alice), 60e6);
+        assertEq(token.pledgedAmounts(alice, bob), 0e6);
+        assertEq(token.pledgedAmounts(alice, charlie), 60e6);
         // allowance is partially spent
         assertEq(token.allowance(alice, bob), 40e6);
     }
@@ -373,15 +373,15 @@ contract USTBTest is Test {
 
         vm.prank(alice);
 
-        // alice encumbers her balance to bob
-        token.encumber(bob, 100e6);
+        // alice pledges her balance to bob
+        token.pledge(bob, 100e6);
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 0);
-        assertEq(token.encumberedBalanceOf(alice), 100e6);
-        assertEq(token.encumbrances(alice, bob), 100e6);
+        assertEq(token.pledgedBalanceOf(alice), 100e6);
+        assertEq(token.pledgedAmounts(alice, bob), 100e6);
 
-        // bob releases part of the encumbrance
+        // bob releases part of the pledgedAmount
         vm.prank(bob);
         // emits Release event
         vm.expectEmit(true, true, true, true);
@@ -390,32 +390,32 @@ contract USTBTest is Test {
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 40e6);
-        assertEq(token.encumberedBalanceOf(alice), 60e6);
-        assertEq(token.encumbrances(alice, bob), 60e6);
+        assertEq(token.pledgedBalanceOf(alice), 60e6);
+        assertEq(token.pledgedAmounts(alice, bob), 60e6);
     }
 
-    function testReleaseInsufficientEncumbrance() public {
+    function testReleaseInsufficientPledgedAmount() public {
         deal(address(token), alice, 100e6);
 
         vm.prank(alice);
 
-        // alice encumbers her entire balance to bob
-        token.encumber(bob, 100e6);
+        // alice pledges her entire balance to bob
+        token.pledge(bob, 100e6);
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 0);
-        assertEq(token.encumberedBalanceOf(alice), 100e6);
-        assertEq(token.encumbrances(alice, bob), 100e6);
+        assertEq(token.pledgedBalanceOf(alice), 100e6);
+        assertEq(token.pledgedAmounts(alice, bob), 100e6);
 
-        // bob releases a greater amount than is encumbered to him
+        // bob releases a greater amount than is pledged to him
         vm.prank(bob);
-        vm.expectRevert(USTB.InsufficientEncumbrance.selector);
+        vm.expectRevert(USTB.InsufficientPledgedAmount.selector);
         token.release(alice, 200e6);
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 0);
-        assertEq(token.encumberedBalanceOf(alice), 100e6);
-        assertEq(token.encumbrances(alice, bob), 100e6);
+        assertEq(token.pledgedBalanceOf(alice), 100e6);
+        assertEq(token.pledgedAmounts(alice, bob), 100e6);
     }
 
     function testMint() public {
@@ -527,11 +527,11 @@ contract USTBTest is Test {
 
         // alice tries to burn more than her balance
         vm.prank(alice);
-        token.encumber(bob, 50e6);
+        token.pledge(bob, 50e6);
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 50e6);
-        assertEq(token.encumberedBalanceOf(alice), 50e6);
-        assertEq(token.encumbrances(alice, bob), 50e6);
+        assertEq(token.pledgedBalanceOf(alice), 50e6);
+        assertEq(token.pledgedAmounts(alice, bob), 50e6);
         
         vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.burn(200e6);
@@ -540,14 +540,14 @@ contract USTBTest is Test {
     function testBurnRevertInsufficientBalance() public {
         deal(address(token), alice, 100e6);
 
-        // alice encumbers half her balance to bob
+        // alice pledges half her balance to bob
         vm.prank(alice);
-        token.encumber(bob, 50e6);
+        token.pledge(bob, 50e6);
 
         assertEq(token.balanceOf(alice), 100e6);
         assertEq(token.availableBalanceOf(alice), 50e6);
-        assertEq(token.encumberedBalanceOf(alice), 50e6);
-        assertEq(token.encumbrances(alice, bob), 50e6);
+        assertEq(token.pledgedBalanceOf(alice), 50e6);
+        assertEq(token.pledgedAmounts(alice, bob), 50e6);
 
         // alice tries to burn more than her available balance
         vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
@@ -563,28 +563,28 @@ contract USTBTest is Test {
         token.burn(50e6);
     }
 
-    function testEncumberRevertOwnerInsufficientPermissions() public {
+    function testPledgeRevertOwnerInsufficientPermissions() public {
         deal(address(token), mallory, 100e6);
         vm.startPrank(mallory);
 
-        // mallory tries to encumber to bob, without being whitelisted
+        // mallory tries to pledge to bob, without being whitelisted
         vm.expectRevert(USTB.InsufficientPermissions.selector);
-        token.encumber(bob, 50e6);
+        token.pledge(bob, 50e6);
 
         vm.stopPrank();
     }
 
-    function testEncumberFromRevertOwnerInsufficientPermissions() public {
+    function testPledgeFromRevertOwnerInsufficientPermissions() public {
         deal(address(token), mallory, 100e6);
 
         // mallory grants bob an approval
         vm.prank(mallory);
         token.approve(bob, 50e6);
 
-        // bob tries to encumber to charlie on behalf of mallory, but mallory isn't whitelisted
+        // bob tries to pledge to charlie on behalf of mallory, but mallory isn't whitelisted
         vm.prank(bob);
         vm.expectRevert(USTB.InsufficientPermissions.selector);
-        token.encumberFrom(mallory, charlie, 30e6);
+        token.pledgeFrom(mallory, charlie, 30e6);
     }
 
     function testTransferToZeroReverts() public {
@@ -634,45 +634,45 @@ contract USTBTest is Test {
         token.transferFrom(alice, mallory, 50e6);
     }
 
-    function testTransferFromRevertsIfSpendingTokensEncumberedToOthers() public {
+    function testTransferFromRevertsIfSpendingTokensPledgeedToOthers() public {
         deal(address(token), alice, 200e18);
         vm.startPrank(alice);
 
-        // alice encumbers some of her balance to bob
-        token.encumber(bob, 50e18);
+        // alice pledges some of her balance to bob
+        token.pledge(bob, 50e18);
 
         // she also grants him an approval
         token.approve(bob, type(uint256).max);
 
-        // alice encumbers the remainder of her balance to charlie
-        token.encumber(charlie, 150e18);
+        // alice pledges the remainder of her balance to charlie
+        token.pledge(charlie, 150e18);
 
         vm.stopPrank();
 
         assertEq(token.balanceOf(alice), 200e18);
         assertEq(token.availableBalanceOf(alice), 0);
-        assertEq(token.encumberedBalanceOf(alice), 200e18);
-        assertEq(token.encumbrances(alice, bob), 50e18);
-        assertEq(token.encumbrances(alice, charlie), 150e18);
+        assertEq(token.pledgedBalanceOf(alice), 200e18);
+        assertEq(token.pledgedAmounts(alice, bob), 50e18);
+        assertEq(token.pledgedAmounts(alice, charlie), 150e18);
         assertEq(token.allowance(alice, bob), type(uint256).max);
 
-        // bob calls transfers from alice, attempting to transfer his encumbered
-        // tokens and also transfer tokens encumbered to charlie
+        // bob calls transfers from alice, attempting to transfer his pledged
+        // tokens and also transfer tokens pledged to charlie
         vm.prank(bob);
         vm.expectRevert(USTB.InsufficientAvailableBalance.selector);
         token.transferFrom(alice, bob, 100e18);
     }
 
-    function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public {
+    function testTransferFromWorksIfUsingPledgedAmountAndSourceIsNotWhitelisted() public {
         deal(address(token), mallory, 100e6);
 
-        // whitelist mallory for setting encumbrances
+        // whitelist mallory for setting pledgedAmounts
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
         vm.startPrank(mallory);
-        token.encumber(bob, 20e6);
+        token.pledge(bob, 20e6);
         token.approve(bob, 10e6);
         vm.stopPrank();
 
@@ -680,7 +680,7 @@ contract USTBTest is Test {
         AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
-        // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
+        // bob can transferFrom now-un-whitelisted mallory by spending her pledgedAmount to him, without issues
         vm.prank(bob);
         vm.expectEmit(true, true, true, true);
         emit Release(mallory, bob, 15e6);
@@ -691,31 +691,31 @@ contract USTBTest is Test {
         assertEq(token.balanceOf(mallory), 85e6);
         assertEq(token.balanceOf(alice), 15e6);
         assertEq(token.balanceOf(bob), 0e6);
-        assertEq(token.encumbrances(mallory, bob), 5e6);
+        assertEq(token.pledgedAmounts(mallory, bob), 5e6);
     }
 
-    function testTransferFromRevertsIfNotUsingEncumbrancesAndSourceNotWhitelisted() public {
+    function testTransferFromRevertsIfNotUsingPledgedAmountsAndSourceNotWhitelisted() public {
         deal(address(token), mallory, 100e6);
 
         vm.prank(mallory);
         token.approve(bob, 50e6);
 
-        // reverts because encumbrances[src][bob] == 0 and src (mallory) is not whitelisted
+        // reverts because pledgedAmounts[src][bob] == 0 and src (mallory) is not whitelisted
         vm.prank(bob);
         vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 10e6);
     }
 
-    function testTransferFromRevertsIfEncumbranceLessThanAmountAndSourceNotWhitelisted() public {
+    function testTransferFromRevertsIfPledgedAmountLessThanAmountAndSourceNotWhitelisted() public {
         deal(address(token), mallory, 100e6);
 
-        // whitelist mallory for setting encumbrances
+        // whitelist mallory for setting pledgedAmounts
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
         vm.startPrank(mallory);
-        token.encumber(bob, 20e6);
+        token.pledge(bob, 20e6);
         token.approve(bob, 10e6);
         vm.stopPrank();
 
@@ -724,13 +724,13 @@ contract USTBTest is Test {
         perms.setPermission(2, forbidPerms);
 
 
-        // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
+        // reverts because pledgedAmounts[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
         vm.expectRevert(USTB.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 
-    function testTransfersAndEncumbersRevertIfUnwhitelisted() public {
+    function testTransfersAndPledgesRevertIfUnwhitelisted() public {
         deal(address(token), bob, 100e6);
         deal(address(token), mallory, 100e6);
 
@@ -750,17 +750,17 @@ contract USTBTest is Test {
         vm.prank(charlie);
         token.transferFrom(bob, mallory, 30e6);
 
-        // mallory can't encumber tokens to anyone
+        // mallory can't pledge tokens to anyone
         vm.prank(mallory);
         vm.expectRevert(USTB.InsufficientPermissions.selector);
-        token.encumber(bob, 30e6);
+        token.pledge(bob, 30e6);
 
-        // others can't encumber mallory's tokens, even if she's approved them
+        // others can't pledge mallory's tokens, even if she's approved them
         vm.prank(mallory);
         token.approve(bob, 50e6);
         vm.prank(bob);
         vm.expectRevert(USTB.InsufficientPermissions.selector);
-        token.encumberFrom(mallory, charlie, 30e6);
+        token.pledgeFrom(mallory, charlie, 30e6);
     }
 
     function testPauseAndUnpauseRevertIfUnauthorized() public {
@@ -827,18 +827,18 @@ contract USTBTest is Test {
         token.transferFrom(bob, alice, 30e6);
 
         vm.prank(alice);
-        token.encumber(bob, 30e6);
+        token.pledge(bob, 30e6);
 
         vm.prank(alice);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        token.encumberFrom(alice, charlie, 30e6);
+        token.pledgeFrom(alice, charlie, 30e6);
 
         vm.prank(bob);
         token.release(alice, 30e6);
     }
 
-    // transfer, encumber, release should still work, but mint and burn should not
+    // transfer, pledge, release should still work, but mint and burn should not
     function testAccountingPauseCorrectFunctionsWork() public {
         deal(address(token), alice, 100e6);
         deal(address(token), bob, 100e6);
@@ -850,7 +850,7 @@ contract USTBTest is Test {
         token.burn(bob, 30e6);
 
         vm.prank(alice);
-        token.encumber(bob, 10e6);
+        token.pledge(bob, 10e6);
 
         vm.prank(alice);
         token.transfer(bob, 10e6);
@@ -859,7 +859,7 @@ contract USTBTest is Test {
         token.approve(bob, 10e6);
 
         vm.prank(bob);
-        token.encumberFrom(alice, charlie, 10e6);
+        token.pledgeFrom(alice, charlie, 10e6);
 
         vm.prank(charlie);
         token.release(alice, 10e6);
@@ -868,13 +868,13 @@ contract USTBTest is Test {
         token.transferFrom(alice, bob, 10e6);
     }
 
-    // mint/burn should still work, but transfer, encumber, release should not
+    // mint/burn should still work, but transfer, pledge, release should not
     function testRegularPauseCorrectFunctionsWork() public {
         token.mint(alice, 100e6);
         token.burn(alice, 1e6);
 
         vm.prank(alice);
-        token.encumber(bob, 20e6);
+        token.pledge(bob, 20e6);
 
         token.pause();
         
@@ -888,11 +888,11 @@ contract USTBTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(bytes("Pausable: paused"));
-        token.encumber(bob, 10e6);
+        token.pledge(bob, 10e6);
 
         vm.prank(bob);
         vm.expectRevert(bytes("Pausable: paused"));
-        token.encumberFrom(alice, charlie, 10e6);
+        token.pledgeFrom(alice, charlie, 10e6);
 
         // burn via transfer to 0, approve & release still works
         vm.prank(alice);
@@ -942,7 +942,7 @@ contract USTBTest is Test {
         vm.startPrank(alice);
         token.approve(bob, 50e6);
         token.approve(alice, 50e6);
-        token.encumber(bob, 50e6);
+        token.pledge(bob, 50e6);
         vm.stopPrank();
 
         token.accountingPause();
@@ -976,7 +976,7 @@ contract USTBTest is Test {
 
         vm.prank(alice);
         vm.expectRevert(bytes("Pausable: paused"));
-        token.encumber(bob, 50e6);
+        token.pledge(bob, 50e6);
 
         vm.prank(bob);
         vm.expectRevert(bytes("Pausable: paused"));
@@ -984,7 +984,7 @@ contract USTBTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(bytes("Pausable: paused"));
-        token.encumberFrom(alice, charlie, 50e6);
+        token.pledgeFrom(alice, charlie, 50e6);
 
         vm.prank(bob);
         token.release(alice, 50e6);
@@ -1007,7 +1007,7 @@ contract USTBTest is Test {
 
         deal(address(token), alice, 100e6);
         deal(address(token), bob, 100e6);
-        // check Alice, Bob, and Charlie can still do whitelisted operations (transfer, transferFrom, encumber, encumberFrom)
+        // check Alice, Bob, and Charlie can still do whitelisted operations (transfer, transferFrom, pledge, pledgeFrom)
         vm.prank(alice);
         token.transfer(bob, 10e6);
 
@@ -1026,12 +1026,12 @@ contract USTBTest is Test {
         assertEq(token.balanceOf(charlie), 20e6);
 
         vm.prank(bob);
-        token.encumber(charlie, 20e6);
+        token.pledge(charlie, 20e6);
 
         vm.prank(alice);
-        token.encumberFrom(bob, charlie, 10e6);
+        token.pledgeFrom(bob, charlie, 10e6);
 
-        assertEq(token.encumbrances(bob, charlie), 30e6);
+        assertEq(token.pledgedAmounts(bob, charlie), 30e6);
     }
 
     function testUpgradingAllowListAndTokenWorks() public {
@@ -1052,7 +1052,7 @@ contract USTBTest is Test {
         deal(address(tokenV2), alice, 100e6);
         deal(address(tokenV2), bob, 100e6);
 
-        // ...and cannot do regular token operations (transfer, transferFrom, encumber, encumberFrom)
+        // ...and cannot do regular token operations (transfer, transferFrom, pledge, pledgeFrom)
         vm.prank(alice);
         vm.expectRevert(USTBV2.InsufficientPermissions.selector);
         tokenV2.transfer(bob, 10e6);
@@ -1063,13 +1063,13 @@ contract USTBTest is Test {
 
         vm.prank(bob);
         vm.expectRevert(USTBV2.InsufficientPermissions.selector);
-        tokenV2.encumber(charlie, 10e6);
+        tokenV2.pledge(charlie, 10e6);
 
         vm.prank(bob);
         tokenV2.approve(alice, 40e6);
         vm.prank(alice);
         vm.expectRevert(USTBV2.InsufficientPermissions.selector);
-        tokenV2.encumberFrom(bob, charlie, 10e6);
+        tokenV2.pledgeFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
         AllowListV2.Permission memory newPerms = AllowListV2.Permission(true, false, false, false, false, false, false, true);
@@ -1080,7 +1080,7 @@ contract USTBTest is Test {
         assertEq(tokenV2.hasSufficientPermissions(bob), true);
         assertEq(tokenV2.hasSufficientPermissions(charlie), true);
 
-        // ...and can now do regular token operations (transfer, transferFrom, encumber, encumberFrom) without reverts
+        // ...and can now do regular token operations (transfer, transferFrom, pledge, pledgeFrom) without reverts
         vm.prank(alice);
         tokenV2.transfer(bob, 10e6);
 
@@ -1097,12 +1097,12 @@ contract USTBTest is Test {
         assertEq(tokenV2.balanceOf(charlie), 20e6);
 
         vm.prank(bob);
-        tokenV2.encumber(charlie, 20e6);
+        tokenV2.pledge(charlie, 20e6);
 
         vm.prank(alice);
-        tokenV2.encumberFrom(bob, charlie, 10e6);
+        tokenV2.pledgeFrom(bob, charlie, 10e6);
 
-        assertEq(tokenV2.encumbrances(bob, charlie), 30e6);
+        assertEq(tokenV2.pledgedAmounts(bob, charlie), 30e6);
     }
 
     /* ===== Permit Tests ===== */
@@ -1361,7 +1361,7 @@ contract USTBTest is Test {
         assertTrue(token.hasSufficientPermissions(bob));
     }
 
-    function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
+    function testFuzzPledgedAmountMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address
@@ -1387,13 +1387,13 @@ contract USTBTest is Test {
         uint256 amount = bound(amt, 1, type(uint128).max -1);
         deal(address(token), spender, amount*2);
 
-        // encumber tokens to spender
+        // pledge tokens to spender
         vm.prank(spender);
-        token.encumber(recipient, amount);
+        token.pledge(recipient, amount);
 
-        // encumber tokens to spender
+        // pledge tokens to spender
         vm.prank(spender);
-        token.encumber(recipient2, amount);
+        token.pledge(recipient2, amount);
 
         // recipient calls transferFrom on spender
         vm.prank(recipient);

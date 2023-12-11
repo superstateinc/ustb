@@ -34,11 +34,11 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
 
-    /// @notice Amount of an address's token balance that is encumbered
-    mapping(address => uint256) public encumberedBalanceOf;
+    /// @notice Amount of an address's token balance that is pledged
+    mapping(address => uint256) public pledgedBalanceOf;
 
-    /// @notice Amount encumbered from owner to taker (owner => taker => balance)
-    mapping(address => mapping(address => uint256)) public encumbrances;
+    /// @notice Amount pledged from owner to taker (owner => taker => balance)
+    mapping(address => mapping(address => uint256)) public pledgedAmounts;
 
     /// @notice If all minting and burning operations are paused
     bool public accountingPaused;
@@ -67,11 +67,11 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown when an address does not have sufficient permissions, as dicatated by the AllowList
     error InsufficientPermissions();
 
-    /// @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
+    /// @dev Thrown when an address does not have a sufficient balance of unpledged tokens
     error InsufficientAvailableBalance();
 
-    /// @dev Thrown when the amount of tokens to spend or release exceeds the amount encumbered to the taker
-    error InsufficientEncumbrance();
+    /// @dev Thrown when the amount of tokens to spend or release exceeds the amount pledged to the taker
+    error InsufficientPledgedAmount();
 
     /// @dev Thrown when the current timestamp has surpassed the expiration time for a signature
     error SignatureExpired();
@@ -88,8 +88,8 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown if accounting pause is already off
     error AccountingIsNotPaused();
 
-    /// @dev Thrown if an address tries to encumber tokens to itself
-    error SelfEncumberNotAllowed();
+    /// @dev Thrown if an address tries to pledge tokens to itself
+    error SelfPledgeNotAllowed();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
@@ -183,12 +183,12 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Amount of an address's token balance that is not encumbered
+     * @notice Amount of an address's token balance that is not pledged
      * @param owner Address to check the available balance of
-     * @return uint256 Unencumbered balance
+     * @return uint256 Unpledged balance
      */
     function availableBalanceOf(address owner) public view returns (uint256) {
-        return balanceOf(owner) - encumberedBalanceOf[owner];
+        return balanceOf(owner) - pledgedBalanceOf[owner];
     }
 
     /**
@@ -201,7 +201,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @return bool Whether the operation was successful
      */
     function transfer(address dst, uint256 amount) public override returns (bool) {
-        // check but dont spend encumbrance
+        // check but dont spend pledgedAmount
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed) revert InsufficientPermissions();
@@ -221,9 +221,9 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Moves `amount` tokens from `src` to `dst` using the encumbrance
+     * @notice Moves `amount` tokens from `src` to `dst` using the pledge
      * and allowance of the caller
-     * @dev Spends the caller's encumbrance from `src` first, then their
+     * @dev Spends the caller's pledge from `src` first, then their
      * allowance from `src` (if necessary)
      * @param src Address to transfer tokens from
      * @param dst Address to transfer tokens to
@@ -231,27 +231,27 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @return bool Whether the operation was successful
      */
     function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
-        uint256 encumberedToTaker = encumbrances[src][msg.sender];
-        // check src permissions if amount encumbered is less than amount being transferred
-        if (encumberedToTaker < amount && !allowList.getPermission(src).isAllowed) {
+        uint256 pledgedToTaker = pledgedAmounts[src][msg.sender];
+        // check src permissions if amount pledged is less than amount being transferred
+        if (pledgedToTaker < amount && !allowList.getPermission(src).isAllowed) {
             revert InsufficientPermissions();
         }
 
-        if (amount > encumberedToTaker) {
+        if (amount > pledgedToTaker) {
             uint256 excessAmount;
             unchecked {
-                excessAmount = amount - encumberedToTaker;
+                excessAmount = amount - pledgedToTaker;
             }
-            // Ensure that `src` has enough available balance (funds not encumbered to others)
+            // Ensure that `src` has enough available balance (funds not pledged to others)
             // to cover the excess amount
             if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
-            // Exceeds Encumbrance, so spend all of it
-            _releaseEncumbrance(src, msg.sender, encumberedToTaker);
+            // Exceeds pledged amount, so spend all of it
+            _releasePledge(src, msg.sender, pledgedToTaker);
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
-            _releaseEncumbrance(src, msg.sender, amount);
+            _releasePledge(src, msg.sender, amount);
         }
 
         if (dst == address(this)) {
@@ -269,38 +269,38 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Increases the amount of tokens that the caller has encumbered to
+     * @notice Increases the amount of tokens that the caller has pledged to
      * `taker` by `amount`
-     * @param taker Address to increase encumbrance to
-     * @param amount Amount of tokens to increase the encumbrance by
+     * @param taker Address to increase pledgedAmount to
+     * @param amount Amount of tokens to increase the pledgedAmount by
      */
-    function encumber(address taker, uint256 amount) external whenNotPaused {
-        _encumber(msg.sender, taker, amount);
+    function pledge(address taker, uint256 amount) external whenNotPaused {
+        _pledge(msg.sender, taker, amount);
     }
 
     /**
-     * @notice Increases the amount of tokens that `owner` has encumbered to
+     * @notice Increases the amount of tokens that `owner` has pledged to
      * `taker` by `amount`.
      * @dev Spends the caller's `allowance`
-     * @param owner Address to increase encumbrance from
-     * @param taker Address to increase encumbrance to
-     * @param amount Amount of tokens to increase the encumbrance to `taker` by
+     * @param owner Address to increase pledgedAmount from
+     * @param taker Address to increase pledgedAmount to
+     * @param amount Amount of tokens to increase the pledgedAmount to `taker` by
      */
-    function encumberFrom(address owner, address taker, uint256 amount) external whenNotPaused {
+    function pledgeFrom(address owner, address taker, uint256 amount) external whenNotPaused {
         // spend caller's allowance
         _spendAllowance(owner, msg.sender, amount);
-        _encumber(owner, taker, amount);
+        _pledge(owner, taker, amount);
     }
 
     /**
-     * @notice Reduces amount of tokens encumbered from `owner` to caller by
+     * @notice Reduces amount of tokens pledged from `owner` to caller by
      * `amount`
-     * @dev Reverts if `amount` is greater than `owner`'s current encumbrance to caller
-     * @param owner Address to decrease encumbrance from
-     * @param amount Amount of tokens to decrease the encumbrance by
+     * @dev Reverts if `amount` is greater than `owner`'s current pledgedAmount to caller
+     * @param owner Address to decrease pledgedAmount from
+     * @param amount Amount of tokens to decrease the pledgedAmount by
      */
     function release(address owner, uint256 amount) external {
-        _releaseEncumbrance(owner, msg.sender, amount);
+        _releasePledge(owner, msg.sender, amount);
     }
 
     /**
@@ -328,7 +328,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Check permissions of an address for transferring / encumbering
+     * @notice Check permissions of an address for transferring / pledgeing
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
@@ -382,27 +382,27 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @dev Increase `owner`'s encumbrance to `taker` by `amount`
+     * @dev Increase `owner`'s pledgedAmount to `taker` by `amount`
      */
-    function _encumber(address owner, address taker, uint256 amount) private {
-        if (owner == taker) revert SelfEncumberNotAllowed();
+    function _pledge(address owner, address taker, uint256 amount) private {
+        if (owner == taker) revert SelfPledgeNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         AllowList.Permission memory permissions = allowList.getPermission(owner);
         if (!permissions.isAllowed) revert InsufficientPermissions();
 
-        encumbrances[owner][taker] += amount;
-        encumberedBalanceOf[owner] += amount;
-        emit Encumber(owner, taker, amount);
+        pledgedAmounts[owner][taker] += amount;
+        pledgedBalanceOf[owner] += amount;
+        emit Pledge(owner, taker, amount);
     }
 
     /**
-     * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
+     * @dev Reduce `owner`'s pledgedAmount to `taker` by `amount`
      */
-    function _releaseEncumbrance(address owner, address taker, uint256 amount) private {
-        if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
+    function _releasePledge(address owner, address taker, uint256 amount) private {
+        if (pledgedAmounts[owner][taker] < amount) revert InsufficientPledgedAmount();
 
-        encumbrances[owner][taker] -= amount;
-        encumberedBalanceOf[owner] -= amount;
+        pledgedAmounts[owner][taker] -= amount;
+        pledgedBalanceOf[owner] -= amount;
         emit Release(owner, taker, amount);
     }
 
