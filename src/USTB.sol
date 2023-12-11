@@ -328,7 +328,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Check permissions of an address for transferring / pledgeing
+     * @notice Check permissions of an address for transferring / pledging
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
