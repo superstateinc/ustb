@@ -9,7 +9,7 @@ out/
 /broadcast/
 
 # Dotenv file
-.env
+*.env
 
 /script/*.key
 .vscode/
