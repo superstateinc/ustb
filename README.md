@@ -17,7 +17,7 @@ forge coverage
 ## Deployment Guide
 
 * ./deploy.sh or ./deploy_ustb_upgrade.sh to deploy new contracts
-* If verify did not wor, use verify scripts
+* If verify did not work, use verify scripts
 * If abi changed, run `gen_merge_abi.sh` and copy into `webserver` repo
 * Verify the deployed contract is correct using `npx saddle match` [(link)](https://github.com/compound-finance/saddle/tree/master?tab=readme-ov-file#cli)
 * Upgrade contract in fireblocks using proxy admin
