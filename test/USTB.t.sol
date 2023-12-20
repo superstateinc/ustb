@@ -466,7 +466,7 @@ contract USTBTest is Test {
         assertEq(token.balanceOf(bob), 333e6);
     }
 
-    function testBulkMintRevertBadCaller() public {
+    function testBulkMintRevertUnauthorized() public {
         address[] memory dsts = new address[](2);
         dsts[0] = alice;
         dsts[1] = bob;
