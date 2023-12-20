@@ -361,7 +361,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     }
 
     /**
-     * @notice Mint new tokens to many recipient
+     * @notice Mint new tokens to many recipients
      * @dev Only callable by the admin
      * @param dsts Recipients of the minted tokens
      * @param amounts Amounts of tokens to mint
