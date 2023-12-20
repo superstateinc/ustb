@@ -443,6 +443,109 @@ contract USTBTest is Test {
         token.mint(mallory, 100e6);
     }
 
+    function testBulkMint() public {
+        address[] memory dsts = new address[](2);
+        dsts[0] = alice;
+        dsts[1] = bob;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e6;
+        amounts[1] = 333e6;
+
+        // emits transfer and mint events
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0), alice, 100e6);
+        vm.expectEmit();
+        emit Mint(address(this), alice, 100e6);
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(0), bob, 333e6);
+        vm.expectEmit();
+        emit Mint(address(this), bob, 333e6);
+        token.bulkMint(dsts, amounts);
+        assertEq(token.balanceOf(alice), 100e6);
+        assertEq(token.balanceOf(bob), 333e6);
+    }
+
+    function testBulkMintRevertUnauthorized() public {
+        address[] memory dsts = new address[](2);
+        dsts[0] = alice;
+        dsts[1] = bob;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e6;
+        amounts[1] = 333e6;
+
+        vm.prank(alice);
+        vm.expectRevert(USTB.Unauthorized.selector);
+        token.bulkMint(dsts, amounts);
+
+        assertEq(token.balanceOf(alice), 0);
+        assertEq(token.balanceOf(bob), 0);
+    }
+
+    function testBulkMintRevertAccountingPaused() public {
+        address[] memory dsts = new address[](2);
+        dsts[0] = alice;
+        dsts[1] = bob;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e6;
+        amounts[1] = 333e6;
+
+        token.accountingPause();
+
+        vm.expectRevert(USTB.AccountingIsPaused.selector);
+        token.bulkMint(dsts, amounts);
+
+        assertEq(token.balanceOf(alice), 0);
+        assertEq(token.balanceOf(bob), 0);
+    }
+
+    function testBulkMintRevertInsufficientPermissions() public {
+        address[] memory dsts = new address[](2);
+        dsts[0] = mallory;
+        dsts[1] = bob;
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e6;
+        amounts[1] = 333e6;
+
+        // cannot mint to Mallory since un-whitelisted
+        vm.expectRevert(USTB.InsufficientPermissions.selector);
+        token.bulkMint(dsts, amounts);
+
+        assertEq(token.balanceOf(mallory), 0);
+        assertEq(token.balanceOf(bob), 0);
+    }
+
+    function testBulkMintRevertInvalidArgumentLengths() public {
+        address[] memory dsts = new address[](2);
+        dsts[0] = alice;
+        dsts[1] = bob;
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 100e6;
+
+        vm.expectRevert(USTB.InvalidArgumentLengths.selector);
+        token.bulkMint(dsts, amounts);
+
+        address[] memory dsts1 = new address[](1);
+        dsts1[0] = alice;
+
+        uint256[] memory amounts1 = new uint256[](2);
+        amounts1[0] = 100e6;
+        amounts1[1] = 333e6;
+
+        vm.expectRevert(USTB.InvalidArgumentLengths.selector);
+        token.bulkMint(dsts1, amounts1);
+
+        address[] memory dsts2 = new address[](0);
+        uint256[] memory amounts2 = new uint256[](0);
+
+        vm.expectRevert(USTB.InvalidArgumentLengths.selector);
+        token.bulkMint(dsts2, amounts2);
+    }
+
     function testBurn() public {
         deal(address(token), alice, 100e6);
 
