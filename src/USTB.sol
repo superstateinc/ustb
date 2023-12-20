@@ -64,7 +64,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
 
-    /// @dev Thrown when an address does not have sufficient permissions, as dicatated by the AllowList
+    /// @dev Thrown when an address does not have sufficient permissions, as dictated by the AllowList
     error InsufficientPermissions();
 
     /// @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
@@ -90,6 +90,9 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
     /// @dev Thrown if an address tries to encumber tokens to itself
     error SelfEncumberNotAllowed();
+
+    /// @dev Thrown if array length arguments aren't equal
+    error InvalidArgumentLengths();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
@@ -337,6 +340,13 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         return permissions.isAllowed;
     }
 
+    function _mintLogic(address dst, uint256 amount) internal {
+        if (!allowList.getPermission(dst).isAllowed) revert InsufficientPermissions();
+
+        _mint(dst, amount);
+        emit Mint(msg.sender, dst, amount);
+    }
+
     /**
      * @notice Mint new tokens to a recipient
      * @dev Only callable by the admin
@@ -346,10 +356,26 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function mint(address dst, uint256 amount) external {
         _requireAuthorized();
         _requireNotAccountingPaused();
-        if (!allowList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
-        _mint(dst, amount);
-        emit Mint(msg.sender, dst, amount);
+        _mintLogic({dst: dst, amount: amount});
+    }
+
+    /**
+     * @notice Mint new tokens to many recipient
+     * @dev Only callable by the admin
+     * @param dsts Recipients of the minted tokens
+     * @param amounts Amounts of tokens to mint
+     */
+    function bulkMint(address[] calldata dsts, uint256[] calldata amounts) external {
+        _requireAuthorized();
+        _requireNotAccountingPaused();
+        if (dsts.length != amounts.length || dsts.length == 0) revert InvalidArgumentLengths();
+
+        uint256 length = dsts.length;
+
+        for (uint256 i = 0; i < length; ++i) {
+            _mintLogic({dst: dsts[i], amount: amounts[i]});
+        }
     }
 
     /**
