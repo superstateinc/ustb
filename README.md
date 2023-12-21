@@ -28,6 +28,7 @@ forge coverage
 
 | Deploy File Name | Commit Hash | Notes |
 |------------|-------------|--------|
+| goerli.json     | fefd6d4     | add bulk mint
 | goerli.json     | 8c88411     | deployed new ustb impl and upgraded
 | mainnet.json    | 8c88411     | deployed mainnet
 | goerli.json     | bfe063d     | allowlist rename, burn changes, not including USTB rename | 

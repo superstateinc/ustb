@@ -25,9 +25,9 @@
         "contractName": "USTB"
     },
     "USTBProxy": {
-        "transactionHash": "0x470eaf2e3e57d3e17513409b15da47cb06efcab3deeb4eaaf1cf48219ccba440",
-        "address": "0x6899e4B3693E6b5f59cAB72C9C19A018f20dcEeb",
-        "deployBlock": 10141774,
+        "transactionHash": "0x6210c5b04e8b5c5be6b5b72e809fcb35fdaedbaaffbc7e135992e9ed729a796b",
+        "address": "0xc0460c42c1329d10328062f400074c5efd9ff1e6",
+        "deployBlock": 10248716,
         "contractName": "TransparentUpgradeableProxy"
     }
 }
