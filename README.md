@@ -19,7 +19,7 @@ forge coverage
 * ./deploy.sh or ./deploy_ustb_upgrade.sh to deploy new contracts
 * If verify did not work, use verify scripts
 * If abi changed, run `gen_merge_abi.sh` and copy into `webserver` repo
-* Verify the deployed contract is correct using `npx saddle match` [(link)](https://github.com/compound-finance/saddle/tree/master?tab=readme-ov-file#cli)
+* Verify the deployed contract is correct using https://github.com/lidofinance/diffyscan
 * Upgrade contract in fireblocks using proxy admin
 * Edit `contract_deployment` file or create new one with `gen_deploy.py`, leave a note in the below changelog
 
@@ -28,6 +28,7 @@ forge coverage
 
 | Deploy File Name | Commit Hash | Notes |
 |------------|-------------|--------|
+| mainnet.json    | dbd126e     | add bulk mint
 | goerli.json     | fefd6d4     | add bulk mint
 | goerli.json     | 8c88411     | deployed new ustb impl and upgraded
 | mainnet.json    | 8c88411     | deployed mainnet
