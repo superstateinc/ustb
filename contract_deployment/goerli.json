@@ -1,33 +1,33 @@
 {
-    "chain_id": 5,
     "ProxyAdmin": {
-        "transactionHash": "0xa8518a360f79dfc73881345b24d0df9d67e05b057f05289ee52e0ad63165d383",
-        "address": "0xfbC35031356ACC2354264938aE77335136EC3EaB",
-        "deployBlock": 10141774,
+        "transactionHash": "0xd743b6dd241a904e2e0226cf943773a7e9e2f125ff5eacb7b903134d673c65e5",
+        "address": "0xAca1CA90b6f43009E485f4BA2a9272d21E1A3F17",
+        "deployBlock": 10343709,
         "contractName": "ProxyAdmin"
     },
     "AllowList": {
-        "transactionHash": "0xb4fc199216992ae587ed8bccb36e85d63d350e9cd984a846ffbd71fc9b34d40c",
-        "address": "0xF20F9CEF6615Cb17D7c1F6893dA8e76FDd2259D3",
-        "deployBlock": 10141774,
+        "transactionHash": "0x26ba0fa6d80ca4d554757821f9d43cc3058f56fa806d4f0db524236ed314b858",
+        "address": "0xF4EECe61A50a3718Aecec6EccB38286ac0A9518F",
+        "deployBlock": 10343709,
         "contractName": "AllowList"
     },
     "AllowListProxy": {
-        "transactionHash": "0xcaa9295be50e1ee5b3326887c622c5e0b4d0b0ea46192ee79cadaa99bf404baa",
-        "address": "0x7FAdB29354C424d9898f820A891a75F433f66d87",
-        "deployBlock": 10141774,
+        "transactionHash": "0x9d4a7b99f583d0337c7819c662d886d3e318887c2d04ce1e29a11f2d377cfe8f",
+        "address": "0xcc0102c4aa149DFEAfA24F49F6F924ff7107f8B1",
+        "deployBlock": 10343709,
         "contractName": "TransparentUpgradeableProxy"
     },
     "USTB": {
-        "transactionHash": "0x6210c5b04e8b5c5be6b5b72e809fcb35fdaedbaaffbc7e135992e9ed729a796b",
-        "address": "0xc0460c42c1329d10328062f400074c5efd9ff1e6",
-        "deployBlock": 10248716,
+        "transactionHash": "0xb95895d5e34510cc42acc038b811850ef0a3165e56fa23ab979a79108ea691e8",
+        "address": "0xAdec75506DB9eA7489F37F16d986c933bC6b62c7",
+        "deployBlock": 10343710,
         "contractName": "USTB"
     },
     "USTBProxy": {
-        "transactionHash": "0x470eaf2e3e57d3e17513409b15da47cb06efcab3deeb4eaaf1cf48219ccba440",
-        "address": "0x6899e4B3693E6b5f59cAB72C9C19A018f20dcEeb",
-        "deployBlock": 10141774,
+        "transactionHash": "0xe1d32c0de3a12ea08d12dcb2c653ab948d60736f08e778cf8989d86d4bf693d9",
+        "address": "0xb45F0C5df66c6320Da50B82725819A24964BD822",
+        "deployBlock": 10343710,
         "contractName": "TransparentUpgradeableProxy"
-    }
+    },
+    "chain_id": 5
 }
