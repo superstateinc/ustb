@@ -18,17 +18,20 @@ forge coverage
 
 * ./deploy.sh or ./deploy_ustb_upgrade.sh to deploy new contracts
     * If verify did not work, use verify scripts
-    * add register the proxy/impl in etherscan https://etherscan.io/proxyContractChecker 
+* if redeploying proxy or doing a fresh deploy
+    * register the proxy/impl in etherscan https://{chain_name}.etherscan.io/proxyContractChecker, and create a migration in webserver to add the contract address there too, pulumi secrets
+    * update fireblocks whitelist, make sure admin address is funded
 * If abi changed, run `gen_merge_abi.sh` and copy into `webserver` repo. dedup "admin"
 * Verify the deployed contract is correct using https://github.com/lidofinance/diffyscan
 * Upgrade contract in fireblocks using proxy admin if applicable
 * Edit `contract_deployment` file or create new one with `gen_deploy.py`, leave a note in the below changelog
-
+* Create a PR in webserver for the new deployment file
 
 ### Changelog
 
 | Deploy File Name | Commit Hash | Notes |
 |------------|-------------|--------|
+| sepolia.json    | d7e42b9     | redeploy sepolia
 | goerli.json     | 628cd5c     | redeploy goerli because of circle issue
 | mainnet.json    | dbd126e     | add bulk mint
 | goerli.json     | fefd6d4     | add bulk mint
