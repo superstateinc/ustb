@@ -203,7 +203,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transfer(address dst, uint256 amount) public override returns (bool) {
+    function transfer(address dst, uint256 amount) public virtual override returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
@@ -233,7 +233,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) public virtual override returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
         if (encumberedToTaker < amount && !allowList.getPermission(src).isAllowed) {
@@ -335,12 +335,12 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
-    function hasSufficientPermissions(address addr) public view returns (bool) {
+    function hasSufficientPermissions(address addr) public virtual view returns (bool) {
         AllowList.Permission memory permissions = allowList.getPermission(addr);
         return permissions.isAllowed;
     }
 
-    function _mintLogic(address dst, uint256 amount) internal {
+    function _mintLogic(address dst, uint256 amount) internal virtual {
         if (!allowList.getPermission(dst).isAllowed) revert InsufficientPermissions();
 
         _mint(dst, amount);
@@ -397,7 +397,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @notice Burn tokens from the caller's address
      * @param amount Amount of tokens to burn
      */
-    function burn(uint256 amount) external {
+    function burn(uint256 amount) external virtual {
         _requireNotAccountingPaused();
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         AllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
@@ -410,7 +410,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
-    function _encumber(address owner, address taker, uint256 amount) private {
+    function _encumber(address owner, address taker, uint256 amount) internal virtual {
         if (owner == taker) revert SelfEncumberNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         AllowList.Permission memory permissions = allowList.getPermission(owner);
@@ -424,7 +424,7 @@ contract USTB is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
-    function _releaseEncumbrance(address owner, address taker, uint256 amount) private {
+    function _releaseEncumbrance(address owner, address taker, uint256 amount) internal {
         if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
 
         encumbrances[owner][taker] -= amount;

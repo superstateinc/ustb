@@ -38,7 +38,7 @@ contract USTBTest is Test {
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH = keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
 
-    function setUp() public {
+    function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
 
         AllowList permsImplementation = new AllowList(address(this));
@@ -73,11 +73,11 @@ contract USTBTest is Test {
         perms.setEntityPermissionAndAddresses(abcEntityId, addrs, allowPerms);
     }
 
-    function testTokenName() public {
+    function testTokenName() public virtual {
         assertEq(token.name(), "Superstate Short Duration US Government Securities Fund");
     }
 
-    function testTokenSymbol() public {
+    function testTokenSymbol() public virtual {
         assertEq(token.symbol(), "USTB");
     }
 
@@ -766,7 +766,7 @@ contract USTBTest is Test {
         token.transferFrom(alice, bob, 100e18);
     }
 
-    function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public {
+    function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public virtual {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
@@ -809,7 +809,7 @@ contract USTBTest is Test {
         token.transferFrom(mallory, alice, 10e6);
     }
 
-    function testTransferFromRevertsIfEncumbranceLessThanAmountAndSourceNotWhitelisted() public {
+    function testTransferFromRevertsIfEncumbranceLessThanAmountAndSourceNotWhitelisted() public virtual {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
@@ -1095,7 +1095,7 @@ contract USTBTest is Test {
         assertEq(token.balanceOf(alice), 100e6);
     }
 
-    function testUpgradingAllowListDoesNotAffectToken() public {
+    function testUpgradingAllowListDoesNotAffectToken() public virtual {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
 
@@ -1137,7 +1137,7 @@ contract USTBTest is Test {
         assertEq(token.encumbrances(bob, charlie), 30e6);
     }
 
-    function testUpgradingAllowListAndTokenWorks() public {
+    function testUpgradingAllowListAndTokenWorks() public virtual {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
@@ -1464,7 +1464,7 @@ contract USTBTest is Test {
         assertTrue(token.hasSufficientPermissions(bob));
     }
 
-    function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public {
+    function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public virtual {
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address

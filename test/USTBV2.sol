@@ -42,6 +42,9 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice Amount encumbered from owner to taker (owner => taker => balance)
     mapping(address => mapping(address => uint256)) public encumbrances;
 
+    /// @notice If all minting and burning operations are paused
+    bool public accountingPaused;
+
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
@@ -50,6 +53,12 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
 
     /// @dev Event emitted when tokens are burned
     event Burn(address indexed burner, address indexed from, uint256 amount);
+
+    /// @dev Emitted when the accounting pause is triggered by `admin`.
+    event AccountingPaused(address admin);
+
+    /// @dev Emitted when the accounting pause is lifted by `admin`.
+    event AccountingUnpaused(address admin);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -72,6 +81,18 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @dev Thrown if the signature is invalid or its signer does not match the expected singer
     error BadSignatory();
 
+    /// @dev Thrown if accounting pause is already on
+    error AccountingIsPaused();
+
+    /// @dev Thrown if accounting pause is already off
+    error AccountingIsNotPaused();
+
+    /// @dev Thrown if an address tries to encumber tokens to itself
+    error SelfEncumberNotAllowed();
+
+    /// @dev Thrown if array length arguments aren't equal
+    error InvalidArgumentLengths();
+
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
@@ -83,6 +104,14 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
         allowList = _allowList;
 
         _disableInitializers();
+    }
+
+    function _requireAuthorized() internal view {
+        if (msg.sender != admin) revert Unauthorized();
+    }
+
+    function _requireNotAccountingPaused() internal view {
+        if (accountingPaused) revert AccountingIsPaused();
     }
 
     /**
@@ -140,7 +169,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transfer(address dst, uint256 amount) public override whenNotPaused returns (bool) {
+    function transfer(address dst, uint256 amount) public virtual override whenNotPaused returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         AllowListV2.Permission memory senderPermissions = allowList.getPermission(msg.sender);
@@ -168,7 +197,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transferFrom(address src, address dst, uint256 amount) public override whenNotPaused returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount) public virtual override whenNotPaused returns (bool) {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
         if (encumberedToTaker < amount && !allowList.getPermission(src).isAllowed) {
@@ -268,7 +297,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
-    function hasSufficientPermissions(address addr) public view returns (bool) {
+    function hasSufficientPermissions(address addr) public virtual view returns (bool) {
         AllowListV2.Permission memory permissions = allowList.getPermission(addr);
         return permissions.isAllowed && permissions.state7;
     }
@@ -303,7 +332,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @dev Increase `owner`'s encumbrance to `taker` by `amount`
      */
-    function _encumber(address owner, address taker, uint256 amount) private {
+    function _encumber(address owner, address taker, uint256 amount) internal virtual {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
         AllowListV2.Permission memory permissions = allowList.getPermission(owner);
         if (!permissions.isAllowed || !permissions.state7) revert InsufficientPermissions();
@@ -316,7 +345,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /**
      * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
      */
-    function _releaseEncumbrance(address owner, address taker, uint256 amount) private {
+    function _releaseEncumbrance(address owner, address taker, uint256 amount) internal {
         if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
 
         encumbrances[owner][taker] -= amount;
