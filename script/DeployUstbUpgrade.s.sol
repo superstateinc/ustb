@@ -10,7 +10,6 @@ contract DeployUstbUpgrade is Script {
     AllowList public permsImplementation;
 
     function run() external {
-
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         address admin = vm.envAddress("ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");

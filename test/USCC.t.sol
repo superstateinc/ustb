@@ -1,10 +1,11 @@
+pragma solidity ^0.8.26;
+
 import "test/USTB.t.sol";
-import { USCC } from "src/USCC.sol";
-import { USCCV2 } from "test/USCCV2.sol";
-import { AllowList } from "src/AllowList.sol";
+import {USCC} from "src/USCC.sol";
+import {USCCV2} from "test/USCCV2.sol";
+import {AllowList} from "src/AllowList.sol";
 
 contract USCCTest is USTBTest {
-
     function setUp() public override {
         eve = vm.addr(evePrivateKey);
 
@@ -97,10 +98,9 @@ contract USCCTest is USTBTest {
         AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
-
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(USTB.InsufficientPermissions.selector);
+        vm.expectRevert(SuperstateToken.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 
@@ -184,7 +184,8 @@ contract USCCTest is USTBTest {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        AllowListV2.Permission memory newPerms = AllowListV2.Permission(false, true, false, false, false, false, false, true);
+        AllowListV2.Permission memory newPerms =
+            AllowListV2.Permission(false, true, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions
@@ -217,7 +218,10 @@ contract USCCTest is USTBTest {
         assertEq(tokenV2.encumbrances(bob, charlie), 30e6);
     }
 
-    function testFuzzEncumbranceMustBeRespected(uint amt, address spender, address recipient, address recipient2) public override {
+    function testFuzzEncumbranceMustBeRespected(uint256 amt, address spender, address recipient, address recipient2)
+        public
+        override
+    {
         AllowList.Permission memory allowPerms = AllowList.Permission(false, true, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address
@@ -228,7 +232,9 @@ contract USCCTest is USTBTest {
         vm.assume(spender != recipient && recipient != recipient2 && spender != recipient2);
         vm.assume(recipient != address(0) && recipient2 != address(0));
         // proxy admin cant use protocol
-        vm.assume(address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2);
+        vm.assume(
+            address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2
+        );
 
         // whitelist spender and recipients
         address[] memory addrs = new address[](3);
@@ -240,8 +246,8 @@ contract USCCTest is USTBTest {
         perms.setPermission(2, allowPerms);
 
         // limit range of amount
-        uint256 amount = bound(amt, 1, type(uint128).max -1);
-        deal(address(token), spender, amount*2);
+        uint256 amount = bound(amt, 1, type(uint128).max - 1);
+        deal(address(token), spender, amount * 2);
 
         // encumber tokens to spender
         vm.prank(spender);

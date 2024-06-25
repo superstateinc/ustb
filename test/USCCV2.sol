@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import { USTBV2 } from "test/USTBV2.sol";
-import { AllowListV2 } from "test/AllowListV2.sol";
+import {USTBV2} from "test/USTBV2.sol";
+import {AllowListV2} from "test/AllowListV2.sol";
 
 contract USCCV2 is USTBV2 {
-
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
@@ -96,7 +95,7 @@ contract USCCV2 is USTBV2 {
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
-    function hasSufficientPermissions(address addr) public override view returns (bool) {
+    function hasSufficientPermissions(address addr) public view override returns (bool) {
         AllowListV2.Permission memory permissions = allowList.getPermission(addr);
         return permissions.state1 && permissions.state7;
     }
@@ -135,5 +134,4 @@ contract USCCV2 is USTBV2 {
         encumberedBalanceOf[owner] += amount;
         emit Encumber(owner, taker, amount);
     }
-
 }
