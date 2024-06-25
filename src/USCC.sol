@@ -18,7 +18,7 @@ contract USCC is USTB {
      * @notice Moves `amount` tokens from the caller's account to `dst`
      * @dev Confirms the available balance of the caller is sufficient to cover
      * transfer
-     * @dev Includes extra functionality to burn tokens if `dst` is the USTB token address, namely its TransparentUpgradeableProxy
+     * @dev Includes extra functionality to burn tokens if `dst` is the USCC token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
