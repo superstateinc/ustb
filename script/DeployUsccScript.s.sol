@@ -7,7 +7,6 @@ import "src/AllowList.sol";
 import "src/USCC.sol";
 
 contract DeployScript is Script {
-    ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy tokenProxy;
 
     AllowList public permsImplementation;
@@ -22,21 +21,14 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployer);
 
-        // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
-
         tokenImplementation = new USCC(admin, wrappedPerms);
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), admin, "");
 
         // wrap in ABI to support easier calls
         USCC wrappedToken = USCC(address(tokenProxy));
 
         // initialize token contract
         wrappedToken.initialize("Superstate Crypto Carry Fund", "USCC");
-
-        proxyAdmin.transferOwnership(admin);
-
-        require(proxyAdmin.owner() == admin, "Proxy admin ownership not transferred");
 
         vm.stopBroadcast();
     }
