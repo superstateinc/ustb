@@ -15,7 +15,6 @@ contract DeployScript is Script {
     USTB public tokenImplementation;
 
     function run() external {
-
         // admin allowed to set permissions and mint / burn tokens
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         address admin = vm.envAddress("ADMIN_ADDRESS");

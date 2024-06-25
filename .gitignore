@@ -15,3 +15,5 @@ out/
 .vscode/
 .idea/
 report/
+
+lcov.info

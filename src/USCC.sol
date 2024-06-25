@@ -5,11 +5,11 @@ import {SuperstateToken} from "src/SuperstateToken.sol";
 import {AllowList} from "src/AllowList.sol";
 
 /**
- * @title USTB
+ * @title USCC
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
- * @author Compound
+ * @author Superstate
  */
-contract USTB is SuperstateToken {
+contract USCC is SuperstateToken {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
@@ -25,6 +25,6 @@ contract USTB is SuperstateToken {
      */
     function hasSufficientPermissions(address addr) public view override returns (bool) {
         AllowList.Permission memory permissions = allowList.getPermission(addr);
-        return permissions.isAllowed;
+        return permissions.state1;
     }
 }
