@@ -9,7 +9,6 @@ import "src/USCC.sol";
 contract DeployScript is Script {
     TransparentUpgradeableProxy tokenProxy;
 
-    AllowList public permsImplementation;
     USCC public tokenImplementation;
 
     function run() external {
