@@ -19,7 +19,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-        keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
@@ -297,23 +297,23 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @notice Sets approval amount for a spender via signature from signatory
      * @param owner The address that signed the signature
      * @param spender The address to authorize (or rescind authorization from)
-     * @param amount Amount that `owner` is approving for `spender`
-     * @param expiry Expiration time for the signature
+     * @param value Amount that `owner` is approving for `spender`
+     * @param deadline Expiration time for the signature
      * @param v The recovery byte of the signature
      * @param r Half of the ECDSA signature pair
      * @param s Half of the ECDSA signature pair
      */
-    function permit(address owner, address spender, uint256 amount, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external
     {
-        if (block.timestamp >= expiry) revert SignatureExpired();
+        if (block.timestamp > deadline) revert SignatureExpired();
 
         uint256 nonce = nonces[owner];
-        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, amount, nonce, expiry));
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, owner, spender, value, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR(), structHash));
         if (isValidSignature(owner, digest, v, r, s)) {
             nonces[owner]++;
-            _approve(owner, spender, amount);
+            _approve(owner, spender, value);
         }
     }
 
