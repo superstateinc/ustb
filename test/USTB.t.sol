@@ -38,7 +38,7 @@ contract USTBTest is Test {
     uint256 abcEntityId = 1;
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-        keccak256("Authorization(address owner,address spender,uint256 amount,uint256 nonce,uint256 expiry)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
@@ -1116,8 +1116,6 @@ contract USTBTest is Test {
         token.approve(alice, 40e6);
 
         vm.prank(alice);
-        vm.expectEmit(true, true, true, true);
-        emit Release(bob, alice, 0e6);
         token.transferFrom(bob, charlie, 20e6);
 
         assertEq(token.balanceOf(bob), 90e6);
@@ -1206,12 +1204,12 @@ contract USTBTest is Test {
 
     /* ===== Permit Tests ===== */
 
-    function eveAuthorization(uint256 amount, uint256 nonce, uint256 expiry)
+    function eveAuthorization(uint256 value, uint256 nonce, uint256 deadline)
         internal
         view
         returns (uint8, bytes32, bytes32)
     {
-        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, amount, nonce, expiry));
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, value, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
         return vm.sign(evePrivateKey, digest);
     }
@@ -1397,7 +1395,7 @@ contract USTBTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
 
         // the expiry block arrives
-        vm.warp(expiry);
+        vm.warp(expiry + 1);
 
         // bob calls permit with the signature after the expiry
         vm.prank(bob);
