@@ -135,11 +135,8 @@ contract AllowList {
     function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
         _requireAuthorized();
 
-        for (uint256 i = 0; i < addresses.length;) {
+        for (uint256 i = 0; i < addresses.length; ++i) {
             _setEntityAddressInternal(entityId, addresses[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -182,11 +179,8 @@ contract AllowList {
         _requireAuthorized();
         _setPermissionInternal(entityId, permission);
 
-        for (uint256 i = 0; i < addresses.length;) {
+        for (uint256 i = 0; i < addresses.length; ++i) {
             _setEntityAddressInternal(entityId, addresses[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
