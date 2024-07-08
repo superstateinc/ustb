@@ -1116,8 +1116,6 @@ contract USTBTest is Test {
         token.approve(alice, 40e6);
 
         vm.prank(alice);
-        vm.expectEmit(true, true, true, true);
-        emit Release(bob, alice, 0e6);
         token.transferFrom(bob, charlie, 20e6);
 
         assertEq(token.balanceOf(bob), 90e6);

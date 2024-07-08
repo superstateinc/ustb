@@ -238,7 +238,9 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
             if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
 
             // Exceeds Encumbrance, so spend all of it
-            _releaseEncumbrance(src, msg.sender, encumberedToTaker);
+            if (encumberedToTaker > 0) {
+                _releaseEncumbrance(src, msg.sender, encumberedToTaker);
+            }
 
             _spendAllowance(src, msg.sender, excessAmount);
         } else {
