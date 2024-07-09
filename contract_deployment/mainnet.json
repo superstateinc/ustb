@@ -29,5 +29,17 @@
         "address": "0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e",
         "deployBlock": 18725909,
         "contractName": "TransparentUpgradeableProxy"
+    },
+    "USCC": {
+        "transactionHash": "0xd05b4a8bf95151e97e8da69043e38a858038bc64a336d5b5fbaab6ff59bd1065",
+        "address": "0x41feb4943DF07F6793C059f98f28ED0E15f6852B",
+        "deployBlock": 20270220,
+        "contractName": "USCC"
+    },
+    "USCCProxy": {
+        "transactionHash": "0xbe8d18baf6aa7b9c40d8e099bbb44ef50ce83ba955589a4993127ed0434aabb1",
+        "address": "0x14d60E7FDC0D71d8611742720E4C50E7a974020c",
+        "deployBlock": 20270220,
+        "contractName": "TransparentUpgradeableProxy"
     }
 }

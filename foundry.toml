@@ -3,6 +3,13 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 solc_version = "0.8.26"
+# Enables or disables via-ir
+#via-ir = true
+# Enables or disables the optimizer
+#optimizer = true
+# The number of optimizer runs
+#optimizer_runs = 1_000_000
+gas_reports = ["AllowList", "USTB", "USCC"]
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [fuzz]
