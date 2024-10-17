@@ -20,7 +20,7 @@ contract USCCTest is USTBTest {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USCC tokenImplementation = new USCC(address(this), perms);
+        USCC tokenImplementation = new USCC(perms);
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");

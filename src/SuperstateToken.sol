@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
@@ -13,7 +14,7 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
@@ -24,9 +25,6 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-
-    /// @notice Admin address with exclusive privileges for minting and burning
-    address public immutable admin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
     AllowList public immutable allowList;
@@ -93,14 +91,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) {
-        admin = _admin;
+    constructor(AllowList _allowList)  {
         allowList = _allowList;
-
         _disableInitializers();
     }
 
@@ -112,10 +107,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
     function initialize(string calldata _name, string calldata _symbol) public initializer {
         __ERC20_init(_name, _symbol);
         __Pausable_init();
+        __Ownable2Step_init();
     }
 
     function _requireAuthorized() internal view {
-        if (msg.sender != admin) revert Unauthorized();
+        if (msg.sender != owner()) revert Unauthorized();
     }
 
     function _requireNotAccountingPaused() internal view {

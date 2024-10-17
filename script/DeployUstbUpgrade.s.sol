@@ -17,7 +17,7 @@ contract DeployUstbUpgrade is Script {
 
         vm.startBroadcast(deployer);
 
-        tokenImplementation = new USTB(admin, wrappedPerms);
+        tokenImplementation = new USTB(wrappedPerms);
 
         vm.stopBroadcast();
     }

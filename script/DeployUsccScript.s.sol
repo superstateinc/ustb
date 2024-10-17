@@ -21,7 +21,7 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployer);
 
-        tokenImplementation = new USCC(admin, wrappedPerms);
+        tokenImplementation = new USCC(wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), proxyAdmin, "");
 
         // wrap in ABI to support easier calls

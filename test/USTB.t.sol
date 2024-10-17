@@ -2,6 +2,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/console.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -54,7 +55,7 @@ contract USTBTest is Test {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USTB tokenImplementation = new USTB(address(this), perms);
+        USTB tokenImplementation = new USTB(perms);
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
@@ -1508,5 +1509,22 @@ contract USTBTest is Test {
         // recipient calls transferFrom on spender
         vm.prank(recipient2);
         token.transferFrom(spender, recipient2, amount);
+    }
+
+    /* ===== Transfer Ownership Tests ===== */
+
+    function testTransferOwnership() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        token.transferOwnership(charlie);
+
+        // ownership not transferred yet
+        assertEq(token.owner(), address(this));
+
+        vm.prank(charlie);
+        token.acceptOwnership();
+
+        assertEq(token.owner(), charlie);
     }
 }
