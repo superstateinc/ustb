@@ -54,7 +54,7 @@ contract MultiTokenTest is Test {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USTB ustbImplementation = new USTB( perms);
+        USTB ustbImplementation = new USTB(perms);
         USCC usccImplementation = new USCC(perms);
 
         // repeat for the token contract
