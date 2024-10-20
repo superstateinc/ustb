@@ -7,14 +7,15 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
-
-import {SuperstateToken} from "src/SuperstateToken.sol";
-import {USTB} from "src/USTB.sol";
+import {SuperstateToken as SuperstateTokenV1} from "src/SuperstateToken.sol";
+import {SuperstateToken} from "src/v2/SuperstateToken.sol";
+import {USTB as USTBV1} from "src/USTB.sol";
+import {USTB} from "src/v2/USTB.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
-contract USTBTest is Test {
+contract USTBv2Test is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -28,6 +29,7 @@ contract USTBTest is Test {
     AllowList public perms;
     TransparentUpgradeableProxy tokenProxy;
     SuperstateToken public token;
+    SuperstateTokenV1 public tokenV1;
 
     address alice = address(10);
     address bob = address(11);
@@ -39,7 +41,7 @@ contract USTBTest is Test {
     uint256 abcEntityId = 1;
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
@@ -55,16 +57,20 @@ contract USTBTest is Test {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USTB tokenImplementation = new USTB(address(this), perms);
+        USTBV1 tokenV1Implementation = new USTBV1(address(this), perms);
+
+        console.log(address(this));
+        console.log(tokenV1Implementation.admin());
+        console.log(tokenV1Implementation.VERSION());
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        token = USTB(address(tokenProxy));
+        tokenV1 = USTBV1(address(tokenProxy));
 
         // initialize token contract
-        token.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
+        tokenV1.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
@@ -74,6 +80,32 @@ contract USTBTest is Test {
         address[] memory addrs = new address[](1);
         addrs[0] = charlie;
         perms.setEntityPermissionAndAddresses(abcEntityId, addrs, allowPerms);
+
+        // Pause accounting?
+
+        // Now upgrade to V2
+        USTB tokenImplementation = new USTB(address(this), perms);
+        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
+
+
+        /*
+            At this point, owner() is 0x00 because the upgraded contract has not
+            initialized.
+
+            admin() is the same from the prior version of the contract
+        */
+
+
+        // initialize v2 of the contract, specifically the new authorization
+        // mechanism via owner()
+        token = USTB(address(tokenProxy));
+        token.initializeV2();
+
+        /*
+            At this point, owner() is the same as admin() and is the source of truth
+            for authorization. admin() will no longer be used, and for future versions of the contract it need
+            not even be initialized.
+        */
     }
 
     function testTokenName() public virtual {
@@ -1170,7 +1202,7 @@ contract USTBTest is Test {
 
         // But when we whitelist all three according to the new criteria...
         AllowListV2.Permission memory newPerms =
-            AllowListV2.Permission(true, false, false, false, false, false, false, true);
+                            AllowListV2.Permission(true, false, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions
@@ -1206,9 +1238,9 @@ contract USTBTest is Test {
     /* ===== Permit Tests ===== */
 
     function eveAuthorization(uint256 value, uint256 nonce, uint256 deadline)
-        internal
-        view
-        returns (uint8, bytes32, bytes32)
+    internal
+    view
+    returns (uint8, bytes32, bytes32)
     {
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, value, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
@@ -1464,8 +1496,8 @@ contract USTBTest is Test {
     }
 
     function testFuzzEncumbranceMustBeRespected(uint256 amt, address spender, address recipient, address recipient2)
-        public
-        virtual
+    public
+    virtual
     {
         AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
@@ -1509,5 +1541,23 @@ contract USTBTest is Test {
         // recipient calls transferFrom on spender
         vm.prank(recipient2);
         token.transferFrom(spender, recipient2, amount);
+    }
+
+
+    /* ===== Transfer Ownership Tests ===== */
+
+    function testTransferOwnership() public {
+        // bob's allowance from eve is 0
+        assertEq(token.allowance(eve, bob), 0);
+
+        token.transferOwnership(charlie);
+
+        // ownership not transferred yet
+        assertEq(token.owner(), address(this));
+
+        vm.prank(charlie);
+        token.acceptOwnership();
+
+        assertEq(token.owner(), charlie);
     }
 }

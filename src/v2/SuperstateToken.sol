@@ -2,9 +2,11 @@
 pragma solidity ^0.8.26;
 
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
+import {console} from "forge-std/console.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -13,19 +15,20 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
+    string public constant VERSION = "2";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
+    /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to keep the memory storage layout consistent.
     address public immutable admin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
@@ -93,12 +96,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList)  {
-        admin = _admin;
+    constructor(address _existingAdmin, AllowList _allowList) {
+        admin = _existingAdmin;
         allowList = _allowList;
         _disableInitializers();
     }
@@ -113,8 +115,16 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
         __Pausable_init();
     }
 
-    function _requireAuthorized() internal view {
+    // initialize for v2
+    function initializeV2() reinitializer(2) public {
+        // Last usage of `admin` variable here.
+        // After this call, owner() is the source of truth for authorization.
         if (msg.sender != admin) revert Unauthorized();
+        __Ownable2Step_init();
+    }
+
+    function _requireAuthorized() internal view {
+        if (msg.sender != owner()) revert Unauthorized();
     }
 
     function _requireNotAccountingPaused() internal view {
@@ -305,7 +315,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external
+    external
     {
         if (block.timestamp > deadline) revert SignatureExpired();
 
@@ -438,9 +448,9 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @return bool Whether the signature is valid
      */
     function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
-        internal
-        pure
-        returns (bool)
+    internal
+    pure
+    returns (bool)
     {
         (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
 

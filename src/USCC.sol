@@ -12,10 +12,11 @@ import {AllowList} from "src/AllowList.sol";
 contract USCC is SuperstateToken {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
+     * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(AllowList _allowList) SuperstateToken(_allowList) {}
+    constructor(address _admin, AllowList _allowList) SuperstateToken(_admin, _allowList) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering

@@ -30,7 +30,7 @@ contract DeployScript is Script {
         // wrap in ABI to support easier calls
         AllowList wrappedPerms = AllowList(address(permsProxy));
 
-        tokenImplementation = new USTB(wrappedPerms);
+        tokenImplementation = new USTB(admin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls

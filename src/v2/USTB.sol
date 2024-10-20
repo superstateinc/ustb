@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {SuperstateToken} from "src/v2/SuperstateToken.sol";
 import {AllowList} from "src/AllowList.sol";
 
 /**
@@ -12,11 +12,10 @@ import {AllowList} from "src/AllowList.sol";
 contract USTB is SuperstateToken {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) SuperstateToken(_admin, _allowList) {}
+    constructor(address _existingAdmin, AllowList _allowList) SuperstateToken(_existingAdmin, _allowList) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering
