@@ -30,7 +30,7 @@ contract USTBv2MainnetForkTest is Test {
     address bob = address(11);
 
     function setUp() public virtual {
-        string rpcUrl = vm.envString("RPC_URL");
+        string memory rpcUrl = vm.envString("RPC_URL");
 
         uint256 mainnetFork = vm.createFork(rpcUrl);
         vm.selectFork(mainnetFork);
