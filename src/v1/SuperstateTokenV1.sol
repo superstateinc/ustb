@@ -13,7 +13,7 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+abstract contract SuperstateTokenV1 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
