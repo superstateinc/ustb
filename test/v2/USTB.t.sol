@@ -2,7 +2,6 @@ pragma solidity ^0.8.20;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";

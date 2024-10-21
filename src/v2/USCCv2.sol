@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {AllowList} from "src/AllowList.sol";
