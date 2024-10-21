@@ -69,7 +69,7 @@ contract USTBv2MainnetForkTest is Test {
         assertEq(vm.activeFork(), 0);
 
         // check balance on an address in v1
-        assertEq(404619420184, tokenV1.balanceOf(capturedMainnetAddress)); // why is state on the logic contract and not the proxy?
+        assertEq(404619420184, tokenV1.balanceOf(capturedMainnetAddress));
 
         // upgrade to v2
         doTokenUpgradeFromV1toV2();
