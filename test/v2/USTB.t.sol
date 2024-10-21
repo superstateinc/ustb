@@ -58,10 +58,6 @@ contract USTBv2Test is Test {
 
         USTBv1 tokenV1Implementation = new USTBv1(address(this), perms);
 
-        console.log(address(this));
-        console.log(tokenV1Implementation.admin());
-        console.log(tokenV1Implementation.VERSION());
-
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(proxyAdmin), "");
 
