@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
-import {SuperstateToken} from "src/v2/SuperstateToken.sol";
+import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {AllowList} from "src/AllowList.sol";
 
 /**
- * @title USTB
+ * @title USCC
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
- * @author Compound
+ * @author Superstate
  */
-contract USTB is SuperstateToken {
+contract USCCv2 is SuperstateTokenV2 {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _existingAdmin, AllowList _allowList) SuperstateToken(_existingAdmin, _allowList) {}
+    constructor(address _existingAdmin, AllowList _allowList) SuperstateTokenV2(_existingAdmin, _allowList) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering
@@ -24,6 +24,6 @@ contract USTB is SuperstateToken {
      */
     function hasSufficientPermissions(address addr) public view override returns (bool) {
         AllowList.Permission memory permissions = allowList.getPermission(addr);
-        return permissions.isAllowed;
+        return permissions.state1;
     }
 }

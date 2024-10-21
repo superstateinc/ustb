@@ -97,7 +97,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList)  {
+    constructor(address _admin, AllowList _allowList) {
         admin = _admin;
         allowList = _allowList;
         _disableInitializers();

@@ -15,17 +15,17 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
+abstract contract SuperstateTokenV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
-    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
     /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to keep the memory storage layout consistent.
@@ -116,15 +116,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
     }
 
     // initialize for v2
-    function initializeV2() reinitializer(2) public {
+    function initializeV2() public reinitializer(2) {
         // Last usage of `admin` variable here.
         // After this call, owner() is the source of truth for authorization.
         if (msg.sender != admin) revert Unauthorized();
         __Ownable2Step_init();
-    }
-
-    function _requireAuthorized() internal view {
-        if (msg.sender != owner()) revert Unauthorized();
     }
 
     function _requireNotAccountingPaused() internal view {
@@ -136,7 +132,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function pause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotPaused();
 
         _pause();
@@ -147,7 +143,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function unpause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requirePaused();
 
         _unpause();
@@ -158,7 +154,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function accountingPause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         accountingPaused = true;
@@ -170,7 +166,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function accountingUnpause() external {
-        _requireAuthorized();
+        _checkOwner();
         if (!accountingPaused) revert AccountingIsNotPaused();
 
         accountingPaused = false;
@@ -315,7 +311,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-    external
+        external
     {
         if (block.timestamp > deadline) revert SignatureExpired();
 
@@ -349,7 +345,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         _mintLogic({dst: dst, amount: amount});
@@ -362,7 +358,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amounts Amounts of tokens to mint
      */
     function bulkMint(address[] calldata dsts, uint256[] calldata amounts) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (dsts.length != amounts.length || dsts.length == 0) revert InvalidArgumentLengths();
 
@@ -380,7 +376,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
@@ -448,9 +444,9 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @return bool Whether the signature is valid
      */
     function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
-    internal
-    pure
-    returns (bool)
+        internal
+        pure
+        returns (bool)
     {
         (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
 
