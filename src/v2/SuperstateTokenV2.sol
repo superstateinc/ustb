@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
@@ -13,9 +14,9 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+abstract contract SuperstateTokenV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
+    string public constant VERSION = "2";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
@@ -26,6 +27,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
+    /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to keep the memory storage layout consistent.
     address public immutable admin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
@@ -93,12 +95,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) {
-        admin = _admin;
+    constructor(address _existingAdmin, AllowList _allowList) {
+        admin = _existingAdmin;
         allowList = _allowList;
         _disableInitializers();
     }
@@ -113,8 +114,12 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
         __Pausable_init();
     }
 
-    function _requireAuthorized() internal view {
+    // initialize for v2
+    function initializeV2() public reinitializer(2) {
+        // Last usage of `admin` variable here.
+        // After this call, owner() is the source of truth for authorization.
         if (msg.sender != admin) revert Unauthorized();
+        __Ownable2Step_init();
     }
 
     function _requireNotAccountingPaused() internal view {
@@ -126,7 +131,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function pause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotPaused();
 
         _pause();
@@ -137,7 +142,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function unpause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requirePaused();
 
         _unpause();
@@ -148,7 +153,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function accountingPause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         accountingPaused = true;
@@ -160,7 +165,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @dev Can only be called by the admin
      */
     function accountingUnpause() external {
-        _requireAuthorized();
+        _checkOwner();
         if (!accountingPaused) revert AccountingIsNotPaused();
 
         accountingPaused = false;
@@ -339,7 +344,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         _mintLogic({dst: dst, amount: amount});
@@ -352,7 +357,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amounts Amounts of tokens to mint
      */
     function bulkMint(address[] calldata dsts, uint256[] calldata amounts) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (dsts.length != amounts.length || dsts.length == 0) revert InvalidArgumentLengths();
 
@@ -370,7 +375,7 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
