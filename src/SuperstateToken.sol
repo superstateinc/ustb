@@ -11,9 +11,6 @@ import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
-import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
-
-
 /**
  * @title SuperstateToken
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed

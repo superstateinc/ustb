@@ -16,6 +16,8 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
+// TODO: Make this base abstract and have the implementing tests initialize the proxy.
+// That way the v1 tests can use OZv4, and the v2 tests can use OZv5
 contract SuperstateTokenTestBase is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
