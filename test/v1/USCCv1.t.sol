@@ -1,4 +1,4 @@
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 import "test/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";

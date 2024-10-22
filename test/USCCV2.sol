@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
 import {USTBV2} from "test/USTBV2.sol";
 import {AllowListV2} from "test/AllowListV2.sol";
