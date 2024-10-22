@@ -12,11 +12,9 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
         AllowList permsImplementation = new AllowList(address(this));
 
-        // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
-
         // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
@@ -24,7 +22,8 @@ contract USCCv1Test is SuperstateTokenTestBase {
         USCCv1 tokenImplementation = new USCCv1(address(this), perms);
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
+        tokenProxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
 
         // wrap in ABI to support easier calls
         token = USCCv1(address(tokenProxy));
@@ -107,7 +106,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
     function testUpgradingAllowListDoesNotAffectToken() public override {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
+        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
 
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
@@ -147,11 +146,11 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
     function testUpgradingAllowListAndTokenWorks() public override {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation));
+        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
         USCCV2 tokenV2Implementation = new USCCV2(address(this), permsV2);
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation));
+        tokenProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), "");
         USCCV2 tokenV2 = USCCV2(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
@@ -232,7 +231,8 @@ contract USCCv1Test is SuperstateTokenTestBase {
         vm.assume(recipient != address(0) && recipient2 != address(0));
         // proxy admin cant use protocol
         vm.assume(
-            address(proxyAdmin) != spender && address(proxyAdmin) != recipient && address(proxyAdmin) != recipient2
+            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient && address(permsProxyAdmin) != recipient2 &&
+            address(tokenProxyAdmin) != spender && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
         );
 
         // whitelist spender and recipients

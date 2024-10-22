@@ -5,7 +5,7 @@ import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/I
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
+import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
@@ -422,7 +422,7 @@ abstract contract SuperstateToken is
         pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
 
         if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
         if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();
