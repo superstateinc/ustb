@@ -46,11 +46,11 @@ contract SuperstateTokenTestBase is Test {
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function getAdminAddress(address proxy) internal view returns (address) {
+    function getAdminAddress(address _proxy) internal view returns (address) {
         address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
-        bytes32 adminSlot = vm.load(proxy, ERC1967Utils.ADMIN_SLOT);
+        bytes32 adminSlot = vm.load(_proxy, ERC1967Utils.ADMIN_SLOT);
         return address(uint160(uint256(adminSlot)));
     }
 
