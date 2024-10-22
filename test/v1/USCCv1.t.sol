@@ -1,11 +1,12 @@
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.28;
 
-import "test/USTB.t.sol";
-import {USCC} from "src/USCC.sol";
+import "test/SuperstateTokenTestBase.t.sol";
+import {USCCv1} from "src/v1/USCCv1.sol";
 import {USCCV2} from "test/USCCV2.sol";
 import {AllowList} from "src/AllowList.sol";
+import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 
-contract USCCTest is USTBTest {
+contract USCCv1Test is SuperstateTokenTestBase {
     function setUp() public override {
         eve = vm.addr(evePrivateKey);
 
@@ -20,13 +21,13 @@ contract USCCTest is USTBTest {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USCC tokenImplementation = new USCC(address(this), perms);
+        USCCv1 tokenImplementation = new USCCv1(address(this), perms);
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        token = USCC(address(tokenProxy));
+        token = USCCv1(address(tokenProxy));
 
         // initialize token contract
         token.initialize("Superstate Crypto Carry Fund", "USCC");
@@ -43,11 +44,11 @@ contract USCCTest is USTBTest {
     }
 
     function testTokenName() public override {
-        assertEq(token.name(), "Superstate Crypto Carry Fund");
+        assertEq(SuperstateTokenV1(address(token)).name(), "Superstate Crypto Carry Fund");
     }
 
     function testTokenSymbol() public override {
-        assertEq(token.symbol(), "USCC");
+        assertEq(SuperstateTokenV1(address(token)).symbol(), "USCC");
     }
 
     function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public override {
@@ -100,7 +101,7 @@ contract USCCTest is USTBTest {
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(SuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 
