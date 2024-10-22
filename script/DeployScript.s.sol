@@ -1,8 +1,8 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
 import "src/USTB.sol";
 
@@ -22,7 +22,7 @@ contract DeployScript is Script {
         vm.startBroadcast(deployer);
 
         // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin(admin);
+        proxyAdmin = new ProxyAdmin();
 
         permsImplementation = new AllowList(admin);
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");

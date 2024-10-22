@@ -16,8 +16,6 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
-import {console} from "forge-std/console.sol";
-
 contract SuperstateTokenTestBase is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);

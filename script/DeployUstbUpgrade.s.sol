@@ -1,7 +1,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/USTB.sol";
 import "src/AllowList.sol";
 
