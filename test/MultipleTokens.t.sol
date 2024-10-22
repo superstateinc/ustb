@@ -46,7 +46,7 @@ contract MultiTokenTest is Test {
         AllowList permsImplementation = new AllowList(address(this));
 
         // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
+        proxyAdmin = new ProxyAdmin(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");

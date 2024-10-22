@@ -24,11 +24,9 @@ contract USTBv2Test is SuperstateTokenTestBase {
 
         AllowList permsImplementation = new AllowList(address(this));
 
-        // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
-
         // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
@@ -36,7 +34,8 @@ contract USTBv2Test is SuperstateTokenTestBase {
         USTBv1 tokenV1Implementation = new USTBv1(address(this), perms);
 
         // repeat for the token contract
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(this), "");
+        tokenProxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
 
         // wrap in ABI to support easier calls
         tokenV1 = USTBv1(address(tokenProxy));
@@ -57,7 +56,7 @@ contract USTBv2Test is SuperstateTokenTestBase {
 
         // Now upgrade to V2
         USTB tokenImplementation = new USTB(address(this), perms);
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
+        tokenProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), "");
 
         /*
             At this point, owner() is 0x00 because the upgraded contract has not

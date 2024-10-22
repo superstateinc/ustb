@@ -22,7 +22,7 @@ contract DeployScript is Script {
         vm.startBroadcast(deployer);
 
         // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
+        proxyAdmin = new ProxyAdmin(admin);
 
         permsImplementation = new AllowList(admin);
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
