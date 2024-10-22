@@ -1,12 +1,12 @@
 pragma solidity ^0.8.26;
 
-import "test/USTB.t.sol";
+import "test/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";
 import {USCCV2} from "test/USCCV2.sol";
 import {AllowList} from "src/AllowList.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 
-contract USCCTest is USTBTest {
+contract USCCv1Test is SuperstateTokenTestBase {
     function setUp() public override {
         eve = vm.addr(evePrivateKey);
 

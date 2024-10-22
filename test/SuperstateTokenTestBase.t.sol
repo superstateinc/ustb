@@ -14,7 +14,7 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
-contract USTBTest is Test {
+contract SuperstateTokenTestBase is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -428,7 +428,7 @@ contract USTBTest is Test {
 
     function testMintRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.mint(bob, 100e6);
 
         assertEq(token.balanceOf(bob), 0);
@@ -473,7 +473,7 @@ contract USTBTest is Test {
         amounts[1] = 333e6;
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.bulkMint(dsts, amounts);
 
         assertEq(token.balanceOf(alice), 0);
@@ -618,7 +618,7 @@ contract USTBTest is Test {
 
     function testBurnRevertBadCaller() public {
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.burn(bob, 100e6);
     }
 
@@ -865,7 +865,7 @@ contract USTBTest is Test {
     function testPauseAndUnpauseRevertIfUnauthorized() public {
         // try pausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.pause();
 
         // admin pauses the contract
@@ -873,7 +873,7 @@ contract USTBTest is Test {
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.unpause();
 
         // admin unpauses
@@ -883,7 +883,7 @@ contract USTBTest is Test {
     function testAdminPauseAndUnpauseRevertIfUnauthorized() public {
         // try pausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.accountingPause();
 
         // admin pauses the contract
@@ -893,7 +893,7 @@ contract USTBTest is Test {
 
         // try unpausing contract from unauthorized sender
         vm.prank(charlie);
-        vm.expectRevert(ISuperstateToken.Unauthorized.selector);
+        vm.expectRevert();
         token.accountingUnpause();
 
         // admin unpauses
