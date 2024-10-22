@@ -4,8 +4,8 @@ import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";

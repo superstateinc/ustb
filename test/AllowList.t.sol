@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "src/AllowList.sol";
 import "test/AllowListV2.sol";
