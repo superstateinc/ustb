@@ -3,4 +3,5 @@ erc4626-tests/=lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
 openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
+openzeppelin-contracts-v4/=lib/openzeppelin-contracts-v4/
 openzeppelin/=lib/openzeppelin-contracts-upgradeable/contracts/
