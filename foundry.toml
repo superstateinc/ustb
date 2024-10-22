@@ -10,6 +10,9 @@ solc_version = "0.8.28"
 # The number of optimizer runs
 #optimizer_runs = 1_000_000
 gas_reports = ["AllowList", "USTB", "USCC"]
+remappings = [
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+]
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [fuzz]
