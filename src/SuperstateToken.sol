@@ -11,7 +11,7 @@ import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
-//import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
+import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
 
 
 /**
