@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.26;
 
+import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
 
+import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -14,7 +16,12 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgradeable, Ownable2StepUpgradeable {
+abstract contract SuperstateToken is
+    ISuperstateToken,
+    ERC20Upgradeable,
+    PausableUpgradeable,
+    Ownable2StepUpgradeable
+{
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 
@@ -47,51 +54,6 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
 
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
-
-    /// @dev Event emitted when tokens are minted
-    event Mint(address indexed minter, address indexed to, uint256 amount);
-
-    /// @dev Event emitted when tokens are burned
-    event Burn(address indexed burner, address indexed from, uint256 amount);
-
-    /// @dev Emitted when the accounting pause is triggered by `admin`.
-    event AccountingPaused(address admin);
-
-    /// @dev Emitted when the accounting pause is lifted by `admin`.
-    event AccountingUnpaused(address admin);
-
-    /// @dev Thrown when a request is not sent by the authorized admin
-    error Unauthorized();
-
-    /// @dev Thrown when an address does not have sufficient permissions, as dictated by the AllowList
-    error InsufficientPermissions();
-
-    /// @dev Thrown when an address does not have a sufficient balance of unencumbered tokens
-    error InsufficientAvailableBalance();
-
-    /// @dev Thrown when the amount of tokens to spend or release exceeds the amount encumbered to the taker
-    error InsufficientEncumbrance();
-
-    /// @dev Thrown when the current timestamp has surpassed the expiration time for a signature
-    error SignatureExpired();
-
-    /// @dev Thrown if the signature has an S value that is in the upper half order.
-    error InvalidSignatureS();
-
-    /// @dev Thrown if the signature is invalid or its signer does not match the expected singer
-    error BadSignatory();
-
-    /// @dev Thrown if accounting pause is already on
-    error AccountingIsPaused();
-
-    /// @dev Thrown if accounting pause is already off
-    error AccountingIsNotPaused();
-
-    /// @dev Thrown if an address tries to encumber tokens to itself
-    error SelfEncumberNotAllowed();
-
-    /// @dev Thrown if array length arguments aren't equal
-    error InvalidArgumentLengths();
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
@@ -202,7 +164,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transfer(address dst, uint256 amount) public override returns (bool) {
+    function transfer(address dst, uint256 amount)
+        public
+        override(IERC20Upgradeable, ERC20Upgradeable)
+        returns (bool)
+    {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
         if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
@@ -230,7 +196,11 @@ abstract contract SuperstateToken is ERC20Upgradeable, IERC7246, PausableUpgrade
      * @param amount Amount of token to transfer
      * @return bool Whether the operation was successful
      */
-    function transferFrom(address src, address dst, uint256 amount) public override returns (bool) {
+    function transferFrom(address src, address dst, uint256 amount)
+        public
+        override(IERC20Upgradeable, ERC20Upgradeable)
+        returns (bool)
+    {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
         if (encumberedToTaker < amount && !hasSufficientPermissions(src)) {
