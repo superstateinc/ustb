@@ -83,6 +83,11 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
     function unpause() external;
 
     /**
+     * @return bool True if the accounting is currently paused, false otherwise
+     */
+    function accountingPaused() external view returns (bool);
+
+    /**
      * @notice Pauses mint and burn
      * @dev Can only be called by the admin
      */
