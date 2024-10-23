@@ -253,3 +253,30 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         return string(bytesArray);
     }
 }
+
+contract A {
+    uint256 public a;
+}
+
+contract B {
+    uint256 public b;
+}
+
+contract TokenV1 is A {
+    uint256 public c;
+}
+
+contract TokenV2 is A, B {
+    uint256 public c;
+}
+
+/*
+    V1 Storage:
+    Slot 0: a
+    Slot 1: c
+
+    V2 Storage:
+    Slot 0: a
+    Slot 1: b (corruption)
+    Slot 2: c
+*/
