@@ -16,7 +16,43 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenStorageLayoutTestBase.t.sol";
+import {console} from "forge-std/console.sol";
 
+/**
+ *  SuperstateV1 Token storage layout:
+ *
+ *  Slot 51: ERC20Upgradeable._balances
+ *  Slot 52: Erc20Upgradeable._allowances
+ *  Slot 53: Erc20Upgradeable._totalSupply
+ *  Slot 54: Erc20Upgradeable._name
+ *  Slot 55: Erc20Upgradeable._symbol
+ *  Slot 101: PausableUpgradeable._paused
+ *  Slot 151: SuperstateToken.nonces
+ *  Slot 152: SuperstateToken.encumberedBalanceOf
+ *  Slot 153: SuperstateToken.encumbrances
+ *  Slot 154: SuperstateToken.accountingPaused
+ *
+ *
+ *  SuperstateV2 Token storage layout:
+ *
+ *  Slot 51: ERC20Upgradeable._balances
+ *  Slot 52: Erc20Upgradeable._allowances
+ *  Slot 53: Erc20Upgradeable._totalSupply
+ *  Slot 54: Erc20Upgradeable._name
+ *  Slot 55: Erc20Upgradeable._symbol
+ *  Slot 101: PausableUpgradeable._paused
+ * .Slot 102-150: PausableUpgradeable.__gap
+ *  Slot 151: OwnableUpgradeable.__owner
+ *  Slot 152-200: OwnableUpgradeable.__gap
+ *  Slot 201: Ownable2StepUpgradeable._pendingOwner
+ *  Slot 202-250: Ownable2StepUpgradeable.__gap
+ * .Slot 251-750: SuperstateToken.__inheritanceGap
+ *  Slot 751: SuperstateToken.nonces
+ *  Slot 752: SuperstateToken.encumberedBalanceOf
+ *  Slot 753: SuperstateToken.encumbrances
+ *  Slot 754: SuperstateToken.accountingPaused
+ *  Slot 755-854: SuperstateToken.__additionalFieldsGap
+ */
 contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
     function initializeExpectedTokenVersions() public override {
         oldTokenVersion = "1";
@@ -53,5 +89,74 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
         SuperstateToken(address(newToken)).initializeV2();
 
         currentToken = newToken;
+    }
+
+    function assertOwnable2StepUpgradeableStorageLayout(bool hasUpgraded) public override {
+        if (hasUpgraded) {
+            // V2 does support this field, and the __owner is set within `upgradeAndInitializeNewToken`
+
+            // assert __owner (stored in storage slot 151)
+            address ownerSlotValue = address(uint160(uint256(loadSlot(151))));
+            address expectedOwner = address(this);
+            assertEq(ownerSlotValue, expectedOwner);
+
+            // assert __owner from contract method
+            assertEq(SuperstateToken(address(currentToken)).owner(), expectedOwner);
+
+            // assert _pendingOwner (storage slot 201)
+            address pendingOwnerSlotValue = address(uint160(uint256(loadSlot(201))));
+            address expectedPendingOwner = address(0x0);
+            assertEq(pendingOwnerSlotValue, expectedPendingOwner);
+
+            // assert _pendingOwner from contract methods
+            assertEq(SuperstateToken(address(currentToken)).pendingOwner(), expectedPendingOwner);
+        } else {
+            // V1 did not support this field, and so ignoring
+        }
+    }
+
+    // See note in `SuperstateTokenStorageLayoutTestBase` to see why this is being overwritten
+    function assertSuperstateTokenStorageLayout(bool hasUpgraded) public override {
+        if (hasUpgraded) {
+            // V2 storage layout, ignore encumberances/nonces/accountingPaused as they are corrupted (this is known and accepted)
+        } else {
+            // V1 storage layout
+
+            // assert nonces (stored in storage slot 151)
+            bytes32 noncesSlot = keccak256(abi.encode(eve, uint256(151)));
+            uint256 noncesSlotValue = uint256(vm.load(address(tokenProxy), noncesSlot));
+            uint256 expectedNonce = 1;
+            assertEq(noncesSlotValue, expectedNonce);
+
+            // assert nonces from contract method
+            assertEq(currentToken.nonces(eve), 1);
+
+            // assert encumberedBalanceOf (stored in storage slot 152)
+            bytes32 encumberedBalanceOfSlot = keccak256(abi.encode(alice, uint256(152)));
+            uint256 encumberedBalanceOfSlotValue = uint256(vm.load(address(tokenProxy), encumberedBalanceOfSlot));
+            uint256 expectedAliceEncumberedBalanceOf = 5e6;
+            assertEq(encumberedBalanceOfSlotValue, expectedAliceEncumberedBalanceOf);
+
+            // assert encumberedBalanceOf from contract method
+            assertEq(currentToken.encumberedBalanceOf(alice), expectedAliceEncumberedBalanceOf);
+
+            // assert encumbrances (stored in storage slot 153).
+            bytes32 encumberancesOwnerSlot = keccak256(abi.encode(alice, uint256(153)));
+            bytes32 encumberancesTakerSlot = keccak256(abi.encode(bob, uint256(encumberancesOwnerSlot)));
+            uint256 encumberancesTakerSlotValue = uint256(vm.load(address(tokenProxy), encumberancesTakerSlot));
+            assertEq(encumberancesTakerSlotValue, expectedAliceEncumberedBalanceOf);
+
+            // assert encumbrances from contract method
+            assertEq(currentToken.encumbrances(alice, bob), expectedAliceEncumberedBalanceOf);
+
+            // assert accountingPaused (storage slot 154)
+            uint256 accountingPausedSlotValue = uint256(loadSlot(154));
+            assertEq(1, accountingPausedSlotValue);
+
+            // assert accountingPaused from contract method
+            assertEq(true, currentToken.accountingPaused());
+
+            // assert decimals
+        }
     }
 }

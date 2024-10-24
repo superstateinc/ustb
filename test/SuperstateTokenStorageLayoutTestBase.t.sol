@@ -13,20 +13,10 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
-/**
- * Superstate Token storage layout:
- *
- *  Slot 51: ERC20Upgradeable._balances
- *  Slot 52: Erc20Upgradeable._allowances
- *  Slot 53: Erc20Upgradeable._totalSupply
- *  Slot 54: Erc20Upgradeable._name
- *  Slot 55: Erc20Upgradeable._symbol
- *  Slot 101: PausableUpgradeable._paused
- *  Slot 151: SuperstateToken.nonces
- *  Slot 152: SuperstateToken.encumberedBalanceOf
- *  Slot 153: SuperstateToken.encumbrances
- *  Slot 154: SuperstateToken.accountingPaused
- */
+/*
+ * Used as a test base for token upgrades to assert the storage slots and their mappings have been preserved. In cases where
+ * they are not preserved, this is known and called out.
+*/
 abstract contract SuperstateTokenStorageLayoutTestBase is Test {
     ProxyAdmin public proxyAdmin;
     TransparentUpgradeableProxy public permsProxy;
@@ -44,10 +34,17 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
     address public bob = address(11);
     address public charlie = address(12);
     address public mallory = address(13);
+    uint256 evePrivateKey = 0x353;
+    address eve; // see setup()
 
     uint256 public abcEntityId = 1;
 
+    bytes32 internal constant AUTHORIZATION_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+
     function setUp() public virtual {
+        eve = vm.addr(evePrivateKey);
+
         AllowList permsImplementation = new AllowList(address(this));
 
         // deploy proxy admin contract
@@ -77,6 +74,16 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
     function initializeOldToken() public virtual;
 
     function upgradeAndInitializeNewToken() public virtual;
+
+    function eveAuthorization(uint256 value, uint256 nonce, uint256 deadline)
+        internal
+        view
+        returns (uint8, bytes32, bytes32)
+    {
+        bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, value, nonce, deadline));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", oldToken.DOMAIN_SEPARATOR(), structHash));
+        return vm.sign(evePrivateKey, digest);
+    }
 
     function manipulateStateOldToken() public {
         // availableBalanceOf is 0 by default
@@ -117,6 +124,24 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         assertEq(oldToken.availableBalanceOf(alice), 65e6);
         assertEq(oldToken.encumbrances(alice, bob), 5e6);
 
+        // bob's allowance from eve is 0
+        assertEq(oldToken.allowance(alice, bob), 0);
+
+        uint256 allowance = 123e18;
+        uint256 nonce = oldToken.nonces(eve);
+        uint256 expiry = block.timestamp + 1000;
+
+        (uint8 v, bytes32 r, bytes32 s) = eveAuthorization(allowance, nonce, expiry);
+
+        // bob calls permit with the signature
+        oldToken.permit(eve, bob, allowance, expiry, v, r, s);
+
+        // bob's allowance from eve equals allowance
+        assertEq(oldToken.allowance(eve, bob), allowance);
+
+        // eve's nonce is incremented
+        assertEq(oldToken.nonces(eve), nonce + 1);
+
         vm.stopPrank();
 
         currentToken.pause();
@@ -127,14 +152,14 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         return vm.load(address(tokenProxy), bytes32(slot));
     }
 
-    function assertStorageLayout() public {
-        assertSuperstateTokenStorageLayout();
+    function assertStorageLayout(bool hasUpgraded) public {
+        assertSuperstateTokenStorageLayout(hasUpgraded);
         assertErc20UpgradeableStorageLayout();
         assertPausableUpgradeableStorageLayout();
-        assertOwnable2StepUpgradeableStorageLayout();
+        assertOwnable2StepUpgradeableStorageLayout(hasUpgraded);
     }
 
-    function assertSuperstateTokenStorageLayout() public {
+    function assertSuperstateTokenStorageLayout(bool) public virtual {
         /*
             Note - the following variables are not stored in contract storage, but are rather in-lined
             in the contract's bytecode as a compiler optimization:
@@ -142,12 +167,22 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
                 > AUTHORIZATION_TYPEHASH
                 > DOMAIN_TYPEHASH
                 > _deprecatedAdmin
+
+            Note - In the upgrade from V1 to V2, we added some fields that would corrupt
+            the storage state of `nonces`, `encumberedBalanceOf`, `encumberances`, and `accountingPaused`. This is OK though
+            because those features had not been used at the time of V2 deployment. This base implementation
+            assumes the memory slots of V2 and beyond, which should be easier for future storage tests. `USTBv2TokenStorageLayoutTests`
+            will override this method to check different storage locations depending on whether the upgrade has happened yet.
         */
 
-        // assert nonces
+        // assert nonces (stored in slot 751)
+        bytes32 noncesSlot = keccak256(abi.encode(eve, uint256(751)));
+        uint256 noncesSlotValue = uint256(vm.load(address(tokenProxy), noncesSlot));
+        uint256 expectedNonce = 1;
+        assertEq(noncesSlotValue, expectedNonce);
 
-        // assert encumberedBalanceOf (stored in storage slot 152)
-        bytes32 encumberedBalanceOfSlot = keccak256(abi.encode(alice, uint256(152)));
+        // assert encumberedBalanceOf (stored in storage slot 752)
+        bytes32 encumberedBalanceOfSlot = keccak256(abi.encode(alice, uint256(752)));
         uint256 encumberedBalanceOfSlotValue = uint256(vm.load(address(tokenProxy), encumberedBalanceOfSlot));
         uint256 expectedAliceEncumberedBalanceOf = 5e6;
         assertEq(encumberedBalanceOfSlotValue, expectedAliceEncumberedBalanceOf);
@@ -155,8 +190,8 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         // assert encumberedBalanceOf from contract method
         assertEq(currentToken.encumberedBalanceOf(alice), expectedAliceEncumberedBalanceOf);
 
-        // assert encumbrances (stored in storage slot 153).
-        bytes32 encumberancesOwnerSlot = keccak256(abi.encode(alice, uint256(153)));
+        // assert encumbrances (stored in storage slot 753).
+        bytes32 encumberancesOwnerSlot = keccak256(abi.encode(alice, uint256(753)));
         bytes32 encumberancesTakerSlot = keccak256(abi.encode(bob, uint256(encumberancesOwnerSlot)));
         uint256 encumberancesTakerSlotValue = uint256(vm.load(address(tokenProxy), encumberancesTakerSlot));
         assertEq(encumberancesTakerSlotValue, expectedAliceEncumberedBalanceOf);
@@ -164,8 +199,8 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         // assert encumbrances from contract method
         assertEq(currentToken.encumbrances(alice, bob), expectedAliceEncumberedBalanceOf);
 
-        // assert accountingPaused (storage slot 154)
-        uint256 accountingPausedSlotValue = uint256(loadSlot(154));
+        // assert accountingPaused (storage slot 754)
+        uint256 accountingPausedSlotValue = uint256(loadSlot(754));
         assertEq(1, accountingPausedSlotValue);
 
         // assert accountingPaused from contract method
@@ -224,21 +259,8 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         assertEq(1, pausedSlotValue);
     }
 
-    function assertOwnable2StepUpgradeableStorageLayout() public {}
-
-    function testUpgradeStorageLayout() public {
-        // do some state manipulation
-        manipulateStateOldToken();
-
-        // assert storage layout
-        assertStorageLayout();
-
-        // upgrade to newToken
-        upgradeAndInitializeNewToken();
-
-        // assert storage layout
-        assertStorageLayout();
-    }
+    // assuming V2 and beyond storage slot mappings
+    function assertOwnable2StepUpgradeableStorageLayout(bool hasUpgraded) public virtual {}
 
     // Helper function to convert bytes32 to a string
     function bytes32ToString(bytes32 _bytes32) internal pure returns (string memory) {
@@ -252,31 +274,19 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         }
         return string(bytesArray);
     }
+
+    function testUpgradeStorageLayout() public {
+        // do some state manipulation
+        // note: not manipulating encumber/nonces to simulate current v1 state
+        manipulateStateOldToken();
+
+        // assert storage layout
+        assertStorageLayout(false);
+
+        // upgrade to newToken
+        upgradeAndInitializeNewToken();
+
+        // assert storage layout
+        assertStorageLayout(true);
+    }
 }
-
-contract A {
-    uint256 public a;
-}
-
-contract B {
-    uint256 public b;
-}
-
-contract TokenV1 is A {
-    uint256 public c;
-}
-
-contract TokenV2 is A, B {
-    uint256 public c;
-}
-
-/*
-    V1 Storage:
-    Slot 0: a
-    Slot 1: c
-
-    V2 Storage:
-    Slot 0: a
-    Slot 1: b (corruption)
-    Slot 2: c
-*/

@@ -85,11 +85,11 @@ contract SuperstateTokenTestBase is Test {
     }
 
     function testTokenDecimals() public {
-        //        assertEq(token.decimals(), 6);
+        assertEq(SuperstateTokenV1(address(token)).decimals(), 6);
     }
 
     function testTokenIsInitializedAsUnpaused() public {
-        //        assertEq(token.paused(), false);
+        assertEq(SuperstateTokenV1(address(token)).paused(), false);
     }
 
     function testInitializeRevertIfCalledAgain() public {
