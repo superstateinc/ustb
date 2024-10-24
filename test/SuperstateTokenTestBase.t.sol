@@ -15,10 +15,11 @@ import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
+import "test/TokenTestBase.t.sol";
 
 // TODO: Make this base abstract and have the implementing tests initialize the proxy.
 // That way the v1 tests can use OZv4, and the v2 tests can use OZv5
-contract SuperstateTokenTestBase is Test {
+contract SuperstateTokenTestBase is TokenTestBase {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -45,14 +46,6 @@ contract SuperstateTokenTestBase is Test {
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-
-    function getAdminAddress(address _proxy) internal view returns (address) {
-        address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
-        Vm vm = Vm(CHEATCODE_ADDRESS);
-
-        bytes32 adminSlot = vm.load(_proxy, ERC1967Utils.ADMIN_SLOT);
-        return address(uint160(uint256(adminSlot)));
-    }
 
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
@@ -1106,7 +1099,9 @@ contract SuperstateTokenTestBase is Test {
 
     function testUpgradingAllowListDoesNotAffectToken() public virtual {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        permsProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
+        );
 
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
@@ -1146,11 +1141,15 @@ contract SuperstateTokenTestBase is Test {
 
     function testUpgradingAllowListAndTokenWorks() public virtual {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        permsProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
+        );
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
         USTBV2 tokenV2Implementation = new USTBV2(address(this), permsV2);
-        tokenProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), "");
+        tokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), ""
+        );
         USTBV2 tokenV2 = USTBV2(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
@@ -1491,8 +1490,9 @@ contract SuperstateTokenTestBase is Test {
         vm.assume(recipient != address(0) && recipient2 != address(0));
         // proxy admin cant use protocol
         vm.assume(
-            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient && address(permsProxyAdmin) != recipient2 &&
-            address(tokenProxyAdmin) != spender && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
+            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient
+                && address(permsProxyAdmin) != recipient2 && address(tokenProxyAdmin) != spender
+                && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
         );
 
         // whitelist spender and recipients

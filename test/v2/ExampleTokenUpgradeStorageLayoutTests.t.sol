@@ -2,10 +2,10 @@ pragma solidity ^0.8.28;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
+import "test/TokenTestBase.t.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 /*
 * This test shows that we can safely upgrade from SuperstateTokenV1 to SuperstateTokenV2
@@ -14,7 +14,7 @@ import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
 *   > Add __gap2 at the end of `SuperstateToken`
 *   > Optionally remove `encumberedBalanceOf`, `encumberances` as they have not been used in v1 and thus will not have corrupt storage
 */
-contract ExampleTokenUpgradeStorageLayoutTests is Test {
+contract ExampleTokenUpgradeStorageLayoutTests is TokenTestBase {
     TransparentUpgradeableProxy tokenProxy;
 
     function setUp() public {}
@@ -24,14 +24,12 @@ contract ExampleTokenUpgradeStorageLayoutTests is Test {
     }
 
     function testExampleUpgradeStorageLayout() public {
-        assertEq(true, true);
-        console.log("hi");
-
         // create TokenV1 and proxies
         TokenV1 tokenV1Impl = new TokenV1();
 
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
-        tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Impl), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Impl), address(this), "");
+        ProxyAdmin proxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
+
         TokenV1 tokenV1 = TokenV1(address(tokenProxy));
 
         // init TokenV1
@@ -48,7 +46,7 @@ contract ExampleTokenUpgradeStorageLayoutTests is Test {
 
         // create TokenV2 and update proxy
         TokenV2 tokenV2Impl = new TokenV2();
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Impl));
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Impl), "");
         TokenV2 tokenV2 = TokenV2(address(tokenProxy));
 
         // init TokenV2
@@ -71,7 +69,7 @@ contract ExampleTokenUpgradeStorageLayoutTests is Test {
 
         // create TokenV3 and update proxy
         TokenV3 tokenV3Impl = new TokenV3();
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV3Impl));
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV3Impl), "");
         TokenV3 tokenV3 = TokenV3(address(tokenProxy));
 
         // init TokenV3

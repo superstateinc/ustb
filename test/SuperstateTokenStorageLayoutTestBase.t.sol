@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
@@ -12,15 +12,17 @@ import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
+import "test/TokenTestBase.t.sol";
 
 /*
  * Used as a test base for token upgrades to assert the storage slots and their mappings have been preserved. In cases where
  * they are not preserved, this is known and called out.
 */
-abstract contract SuperstateTokenStorageLayoutTestBase is Test {
-    ProxyAdmin public proxyAdmin;
+abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
+    ProxyAdmin public permsProxyAdmin;
     TransparentUpgradeableProxy public permsProxy;
     AllowList public perms;
+    ProxyAdmin public tokenProxyAdmin;
     TransparentUpgradeableProxy public tokenProxy;
 
     ISuperstateToken public oldToken;
@@ -34,8 +36,8 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
     address public bob = address(11);
     address public charlie = address(12);
     address public mallory = address(13);
-    uint256 evePrivateKey = 0x353;
-    address eve; // see setup()
+    uint256 public evePrivateKey = 0x353;
+    address public eve; // see setup()
 
     uint256 public abcEntityId = 1;
 
@@ -47,11 +49,11 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
 
         AllowList permsImplementation = new AllowList(address(this));
 
-        // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
-
         // deploy proxy contract and point it to implementation
-        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
+        permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+
+        // deploy proxy admin contract
+        permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
@@ -206,7 +208,7 @@ abstract contract SuperstateTokenStorageLayoutTestBase is Test {
         // assert accountingPaused from contract method
         assertEq(true, currentToken.accountingPaused());
 
-        // assert decimals
+        // ignore decimals due to being in-lined in bytecode
     }
 
     function assertErc20UpgradeableStorageLayout() public {

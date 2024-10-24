@@ -106,7 +106,9 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
     function testUpgradingAllowListDoesNotAffectToken() public override {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        permsProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
+        );
 
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
@@ -146,11 +148,15 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
     function testUpgradingAllowListAndTokenWorks() public override {
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        permsProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), "");
+        permsProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
+        );
         AllowListV2 permsV2 = AllowListV2(address(permsProxy));
 
         USCCV2 tokenV2Implementation = new USCCV2(address(this), permsV2);
-        tokenProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), "");
+        tokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), ""
+        );
         USCCV2 tokenV2 = USCCV2(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
@@ -231,8 +237,9 @@ contract USCCv1Test is SuperstateTokenTestBase {
         vm.assume(recipient != address(0) && recipient2 != address(0));
         // proxy admin cant use protocol
         vm.assume(
-            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient && address(permsProxyAdmin) != recipient2 &&
-            address(tokenProxyAdmin) != spender && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
+            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient
+                && address(permsProxyAdmin) != recipient2 && address(tokenProxyAdmin) != spender
+                && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
         );
 
         // whitelist spender and recipients

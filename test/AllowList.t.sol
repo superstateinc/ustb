@@ -38,7 +38,7 @@ contract AllowListTest is Test {
 
         // deploy proxy contract and point it to implementation
         proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
-        proxyAdmin =  ProxyAdmin(getAdminAddress(address(proxy)));
+        proxyAdmin = ProxyAdmin(getAdminAddress(address(proxy)));
 
         // wrap in ABI to support easier calls
         perms = AllowList(address(proxy));

@@ -4,8 +4,8 @@ import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
@@ -16,7 +16,6 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenStorageLayoutTestBase.t.sol";
-import {console} from "forge-std/console.sol";
 
 /**
  *  SuperstateV1 Token storage layout:
@@ -61,7 +60,8 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
     function initializeOldToken() public override {
         USTBv1 oldTokenImplementation = new USTBv1(address(this), perms);
-        tokenProxy = new TransparentUpgradeableProxy(address(oldTokenImplementation), address(proxyAdmin), "");
+        tokenProxy = new TransparentUpgradeableProxy(address(oldTokenImplementation), address(this), "");
+        tokenProxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
 
         // wrap in ABI to support easier calls
         oldToken = USTBv1(address(tokenProxy));
@@ -74,7 +74,9 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
     function upgradeAndInitializeNewToken() public override {
         // Now upgrade to V2
         USTB newTokenImplementation = new USTB(address(this), perms);
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation));
+        tokenProxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation), ""
+        );
 
         /*
             At this point, owner() is 0x00 because the upgraded contract has not
@@ -156,7 +158,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
             // assert accountingPaused from contract method
             assertEq(true, currentToken.accountingPaused());
 
-            // assert decimals
+            // ignore decimals due to being in-lined in bytecode
         }
     }
 }
