@@ -2,9 +2,10 @@ pragma solidity ^0.8.28;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import "src/AllowList.sol";
 import "test/AllowListV2.sol";
@@ -24,14 +25,20 @@ contract AllowListTest is Test {
 
     AllowList.Permission public allowPerms = AllowList.Permission(true, false, false, false, false, false);
 
+    function getAdminAddress(address _proxy) internal view returns (address) {
+        address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+
+        bytes32 adminSlot = vm.load(_proxy, ERC1967Utils.ADMIN_SLOT);
+        return address(uint160(uint256(adminSlot)));
+    }
+
     function setUp() public {
         AllowList permsImplementation = new AllowList(address(this));
 
-        // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
-
         // deploy proxy contract and point it to implementation
-        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
+        proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
+        proxyAdmin =  ProxyAdmin(getAdminAddress(address(proxy)));
 
         // wrap in ABI to support easier calls
         perms = AllowList(address(proxy));
@@ -522,7 +529,7 @@ contract AllowListTest is Test {
         assertEq(perms.getPermission(bob), AllowList.Permission(true, false, false, false, false, false));
 
         AllowListV2 permsV2Implementation = new AllowListV2(address(this));
-        proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation));
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation), "");
         AllowListV2 permsV2 = AllowListV2(address(proxy));
 
         // check Permissions struct values are unchanged after upgrade

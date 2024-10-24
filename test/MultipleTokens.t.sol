@@ -4,8 +4,8 @@ import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "openzeppelin-contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "openzeppelin-contracts/proxy/transparent/ProxyAdmin.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {USTB} from "src/USTB.sol";
 import {USCC} from "src/USCC.sol";
@@ -46,7 +46,7 @@ contract MultiTokenTest is Test {
         AllowList permsImplementation = new AllowList(address(this));
 
         // deploy proxy admin contract
-        proxyAdmin = new ProxyAdmin();
+        proxyAdmin = new ProxyAdmin(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");

@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ECDSA} from "openzeppelin-contracts/utils/cryptography/ECDSA.sol";
+import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDSA.sol";
 
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
