@@ -5,7 +5,7 @@ import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/USTB.sol";
 import "src/AllowList.sol";
 
-contract DeployUstbUpgrade is Script {
+contract DeployUstbUpgradeV1 is Script {
     USTB public tokenImplementation;
     AllowList public permsImplementation;
 

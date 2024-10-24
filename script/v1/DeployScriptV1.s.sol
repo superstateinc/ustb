@@ -6,7 +6,7 @@ import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
 import "src/USTB.sol";
 
-contract DeployScript is Script {
+contract DeployScriptV1 is Script {
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
     TransparentUpgradeableProxy tokenProxy;

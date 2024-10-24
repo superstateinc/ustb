@@ -44,4 +44,4 @@ forge script \
     $etherscan_args \
     --broadcast \
     $@ \
-    script/DeployUstbUpgrade.s.sol:DeployUstbUpgrade
+    script/v1/DeployUstbUpgradeV1.s.sol:DeployUstbUpgradeV1
