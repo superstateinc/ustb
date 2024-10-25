@@ -6,6 +6,12 @@ import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
 interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
+    /// @dev Struct for storing supported stablecoin configuration
+    struct StablecoinConfig {
+        address out;
+        uint96 fee;
+    }
+
     /// @dev Event emitted when tokens are minted
     event Mint(address indexed minter, address indexed to, uint256 amount);
 
@@ -17,6 +23,22 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
 
     /// @dev Emitted when the accounting pause is lifted by `admin`.
     event AccountingUnpaused(address admin);
+
+    /// @dev Emitted when the max oracle delay is set
+    event SetMaximumOracleDelay(uint256 oldMaxOracleDelay, uint256 newMaxOracleDelay);
+
+    /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
+    event Subscribe(
+        address indexed subscriber, address stablecoin, uint256 stablecoinInAmount, uint256 stablecoinInAmountAfterFee, uint256 superstateTokenOutAmount
+    );
+
+    /// @dev Event emitted when the configuration for a supported stablecoin changes
+    event StablecoinConfigUpdated(
+        address indexed stablecoin, address oldOut, address newOut, uint96 oldFee, uint96 newFee
+    );
+
+    /// @dev Event emitted when the address for the pricing oracle changes
+    event OracleUpdated(address oldOracle, address newOracle);
 
     /// @dev Thrown when a request is not sent by the authorized admin
     error Unauthorized();
@@ -50,6 +72,21 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
 
     /// @dev Thrown if array length arguments aren't equal
     error InvalidArgumentLengths();
+
+    /// @dev Thrown when an argument is invalid
+    error BadArgs();
+
+    /// @dev Thrown when Chainlink Oracle data is bad
+    error BadChainlinkData();
+
+    /// @dev Thrown when the superstateUstbOracle is the 0 address
+    error OnchainSubscriptionsDisabled();
+
+    /// @dev Thrown when trying to calculate amount of Superstate Tokens you'd get for an unsupported stablecoin
+    error StablecoinNotSupported();
+
+    /// @dev Thrown when owner tries to set the fee for a stablecoin too high
+    error FeeTooHigh();
 
     function allowList() external view returns (AllowList);
 

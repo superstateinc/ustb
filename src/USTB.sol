@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {SuperstateToken} from "src/SuperstateToken.sol";
 import {AllowList} from "src/AllowList.sol";
+import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
 
 /**
  * @title USTB
@@ -16,7 +17,7 @@ contract USTB is SuperstateToken {
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) SuperstateToken(_admin, _allowList) {}
+    constructor(address _admin, AllowList _allowList) SuperstateToken(_admin, _allowList, 1) {} // TODO
 
     /**
      * @notice Check permissions of an address for transferring / encumbering
