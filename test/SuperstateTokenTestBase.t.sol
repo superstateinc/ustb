@@ -15,10 +15,11 @@ import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
+import "test/TokenTestBase.t.sol";
 
 // TODO: Make this base abstract and have the implementing tests initialize the proxy.
 // That way the v1 tests can use OZv4, and the v2 tests can use OZv5
-contract SuperstateTokenTestBase is Test {
+contract SuperstateTokenTestBase is TokenTestBase {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
     event Release(address indexed owner, address indexed taker, uint256 amount);
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -45,14 +46,6 @@ contract SuperstateTokenTestBase is Test {
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-
-    function getAdminAddress(address _proxy) internal view returns (address) {
-        address CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
-        Vm vm = Vm(CHEATCODE_ADDRESS);
-
-        bytes32 adminSlot = vm.load(_proxy, ERC1967Utils.ADMIN_SLOT);
-        return address(uint160(uint256(adminSlot)));
-    }
 
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
@@ -98,11 +91,11 @@ contract SuperstateTokenTestBase is Test {
     }
 
     function testTokenDecimals() public {
-        //        assertEq(token.decimals(), 6);
+        assertEq(SuperstateTokenV1(address(token)).decimals(), 6);
     }
 
     function testTokenIsInitializedAsUnpaused() public {
-        //        assertEq(token.paused(), false);
+        assertEq(SuperstateTokenV1(address(token)).paused(), false);
     }
 
     function testInitializeRevertIfCalledAgain() public {

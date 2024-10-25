@@ -30,6 +30,12 @@ abstract contract SuperstateToken is
 {
     using SafeERC20 for IERC20;
 
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to inherit from new contracts
+     * without impacting the fields within `SuperstateToken`.
+     */
+    uint256[500] private __inheritanceGap;
+
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 
@@ -63,6 +69,12 @@ abstract contract SuperstateToken is
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
+     * any contracts that inherit `SuperstateToken`
+     */
+    uint256[100] private __additionalFieldsGap;
+
     /// @notice Base 10000 for 0.01% precision
     uint256 public constant FEE_DENOMINATOR = 10_000;
 
@@ -80,6 +92,7 @@ abstract contract SuperstateToken is
 
     /// @notice Mapping from a stablecoin's address to its configuration
     mapping(address stablecoin => StablecoinConfig) public supportedStablecoins;
+
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList

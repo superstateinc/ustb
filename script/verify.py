@@ -22,7 +22,7 @@ def verify_env_var(var_name):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python script/verify.py ./broadcast/DeployScript.s.sol/5/run-latest.json")
+        print("Usage: python script/verify.py ./broadcast/DeployScriptV1.s.sol/5/run-latest.json")
         sys.exit(1)
 
     if not verify_env_var("ETHERSCAN_API_KEY"):

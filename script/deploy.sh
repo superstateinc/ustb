@@ -39,4 +39,4 @@ forge script \
     $etherscan_args \
     --broadcast \
     $@ \
-    script/DeployScript.s.sol:DeployScript
+    script/v1/DeployScriptV1.s.sol:DeployScriptV1

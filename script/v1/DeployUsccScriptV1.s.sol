@@ -6,7 +6,7 @@ import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
 import "src/USCC.sol";
 
-contract DeployScript is Script {
+contract DeployScriptV1 is Script {
     TransparentUpgradeableProxy tokenProxy;
 
     USCC public tokenImplementation;
