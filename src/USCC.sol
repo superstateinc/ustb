@@ -14,9 +14,10 @@ contract USCC is SuperstateToken {
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
+     * @param _maximumOracleDelay Maximum amount of seconds to tolerate old data from oracle
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) SuperstateToken(_admin, _allowList, 1) {} // TODO
+    constructor(address _admin, AllowList _allowList, uint256 _maximumOracleDelay) SuperstateToken(_admin, _allowList, _maximumOracleDelay) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering

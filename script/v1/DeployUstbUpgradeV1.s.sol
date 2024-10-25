@@ -2,11 +2,11 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/USTB.sol";
+import "src/v1/USTBv1.sol";
 import "src/AllowList.sol";
 
 contract DeployUstbUpgradeV1 is Script {
-    USTB public tokenImplementation;
+    USTBv1 public tokenImplementation;
     AllowList public permsImplementation;
 
     function run() external {
@@ -17,7 +17,7 @@ contract DeployUstbUpgradeV1 is Script {
 
         vm.startBroadcast(deployer);
 
-        tokenImplementation = new USTB(admin, wrappedPerms);
+        tokenImplementation = new USTBv1(admin, wrappedPerms);
 
         vm.stopBroadcast();
     }

@@ -7,8 +7,8 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import {USTB} from "src/USTB.sol";
-import {USCC} from "src/USCC.sol";
+import {USTBv2} from "src/v2/USTBv2.sol";
+import {USCCv2} from "src/v2/USCCv2.sol";
 import {AllowList} from "src/AllowList.sol";
 
 contract MultiTokenTest is Test {
@@ -25,8 +25,8 @@ contract MultiTokenTest is Test {
     AllowList public perms;
     TransparentUpgradeableProxy tokenProxyUstb;
     TransparentUpgradeableProxy tokenProxyUscc;
-    USTB public ustb;
-    USCC public uscc;
+    USTBv2 public ustb;
+    USCCv2 public uscc;
 
     address alice = address(10);
     address bob = address(11);
@@ -54,16 +54,16 @@ contract MultiTokenTest is Test {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USTB ustbImplementation = new USTB(address(this), perms);
-        USCC usccImplementation = new USCC(address(this), perms);
+        USTBv2 ustbImplementation = new USTBv2(address(this), perms);
+        USCCv2 usccImplementation = new USCCv2(address(this), perms);
 
         // repeat for the token contract
         tokenProxyUstb = new TransparentUpgradeableProxy(address(ustbImplementation), address(proxyAdmin), "");
         tokenProxyUscc = new TransparentUpgradeableProxy(address(usccImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        ustb = USTB(address(tokenProxyUstb));
-        uscc = USCC(address(tokenProxyUscc));
+        ustb = USTBv2(address(tokenProxyUstb));
+        uscc = USCCv2(address(tokenProxyUscc));
 
         // initialize token contract
         ustb.initialize("Superstate Short Duration US Government Securities Fund", "USTB");

@@ -8,10 +8,10 @@ import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeabl
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {ISuperstateTokenV2} from "src/v2/ISuperstateTokenV2.sol";
+import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
-import {USTB} from "src/USTB.sol";
+import {USTBv2} from "src/v2/USTBv2.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
@@ -73,7 +73,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
     function upgradeAndInitializeNewToken() public override {
         // Now upgrade to V2
-        USTB newTokenImplementation = new USTB(address(this), perms);
+        USTBv2 newTokenImplementation = new USTBv2(address(this), perms);
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation), ""
         );
@@ -87,8 +87,8 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
         // initialize v2 of the contract, specifically the new authorization
         // mechanism via owner()
-        newToken = USTB(address(tokenProxy));
-        SuperstateToken(address(newToken)).initializeV2();
+        newToken = USTBv2(address(tokenProxy));
+        SuperstateTokenV2(address(newToken)).initializeV2();
 
         currentToken = newToken;
     }
@@ -103,7 +103,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
             assertEq(ownerSlotValue, expectedOwner);
 
             // assert __owner from contract method
-            assertEq(SuperstateToken(address(currentToken)).owner(), expectedOwner);
+            assertEq(SuperstateTokenV2(address(currentToken)).owner(), expectedOwner);
 
             // assert _pendingOwner (storage slot 201)
             address pendingOwnerSlotValue = address(uint160(uint256(loadSlot(201))));
@@ -111,7 +111,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
             assertEq(pendingOwnerSlotValue, expectedPendingOwner);
 
             // assert _pendingOwner from contract methods
-            assertEq(SuperstateToken(address(currentToken)).pendingOwner(), expectedPendingOwner);
+            assertEq(SuperstateTokenV2(address(currentToken)).pendingOwner(), expectedPendingOwner);
         } else {
             // V1 did not support this field, and so ignoring
         }

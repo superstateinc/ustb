@@ -4,7 +4,7 @@ import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
-import "src/USCC.sol";
+import "src/v2/USCCv2.sol";
 
 contract DeployAndUpgradeUsccScriptV2 is Script {
     /*
@@ -29,7 +29,7 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
-        address tokenProxyAddress = vm.envAddress("PROXY_TOKEN_ADDRESS");
+        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
         TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
@@ -37,13 +37,13 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         vm.startBroadcast(deployer);
 
         // 1
-        USCC tokenV2Implementation = new USCC(admin, wrappedPerms);
+        USCCv2 tokenV2Implementation = new USCCv2(admin, wrappedPerms);
 
         // 2
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USCC tokenV2 = USCC(address(tokenProxy));
+        USCCv2 tokenV2 = USCCv2(address(tokenProxy));
         tokenV2.initializeV2();
 
         // 4
