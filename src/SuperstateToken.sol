@@ -537,18 +537,15 @@ abstract contract SuperstateToken is
         _requireNotPaused();
         _requireNotAccountingPaused();
 
-        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: address(this), value: inAmount});
+        StablecoinConfig memory config = supportedStablecoins[stablecoin];
+        if (config.out == address(0)) revert StablecoinNotSupported();
 
         (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee,) = calculateSuperstateTokenOut({inAmount: inAmount, stablecoin: stablecoin});
 
         // TODO: revert if superstateTokenOutAmount below a certain amount? like 0?
 
+        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: config.out, value: inAmount});
         _mint({account: msg.sender, amount: superstateTokenOutAmount});
-
-        StablecoinConfig memory config = supportedStablecoins[stablecoin];
-        if (config.out == address(0)) revert StablecoinNotSupported();
-
-        IERC20(stablecoin).safeTransfer({to: config.out, value: inAmount});
 
         emit Subscribe({
             subscriber: msg.sender,
