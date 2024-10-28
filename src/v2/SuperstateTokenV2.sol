@@ -7,7 +7,7 @@ import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -17,7 +17,7 @@ import {AllowList} from "src/AllowList.sol";
  * @author Superstate
  */
 abstract contract SuperstateTokenV2 is
-ISuperstateToken,
+ISuperstateTokenV2,
 ERC20Upgradeable,
 PausableUpgradeable,
 Ownable2StepUpgradeable
@@ -149,6 +149,10 @@ Ownable2StepUpgradeable
 
         accountingPaused = false;
         emit AccountingUnpaused(msg.sender);
+    }
+
+    function renounceOwnership() public virtual override onlyOwner {
+        revert RenounceOwnershipDisabled();
     }
 
     /**

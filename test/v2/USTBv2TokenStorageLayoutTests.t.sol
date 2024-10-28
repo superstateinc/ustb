@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeabl
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
-import {ISuperstateTokenV2} from "src/v2/ISuperstateTokenV2.sol";
+import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
