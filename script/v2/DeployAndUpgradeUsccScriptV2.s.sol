@@ -26,28 +26,29 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
     function run() external {
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         address admin = vm.envAddress("ADMIN_ADDRESS");
-        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
+        //        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
-        address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
-        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
+        //        address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
+        //        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
-        ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
-        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
+        //        ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
+        //        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
 
         vm.startBroadcast(deployer);
 
         // 1
-        USCCv2 tokenV2Implementation = new USCCv2(admin, wrappedPerms);
+        /*USCCv2 tokenV2Implementation = */
+        new USCCv2(admin, wrappedPerms);
 
-        // 2
-        tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
+        // 2 - This will be called from Etherscan using our Fireblocks key and WalletConnect
+        //        tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
-        // 3
-        USCCv2 tokenV2 = USCCv2(address(tokenProxy));
-        tokenV2.initializeV2();
+        // 3 - This will be called from Etherscan using our Fireblocks key and WalletConnect
+        //        USCCv2 tokenV2 = USCCv2(address(tokenProxy));
+        //        tokenV2.initializeV2();
 
-        // 4
-        tokenV2.transferOwnership(newAdminAddress);
+        // 4 - This will be called from Etherscan using our Fireblocks key and WalletConnect
+        //        tokenV2.transferOwnership(newAdminAddress);
 
         vm.stopBroadcast();
     }
