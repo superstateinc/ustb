@@ -15,6 +15,7 @@ import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenTestBase.t.sol";
+import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 
 contract USTBv2Test is SuperstateTokenTestBase {
     SuperstateTokenV1 public tokenV1;
@@ -77,5 +78,10 @@ contract USTBv2Test is SuperstateTokenTestBase {
             for authorization. admin() will no longer be used, and for future versions of the contract it need
             not even be initialized.
         */
+    }
+
+    function testRenounceOwnershipBlocked() public {
+        vm.expectRevert(ISuperstateTokenV2.RenounceOwnershipDisabled.selector);
+        SuperstateToken(address(token)).renounceOwnership();
     }
 }
