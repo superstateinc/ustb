@@ -29,13 +29,13 @@ contract DeployAndUpgradeUsccScriptV3 is Script {
     function run() external {
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         address admin = vm.envAddress("ADMIN_ADDRESS");
-//        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
+        //        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
         address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
-//        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
+        //        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
 
         vm.startBroadcast(deployer);
 
@@ -47,11 +47,11 @@ contract DeployAndUpgradeUsccScriptV3 is Script {
 
         //TODO the rest
         // 3
-//        USCC tokenV3 = USCC(address(tokenProxy));
-//        tokenV3.initializeV2();
-//
-//        // 4
-//        tokenV3.transferOwnership(newAdminAddress);
+        //        USCC tokenV3 = USCC(address(tokenProxy));
+        //        tokenV3.initializeV2();
+        //
+        //        // 4
+        //        tokenV3.transferOwnership(newAdminAddress);
 
         vm.stopBroadcast();
     }

@@ -17,7 +17,9 @@ contract USTB is SuperstateToken {
      * @param _maximumOracleDelay Maximum amount of seconds to tolerate old data from oracle
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList, uint256 _maximumOracleDelay) SuperstateToken(_admin, _allowList, _maximumOracleDelay) {}
+    constructor(address _admin, AllowList _allowList, uint256 _maximumOracleDelay)
+        SuperstateToken(_admin, _allowList, _maximumOracleDelay)
+    {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering

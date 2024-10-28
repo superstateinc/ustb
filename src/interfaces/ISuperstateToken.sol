@@ -18,12 +18,20 @@ interface ISuperstateToken is ISuperstateTokenV2 {
 
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
     event Subscribe(
-        address indexed subscriber, address stablecoin, uint256 stablecoinInAmount, uint256 stablecoinInAmountAfterFee, uint256 superstateTokenOutAmount
+        address indexed subscriber,
+        address stablecoin,
+        uint256 stablecoinInAmount,
+        uint256 stablecoinInAmountAfterFee,
+        uint256 superstateTokenOutAmount
     );
 
     /// @dev Event emitted when the configuration for a supported stablecoin changes
     event StablecoinConfigUpdated(
-        address indexed stablecoin, address oldSweepDestination, address newSweepDestination, uint96 oldFee, uint96 newFee
+        address indexed stablecoin,
+        address oldSweepDestination,
+        address newSweepDestination,
+        uint96 oldFee,
+        uint96 newFee
     );
 
     /// @dev Event emitted when the address for the pricing oracle changes

@@ -30,13 +30,13 @@ contract DeployAndUpgradeUstbScriptV3 is Script {
     function run() external {
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         address admin = vm.envAddress("ADMIN_ADDRESS");
-//        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
+        //        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
         address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
-//        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
+        //        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
 
         vm.startBroadcast(deployer);
 
@@ -47,12 +47,12 @@ contract DeployAndUpgradeUstbScriptV3 is Script {
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV3Implementation));
 
         // TODO the rest
-//        // 3
-//        USTB tokenV3 = USTB(address(tokenProxy));
-//        tokenV3.initializeV2();
-//
-//        // 4
-//        tokenV3.transferOwnership(newAdminAddress);
+        //        // 3
+        //        USTB tokenV3 = USTB(address(tokenProxy));
+        //        tokenV3.initializeV2();
+        //
+        //        // 4
+        //        tokenV3.transferOwnership(newAdminAddress);
 
         vm.stopBroadcast();
     }

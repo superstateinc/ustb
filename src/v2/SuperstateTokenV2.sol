@@ -17,10 +17,10 @@ import {AllowList} from "src/AllowList.sol";
  * @author Superstate
  */
 abstract contract SuperstateTokenV2 is
-ISuperstateTokenV2,
-ERC20Upgradeable,
-PausableUpgradeable,
-Ownable2StepUpgradeable
+    ISuperstateTokenV2,
+    ERC20Upgradeable,
+    PausableUpgradeable,
+    Ownable2StepUpgradeable
 {
     /**
      * @dev This empty reserved space is put in place to allow future versions to inherit from new contracts
@@ -33,11 +33,11 @@ Ownable2StepUpgradeable
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
     bytes32 internal constant DOMAIN_TYPEHASH =
-    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
     /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to properly implement the transfer of ownership and will be removed in subsequent contract versions.
@@ -181,9 +181,9 @@ Ownable2StepUpgradeable
      * @return bool Whether the operation was successful
      */
     function transfer(address dst, uint256 amount)
-    public
-    override(IERC20Upgradeable, ERC20Upgradeable)
-    returns (bool)
+        public
+        override(IERC20Upgradeable, ERC20Upgradeable)
+        returns (bool)
     {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
@@ -213,9 +213,9 @@ Ownable2StepUpgradeable
      * @return bool Whether the operation was successful
      */
     function transferFrom(address src, address dst, uint256 amount)
-    public
-    override(IERC20Upgradeable, ERC20Upgradeable)
-    returns (bool)
+        public
+        override(IERC20Upgradeable, ERC20Upgradeable)
+        returns (bool)
     {
         uint256 encumberedToTaker = encumbrances[src][msg.sender];
         // check src permissions if amount encumbered is less than amount being transferred
@@ -301,7 +301,7 @@ Ownable2StepUpgradeable
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-    external
+        external
     {
         if (block.timestamp > deadline) revert SignatureExpired();
 
@@ -434,9 +434,9 @@ Ownable2StepUpgradeable
      * @return bool Whether the signature is valid
      */
     function isValidSignature(address signer, bytes32 digest, uint8 v, bytes32 r, bytes32 s)
-    internal
-    pure
-    returns (bool)
+        internal
+        pure
+        returns (bool)
     {
         (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
 

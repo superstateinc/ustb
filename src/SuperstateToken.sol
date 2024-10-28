@@ -15,7 +15,8 @@ import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
 import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
-import {AggregatorV3Interface} from "lib/onchain-redemptions/lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from
+    "lib/onchain-redemptions/lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title SuperstateToken
@@ -449,6 +450,7 @@ abstract contract SuperstateToken is
      * @dev Requires msg.sender to be the owner address
      * @param _newMaxOracleDelay The new max oracle delay
      */
+
     function setMaximumOracleDelay(uint256 _newMaxOracleDelay) external {
         _checkOwner();
         _setMaximumOracleDelay(_newMaxOracleDelay);
@@ -457,8 +459,7 @@ abstract contract SuperstateToken is
     function _getChainlinkPrice() internal view returns (bool _isBadData, uint256 _updatedAt, uint256 _price) {
         _requireOnchainSubscriptionsEnabled();
 
-        (, int256 _answer,, uint256 _chainlinkUpdatedAt,) =
-            AggregatorV3Interface(superstateOracle).latestRoundData();
+        (, int256 _answer,, uint256 _chainlinkUpdatedAt,) = AggregatorV3Interface(superstateOracle).latestRoundData();
 
         // If data is stale or below first price, set bad data to true and return
         // 1_000_000_000 is $10.000000 in the oracle format, that was our starting NAV per Share price for SUPERSTATE_TOKEN
@@ -495,7 +496,13 @@ abstract contract SuperstateToken is
 
         supportedStablecoins[stablecoin] = StablecoinConfig({sweepDestination: newSweepDestination, fee: newFee});
 
-        emit StablecoinConfigUpdated({stablecoin: stablecoin, oldSweepDestination: oldConfig.sweepDestination, newSweepDestination: newSweepDestination, oldFee: oldConfig.fee, newFee: newFee});
+        emit StablecoinConfigUpdated({
+            stablecoin: stablecoin,
+            oldSweepDestination: oldConfig.sweepDestination,
+            newSweepDestination: newSweepDestination,
+            oldFee: oldConfig.fee,
+            newFee: newFee
+        });
     }
 
     function calculateFee(uint256 amount, uint256 subscriptionFee) public pure returns (uint256) {
@@ -510,7 +517,11 @@ abstract contract SuperstateToken is
      * @return stablecoinInAmountAfterFee The amount of the stablecoin in after any fees
      * @return feeOnStablecoinInAmount The amount of the stablecoin taken in fees
      */
-    function calculateSuperstateTokenOut(uint256 inAmount, address stablecoin) public view returns (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount) {
+    function calculateSuperstateTokenOut(uint256 inAmount, address stablecoin)
+        public
+        view
+        returns (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount)
+    {
         StablecoinConfig memory config = supportedStablecoins[stablecoin];
         if (config.sweepDestination == address(0)) revert StablecoinNotSupported();
 
@@ -539,7 +550,8 @@ abstract contract SuperstateToken is
         _requireNotPaused();
         _requireNotAccountingPaused();
 
-        (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee,) = calculateSuperstateTokenOut({inAmount: inAmount, stablecoin: stablecoin});
+        (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee,) =
+            calculateSuperstateTokenOut({inAmount: inAmount, stablecoin: stablecoin});
 
         if (superstateTokenOutAmount == 0) revert ZeroSuperstateTokensOut();
 
