@@ -94,7 +94,6 @@ abstract contract SuperstateToken is
     /// @notice Mapping from a stablecoin's address to its configuration
     mapping(address stablecoin => StablecoinConfig) public supportedStablecoins;
 
-
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _existingAdmin The existing address designated as the admin with special privileges
