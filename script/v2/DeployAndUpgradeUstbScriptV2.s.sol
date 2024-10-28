@@ -44,7 +44,7 @@ contract DeployAndUpgradeUstbScriptV2 is Script {
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USTB tokenV2 = USTB(address(tokenProxy));
+        USTB tokenV2 = USTB(tokenProxyAddress);
         tokenV2.initializeV2();
 
         // 4

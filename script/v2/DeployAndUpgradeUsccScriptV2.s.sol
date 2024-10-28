@@ -43,7 +43,7 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USCC tokenV2 = USCC(address(tokenProxy));
+        USCC tokenV2 = USCC(tokenProxyAddress);
         tokenV2.initializeV2();
 
         // 4
