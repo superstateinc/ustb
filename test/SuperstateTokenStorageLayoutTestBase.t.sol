@@ -7,7 +7,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeabl
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
@@ -25,9 +25,9 @@ abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
     ProxyAdmin public tokenProxyAdmin;
     TransparentUpgradeableProxy public tokenProxy;
 
-    ISuperstateToken public oldToken;
-    ISuperstateToken public newToken;
-    ISuperstateToken public currentToken;
+    ISuperstateTokenV1 public oldToken;
+    ISuperstateTokenV1 public newToken;
+    ISuperstateTokenV1 public currentToken;
 
     string public oldTokenVersion;
     string public newTokenVersion;

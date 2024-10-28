@@ -10,7 +10,7 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateTokenV3} from "src/interfaces/ISuperstateTokenV3.sol";
+import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -23,7 +23,7 @@ import {AggregatorV3Interface} from "lib/onchain-redemptions/lib/chainlink/contr
  * @author Superstate
  */
 abstract contract SuperstateToken is
-    ISuperstateTokenV3,
+    ISuperstateToken,
     ERC20Upgradeable,
     PausableUpgradeable,
     Ownable2StepUpgradeable

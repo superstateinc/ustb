@@ -100,7 +100,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 

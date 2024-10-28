@@ -10,7 +10,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
@@ -33,7 +33,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
     AllowList public perms;
     ProxyAdmin tokenProxyAdmin;
     TransparentUpgradeableProxy tokenProxy;
-    ISuperstateToken public token;
+    ISuperstateTokenV1 public token;
 
     address alice = address(10);
     address bob = address(11);
@@ -152,7 +152,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         token.encumber(charlie, 50e6);
 
         // alice attempts to transfer her entire balance
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.transfer(bob, 100e6);
 
         vm.stopPrank();
@@ -167,7 +167,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         vm.stopPrank();
 
         // someone attempts to transfer alice's entire balance
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.transferFrom(alice, bob, 100e6);
     }
 
@@ -179,7 +179,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         token.encumber(bob, 50e6);
 
         // alice attempts to encumber more than her remaining available balance
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.encumber(charlie, 60e6);
 
         vm.stopPrank();
@@ -214,14 +214,14 @@ contract SuperstateTokenTestBase is TokenTestBase {
         assertEq(token.balanceOf(alice), 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.SelfEncumberNotAllowed.selector);
+        vm.expectRevert(ISuperstateTokenV1.SelfEncumberNotAllowed.selector);
         token.encumber(alice, 50e6);
 
         vm.prank(alice);
         token.approve(bob, 50e6);
 
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.SelfEncumberNotAllowed.selector);
+        vm.expectRevert(ISuperstateTokenV1.SelfEncumberNotAllowed.selector);
         token.encumberFrom(alice, alice, 10e6);
     }
 
@@ -412,7 +412,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob releases a greater amount than is encumbered to him
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientEncumbrance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientEncumbrance.selector);
         token.release(alice, 200e6);
 
         assertEq(token.balanceOf(alice), 100e6);
@@ -442,7 +442,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
     function testMintRevertInsufficientPermissions() public {
         // cannot mint to Mallory since un-whitelisted
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.mint(mallory, 100e6);
     }
 
@@ -497,7 +497,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         token.accountingPause();
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.bulkMint(dsts, amounts);
 
         assertEq(token.balanceOf(alice), 0);
@@ -514,7 +514,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         amounts[1] = 333e6;
 
         // cannot mint to Mallory since un-whitelisted
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.bulkMint(dsts, amounts);
 
         assertEq(token.balanceOf(mallory), 0);
@@ -529,7 +529,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 100e6;
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV1.InvalidArgumentLengths.selector);
         token.bulkMint(dsts, amounts);
 
         address[] memory dsts1 = new address[](1);
@@ -539,13 +539,13 @@ contract SuperstateTokenTestBase is TokenTestBase {
         amounts1[0] = 100e6;
         amounts1[1] = 333e6;
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV1.InvalidArgumentLengths.selector);
         token.bulkMint(dsts1, amounts1);
 
         address[] memory dsts2 = new address[](0);
         uint256[] memory amounts2 = new uint256[](0);
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV1.InvalidArgumentLengths.selector);
         token.bulkMint(dsts2, amounts2);
     }
 
@@ -639,7 +639,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         assertEq(token.encumberedBalanceOf(alice), 50e6);
         assertEq(token.encumbrances(alice, bob), 50e6);
 
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.burn(200e6);
     }
 
@@ -656,7 +656,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         assertEq(token.encumbrances(alice, bob), 50e6);
 
         // alice tries to burn more than her available balance
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.burn(alice, 60e6);
     }
 
@@ -665,7 +665,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // mallory tries to burn her tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.burn(50e6);
     }
 
@@ -674,7 +674,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         vm.startPrank(mallory);
 
         // mallory tries to encumber to bob, without being whitelisted
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.encumber(bob, 50e6);
 
         vm.stopPrank();
@@ -689,13 +689,13 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob tries to encumber to charlie on behalf of mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
     }
 
     function testTransferToZeroReverts() public {
         deal(address(token), alice, 100e6);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         vm.prank(alice);
         token.transfer(address(0), 10e6);
     }
@@ -705,7 +705,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         vm.prank(alice);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transferFrom(alice, address(0), 10e6);
     }
 
@@ -714,7 +714,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // mallory tries to transfer tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transfer(charlie, 30e6);
     }
 
@@ -723,7 +723,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // alice tries to transfer tokens to mallory, but mallory isn't whitelisted
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
     }
 
@@ -736,7 +736,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob tries to transfer alice's tokens to mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transferFrom(alice, mallory, 50e6);
     }
 
@@ -765,7 +765,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         // bob calls transfers from alice, attempting to transfer his encumbered
         // tokens and also transfer tokens encumbered to charlie
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientAvailableBalance.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientAvailableBalance.selector);
         token.transferFrom(alice, bob, 100e18);
     }
 
@@ -808,7 +808,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // reverts because encumbrances[src][bob] == 0 and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 10e6);
     }
 
@@ -831,7 +831,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transferFrom(mallory, alice, 30e6);
     }
 
@@ -841,30 +841,30 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // mallory can't transfer tokens to a whitelisted address
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transfer(bob, 30e6);
 
         // whitelisted addresses can't transfer tokens to mallory
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
 
         vm.prank(bob);
         token.approve(charlie, 50e6);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         vm.prank(charlie);
         token.transferFrom(bob, mallory, 30e6);
 
         // mallory can't encumber tokens to anyone
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.encumber(bob, 30e6);
 
         // others can't encumber mallory's tokens, even if she's approved them
         vm.prank(mallory);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
         token.encumberFrom(mallory, charlie, 30e6);
     }
 
@@ -949,9 +949,9 @@ contract SuperstateTokenTestBase is TokenTestBase {
         deal(address(token), bob, 100e6);
 
         token.accountingPause();
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.mint(alice, 30e6);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.burn(bob, 30e6);
 
         vm.prank(alice);
@@ -1019,7 +1019,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
     // cannot double set any pause
     function testCannotDoublePause() public {
         token.accountingPause();
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.accountingPause();
 
         token.pause();
@@ -1031,7 +1031,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         token.accountingPause();
 
         token.accountingUnpause();
-        vm.expectRevert(ISuperstateToken.AccountingIsNotPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsNotPaused.selector);
         token.accountingUnpause();
 
         token.pause();
@@ -1054,22 +1054,22 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.mint(alice, 100e6);
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.burn(alice, 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.transfer(address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.transferFrom(alice, address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV1.AccountingIsPaused.selector);
         token.burn(10e6);
 
         token.accountingUnpause();
@@ -1260,7 +1260,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the owner
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(charlie, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1282,7 +1282,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the spender
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, charlie, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1304,7 +1304,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the allowance
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, bob, allowance + 1 wei, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1326,7 +1326,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the expiry
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry + 1, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1350,7 +1350,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1387,7 +1387,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob tries to reuse the same signature twice
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1412,7 +1412,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature after the expiry
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.SignatureExpired.selector);
+        vm.expectRevert(ISuperstateTokenV1.SignatureExpired.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1437,7 +1437,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature with invalid `s` value
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InvalidSignatureS.selector);
+        vm.expectRevert(ISuperstateTokenV1.InvalidSignatureS.selector);
         token.permit(eve, bob, allowance, expiry, v, r, invalidS);
 
         // bob's allowance from eve is unchanged
@@ -1461,7 +1461,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV1.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, invalidV, r, s);
 
         // bob's allowance from eve is unchanged

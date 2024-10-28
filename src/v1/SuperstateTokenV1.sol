@@ -6,7 +6,7 @@ import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/E
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -15,7 +15,7 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateToken, PausableUpgradeable {
+abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
