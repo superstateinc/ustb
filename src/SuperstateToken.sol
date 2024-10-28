@@ -38,7 +38,7 @@ abstract contract SuperstateToken is
     uint256[500] private __inheritanceGap;
 
     /// @notice The major version of this contract
-    string public constant VERSION = "2";
+    string public constant VERSION = "3";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
