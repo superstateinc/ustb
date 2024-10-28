@@ -4,7 +4,7 @@ import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
-import "src/USCC.sol";
+import "src/v2/USCCv2.sol";
 
 contract DeployAndUpgradeUsccScriptV2 is Script {
     /*
@@ -37,13 +37,13 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         vm.startBroadcast(deployer);
 
         // 1
-        USCC tokenV2Implementation = new USCC(admin, wrappedPerms);
+        USCCv2 tokenV2Implementation = new USCCv2(admin, wrappedPerms);
 
         // 2
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USCC tokenV2 = USCC(tokenProxyAddress);
+        USCCv2 tokenV2 = USCCv2(address(tokenProxy));
         tokenV2.initializeV2();
 
         // 4

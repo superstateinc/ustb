@@ -7,9 +7,9 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import {console} from "forge-std/console.sol";
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
-import {USTB} from "src/USTB.sol";
+import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
@@ -20,11 +20,11 @@ contract USTBv2MainnetForkTest is Test {
     TransparentUpgradeableProxy permsProxy;
     AllowList public perms;
     TransparentUpgradeableProxy tokenProxy;
-    SuperstateToken public token;
+    SuperstateTokenV2 public token;
     SuperstateTokenV1 public tokenV1;
     address adminAddress;
     address capturedMainnetAddress = address(0x008B3EeEE3AaAA5AD8F92De038729FC4fe899f75);
-    USTB tokenImplementation;
+    USTBv2 tokenImplementation;
 
     address alice = address(10);
     address bob = address(11);
@@ -49,12 +49,12 @@ contract USTBv2MainnetForkTest is Test {
         assertEq("1", tokenV1.VERSION());
 
         // Upgrade to v2 contract
-        tokenImplementation = new USTB(adminAddress, perms);
+        tokenImplementation = new USTBv2(adminAddress, perms);
         vm.prank(adminAddress);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
 
         // initialize v2 contract
-        token = USTB(address(tokenProxy));
+        token = USTBv2(address(tokenProxy));
         vm.prank(adminAddress);
         token.initializeV2();
 

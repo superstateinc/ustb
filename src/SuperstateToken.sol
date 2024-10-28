@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
+import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
+
+import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
+import {AggregatorV3Interface} from
+    "lib/onchain-redemptions/lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title SuperstateToken
@@ -17,11 +24,13 @@ import {AllowList} from "src/AllowList.sol";
  * @author Superstate
  */
 abstract contract SuperstateToken is
-    ISuperstateTokenV2,
+    ISuperstateToken,
     ERC20Upgradeable,
     PausableUpgradeable,
     Ownable2StepUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to inherit from new contracts
      * without impacting the fields within `SuperstateToken`.
@@ -61,21 +70,45 @@ abstract contract SuperstateToken is
     /// @notice Number of decimals used for the user representation of the token
     uint8 private constant DECIMALS = 6;
 
+    /// @notice Base 10000 for 0.01% precision
+    uint256 public constant FEE_DENOMINATOR = 10_000;
+
+    /// @notice Precision of SUPERSTATE_TOKEN
+    uint256 public constant SUPERSTATE_TOKEN_PRECISION = 10 ** DECIMALS;
+
+    /// @notice Lowest acceptable chainlink oracle price
+    uint256 public immutable MINIMUM_ACCEPTABLE_PRICE;
+
+    /// @notice Value, in seconds, that determines if chainlink data is too old
+    uint256 public maximumOracleDelay;
+
+    /// @notice The address of the oracle used to calculate the Net Asset Value per Share
+    address public superstateOracle;
+
+    /// @notice Mapping from a stablecoin's address to its configuration
+    mapping(address stablecoin => StablecoinConfig) public supportedStablecoins;
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
      * any contracts that inherit `SuperstateToken`
      */
-    uint256[100] private __additionalFieldsGap;
+    uint256[97] private __additionalFieldsGap;
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _existingAdmin The existing address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
+     * @param _maximumOracleDelay Value, in seconds, that determines if chainlink data is too old
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _existingAdmin, AllowList _allowList) {
+    constructor(address _existingAdmin, AllowList _allowList, uint256 _maximumOracleDelay) {
         _deprecatedAdmin = _existingAdmin;
         allowList = _allowList;
+        maximumOracleDelay = _maximumOracleDelay;
+
+        // SUPERSTATE_TOKEN starts at $10.000000, Chainlink oracle with 6 decimals would represent as 10_000_000.
+        // This math will give us 7_000_000 or $7.000000.
+        MINIMUM_ACCEPTABLE_PRICE = 7 * (10 ** uint256(DECIMALS));
 
         _disableInitializers();
     }
@@ -103,6 +136,10 @@ abstract contract SuperstateToken is
 
     function _requireNotAccountingPaused() internal view {
         if (accountingPaused) revert AccountingIsPaused();
+    }
+
+    function _requireOnchainSubscriptionsEnabled() internal view {
+        if (superstateOracle == address(0)) revert OnchainSubscriptionsDisabled();
     }
 
     /**
@@ -385,6 +422,150 @@ abstract contract SuperstateToken is
 
         _burn(msg.sender, amount);
         emit Burn(msg.sender, msg.sender, amount);
+    }
+
+    /**
+     * @notice The ```updateOracle``` function sets the address of the AggregatorV3Interface to be used to price the SuperstateToken
+     * @dev Requires msg.sender to be the owner address
+     * @param _newOracle The address of the oracle contract to update to
+     */
+    function updateOracle(address _newOracle) external {
+        _checkOwner();
+
+        address _oldOracle = superstateOracle;
+        if (_newOracle == _oldOracle) revert BadArgs();
+
+        superstateOracle = _newOracle;
+        emit OracleUpdated({oldOracle: _oldOracle, newOracle: _newOracle});
+    }
+
+    // Oracle integration inspired by: https://github.com/FraxFinance/frax-oracles/blob/bd56532a3c33da95faed904a5810313deab5f13c/src/abstracts/ChainlinkOracleWithMaxDelay.sol
+    function _setMaximumOracleDelay(uint256 _newMaxOracleDelay) internal {
+        if (maximumOracleDelay == _newMaxOracleDelay) revert BadArgs();
+        emit SetMaximumOracleDelay({oldMaxOracleDelay: maximumOracleDelay, newMaxOracleDelay: _newMaxOracleDelay});
+        maximumOracleDelay = _newMaxOracleDelay;
+    }
+    /**
+     * @notice The ```setMaximumOracleDelay``` function sets the max oracle delay to determine if Chainlink data is stale
+     * @dev Requires msg.sender to be the owner address
+     * @param _newMaxOracleDelay The new max oracle delay
+     */
+
+    function setMaximumOracleDelay(uint256 _newMaxOracleDelay) external {
+        _checkOwner();
+        _setMaximumOracleDelay(_newMaxOracleDelay);
+    }
+
+    function _getChainlinkPrice() internal view returns (bool _isBadData, uint256 _updatedAt, uint256 _price) {
+        _requireOnchainSubscriptionsEnabled();
+
+        (, int256 _answer,, uint256 _chainlinkUpdatedAt,) = AggregatorV3Interface(superstateOracle).latestRoundData();
+
+        // If data is stale or below first price, set bad data to true and return
+        // 1_000_000_000 is $10.000000 in the oracle format, that was our starting NAV per Share price for SUPERSTATE_TOKEN
+        // The oracle should never return a price much lower than this
+        _isBadData =
+            _answer < int256(MINIMUM_ACCEPTABLE_PRICE) || ((block.timestamp - _chainlinkUpdatedAt) > maximumOracleDelay);
+        _updatedAt = _chainlinkUpdatedAt;
+        _price = uint256(_answer);
+    }
+
+    /**
+     * @notice The ```getChainlinkPrice``` function returns the chainlink price and the timestamp of the last update
+     * @return _isBadData True if the data is stale or negative
+     * @return _updatedAt The timestamp of the last update
+     * @return _price The price
+     */
+    function getChainlinkPrice() external view returns (bool _isBadData, uint256 _updatedAt, uint256 _price) {
+        return _getChainlinkPrice();
+    }
+
+    /**
+     * @notice The ```updateStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
+     * @dev Requires msg.sender to be the owner address
+     * @param stablecoin The address of the stablecoin
+     * @param newSweepDestination The new address to sweep stablecoin subscriptions to
+     * @param newFee The new fee in basis points to charge for subscriptions in ```stablecoin```
+     */
+    function updateStablecoinConfig(address stablecoin, address newSweepDestination, uint96 newFee) external {
+        if (newFee > 10) revert FeeTooHigh(); // Max 0.1% fee
+        _checkOwner();
+
+        StablecoinConfig memory oldConfig = supportedStablecoins[stablecoin];
+        if (newSweepDestination == oldConfig.sweepDestination && newFee == oldConfig.fee) revert BadArgs();
+
+        supportedStablecoins[stablecoin] = StablecoinConfig({sweepDestination: newSweepDestination, fee: newFee});
+
+        emit StablecoinConfigUpdated({
+            stablecoin: stablecoin,
+            oldSweepDestination: oldConfig.sweepDestination,
+            newSweepDestination: newSweepDestination,
+            oldFee: oldConfig.fee,
+            newFee: newFee
+        });
+    }
+
+    function calculateFee(uint256 amount, uint256 subscriptionFee) public pure returns (uint256) {
+        return (amount * subscriptionFee) / FEE_DENOMINATOR;
+    }
+
+    /**
+     * @notice The ```calculateSuperstateTokenOut``` function calculates the total amount of Superstate tokens you'll receive for the inAmount of stablecoin. Treats all stablecoins as if they are always worth a dollar.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     * @return superstateTokenOutAmount The amount of Superstate tokens received for inAmount of stablecoin
+     * @return stablecoinInAmountAfterFee The amount of the stablecoin in after any fees
+     * @return feeOnStablecoinInAmount The amount of the stablecoin taken in fees
+     */
+    function calculateSuperstateTokenOut(uint256 inAmount, address stablecoin)
+        public
+        view
+        returns (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount)
+    {
+        StablecoinConfig memory config = supportedStablecoins[stablecoin];
+        if (config.sweepDestination == address(0)) revert StablecoinNotSupported();
+
+        feeOnStablecoinInAmount = calculateFee({amount: inAmount, subscriptionFee: config.fee});
+        stablecoinInAmountAfterFee = inAmount - feeOnStablecoinInAmount;
+
+        (bool isBadData,, uint256 usdPerSuperstateTokenChainlinkRaw) = _getChainlinkPrice();
+        if (isBadData) revert BadChainlinkData();
+
+        uint256 stablecoinDecimals = IERC20Metadata(stablecoin).decimals();
+        uint256 stablecoinPrecision = 10 ** stablecoinDecimals;
+        uint256 chainlinkFeedPrecision = 10 ** AggregatorV3Interface(superstateOracle).decimals();
+
+        // converts from a USD amount to a SUPERSTATE_TOKEN amount
+        superstateTokenOutAmount = (stablecoinInAmountAfterFee * chainlinkFeedPrecision * SUPERSTATE_TOKEN_PRECISION)
+            / (usdPerSuperstateTokenChainlinkRaw * stablecoinPrecision);
+    }
+
+    /**
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(uint256 inAmount, address stablecoin) external {
+        if (inAmount == 0) revert BadArgs();
+        _requireNotPaused();
+        _requireNotAccountingPaused();
+
+        (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee,) =
+            calculateSuperstateTokenOut({inAmount: inAmount, stablecoin: stablecoin});
+
+        if (superstateTokenOutAmount == 0) revert ZeroSuperstateTokensOut();
+
+        StablecoinConfig memory config = supportedStablecoins[stablecoin];
+        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: config.sweepDestination, value: inAmount});
+        _mint({account: msg.sender, amount: superstateTokenOutAmount});
+
+        emit Subscribe({
+            subscriber: msg.sender,
+            stablecoin: stablecoin,
+            stablecoinInAmount: inAmount,
+            stablecoinInAmountAfterFee: stablecoinInAmountAfterFee,
+            superstateTokenOutAmount: superstateTokenOutAmount
+        });
     }
 
     /**

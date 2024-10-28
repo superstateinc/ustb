@@ -3,10 +3,11 @@ pragma solidity ^0.8.28;
 
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {ERC20Upgradeable} from "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
-import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDSA.sol";
+import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
+import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/AllowList.sol";
 
@@ -15,9 +16,20 @@ import {AllowList} from "src/AllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, PausableUpgradeable {
+abstract contract SuperstateTokenV2 is
+    ISuperstateTokenV2,
+    ERC20Upgradeable,
+    PausableUpgradeable,
+    Ownable2StepUpgradeable
+{
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to inherit from new contracts
+     * without impacting the fields within `SuperstateToken`.
+     */
+    uint256[500] private __inheritanceGap;
+
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
+    string public constant VERSION = "2";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
@@ -28,7 +40,8 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
-    address public immutable admin;
+    /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to properly implement the transfer of ownership and will be removed in subsequent contract versions.
+    address public immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
     AllowList public immutable allowList;
@@ -49,13 +62,19 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
     uint8 private constant DECIMALS = 6;
 
     /**
+     * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
+     * any contracts that inherit `SuperstateToken`
+     */
+    uint256[100] private __additionalFieldsGap;
+
+    /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _admin The address designated as the admin with special privileges
+     * @param _existingAdmin The existing address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) {
-        admin = _admin;
+    constructor(address _existingAdmin, AllowList _allowList) {
+        _deprecatedAdmin = _existingAdmin;
         allowList = _allowList;
 
         _disableInitializers();
@@ -71,8 +90,15 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
         __Pausable_init();
     }
 
-    function _requireAuthorized() internal view {
-        if (msg.sender != admin) revert Unauthorized();
+    /**
+     * @notice Initialize version 2 of the contract.
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV2() public reinitializer(2) {
+        // Last usage of `_deprecatedAdmin` variable here.
+        // After this call, owner() is the source of truth for authorization.
+        if (msg.sender != _deprecatedAdmin) revert Unauthorized();
+        __Ownable2Step_init();
     }
 
     function _requireNotAccountingPaused() internal view {
@@ -84,7 +110,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @dev Can only be called by the admin
      */
     function pause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotPaused();
 
         _pause();
@@ -95,7 +121,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @dev Can only be called by the admin
      */
     function unpause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requirePaused();
 
         _unpause();
@@ -106,7 +132,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @dev Can only be called by the admin
      */
     function accountingPause() external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         accountingPaused = true;
@@ -118,11 +144,15 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @dev Can only be called by the admin
      */
     function accountingUnpause() external {
-        _requireAuthorized();
+        _checkOwner();
         if (!accountingPaused) revert AccountingIsNotPaused();
 
         accountingPaused = false;
         emit AccountingUnpaused(msg.sender);
+    }
+
+    function renounceOwnership() public virtual override onlyOwner {
+        revert RenounceOwnershipDisabled();
     }
 
     /**
@@ -305,7 +335,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @param amount Amount of tokens to mint
      */
     function mint(address dst, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
 
         _mintLogic({dst: dst, amount: amount});
@@ -318,7 +348,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @param amounts Amounts of tokens to mint
      */
     function bulkMint(address[] calldata dsts, uint256[] calldata amounts) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (dsts.length != amounts.length || dsts.length == 0) revert InvalidArgumentLengths();
 
@@ -336,7 +366,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @param amount Amount of tokens to burn
      */
     function burn(address src, uint256 amount) external {
-        _requireAuthorized();
+        _checkOwner();
         _requireNotAccountingPaused();
         if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
@@ -408,7 +438,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
         pure
         returns (bool)
     {
-        (address recoveredSigner, ECDSA.RecoverError recoverError) = ECDSA.tryRecover(digest, v, r, s);
+        (address recoveredSigner, ECDSA.RecoverError recoverError,) = ECDSA.tryRecover(digest, v, r, s);
 
         if (recoverError == ECDSA.RecoverError.InvalidSignatureS) revert InvalidSignatureS();
         if (recoverError == ECDSA.RecoverError.InvalidSignature) revert BadSignatory();

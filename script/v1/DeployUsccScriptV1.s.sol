@@ -4,12 +4,12 @@ import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
-import "src/USCC.sol";
+import "src/v1/USCCv1.sol";
 
 contract DeployScriptV1 is Script {
     TransparentUpgradeableProxy tokenProxy;
 
-    USCC public tokenImplementation;
+    USCCv1 public tokenImplementation;
 
     function run() external {
         // admin allowed to set permissions and mint / burn tokens
@@ -21,11 +21,11 @@ contract DeployScriptV1 is Script {
 
         vm.startBroadcast(deployer);
 
-        tokenImplementation = new USCC(admin, wrappedPerms);
+        tokenImplementation = new USCCv1(admin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), proxyAdmin, "");
 
         // wrap in ABI to support easier calls
-        USCC wrappedToken = USCC(address(tokenProxy));
+        USCCv1 wrappedToken = USCCv1(address(tokenProxy));
 
         // initialize token contract
         wrappedToken.initialize("Superstate Crypto Carry Fund", "USCC");

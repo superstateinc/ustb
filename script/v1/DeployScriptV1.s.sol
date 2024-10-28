@@ -4,7 +4,7 @@ import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/AllowList.sol";
-import "src/USTB.sol";
+import "src/v1/USTBv1.sol";
 
 contract DeployScriptV1 is Script {
     ProxyAdmin proxyAdmin;
@@ -12,7 +12,7 @@ contract DeployScriptV1 is Script {
     TransparentUpgradeableProxy tokenProxy;
 
     AllowList public permsImplementation;
-    USTB public tokenImplementation;
+    USTBv1 public tokenImplementation;
 
     function run() external {
         // admin allowed to set permissions and mint / burn tokens
@@ -30,11 +30,11 @@ contract DeployScriptV1 is Script {
         // wrap in ABI to support easier calls
         AllowList wrappedPerms = AllowList(address(permsProxy));
 
-        tokenImplementation = new USTB(admin, wrappedPerms);
+        tokenImplementation = new USTBv1(admin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        USTB wrappedToken = USTB(address(tokenProxy));
+        USTBv1 wrappedToken = USTBv1(address(tokenProxy));
 
         // initialize token contract
         wrappedToken.initialize("Superstate Short Duration US Government Securities Fund", "USTB");

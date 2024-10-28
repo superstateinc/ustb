@@ -8,9 +8,9 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
-import {USTB} from "src/USTB.sol";
+import {USTBv2} from "src/v2/USTBv2.sol";
 import {AllowList} from "src/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
@@ -56,7 +56,7 @@ contract USTBv2Test is SuperstateTokenTestBase {
         // Pause accounting?
 
         // Now upgrade to V2
-        USTB tokenImplementation = new USTB(address(this), perms);
+        USTBv2 tokenImplementation = new USTBv2(address(this), perms);
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );
@@ -70,8 +70,8 @@ contract USTBv2Test is SuperstateTokenTestBase {
 
         // initialize v2 of the contract, specifically the new authorization
         // mechanism via owner()
-        token = USTB(address(tokenProxy));
-        SuperstateToken(address(token)).initializeV2();
+        token = USTBv2(address(tokenProxy));
+        SuperstateTokenV2(address(token)).initializeV2();
 
         /*
             At this point, owner() is the same as admin() and is the source of truth
@@ -82,6 +82,6 @@ contract USTBv2Test is SuperstateTokenTestBase {
 
     function testRenounceOwnershipBlocked() public {
         vm.expectRevert(ISuperstateTokenV2.RenounceOwnershipDisabled.selector);
-        SuperstateToken(address(token)).renounceOwnership();
+        SuperstateTokenV2(address(token)).renounceOwnership();
     }
 }
