@@ -78,4 +78,9 @@ contract USTBv2Test is SuperstateTokenTestBase {
             not even be initialized.
         */
     }
+
+    function testRenounceOwnershipBlocked() public {
+        vm.expectRevert(ISuperstateToken.RenounceOwnershipDisabled.selector);
+        SuperstateToken(address(token)).renounceOwnership();
+    }
 }

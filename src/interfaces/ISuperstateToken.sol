@@ -51,6 +51,9 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
     /// @dev Thrown if array length arguments aren't equal
     error InvalidArgumentLengths();
 
+    /// @dev Thrown if an attempt to call `renounceOwnership` is made
+    error RenounceOwnershipDisabled();
+
     function allowList() external view returns (AllowList);
 
     /**

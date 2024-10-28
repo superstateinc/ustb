@@ -151,6 +151,10 @@ abstract contract SuperstateToken is
         emit AccountingUnpaused(msg.sender);
     }
 
+    function renounceOwnership() public virtual override onlyOwner {
+        revert RenounceOwnershipDisabled();
+    }
+
     /**
      * @notice Number of decimals used for the user representation of the token
      */
