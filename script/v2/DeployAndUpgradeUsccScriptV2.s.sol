@@ -29,7 +29,7 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
-        address tokenProxyAddress = vm.envAddress("PROXY_TOKEN_ADDRESS");
+        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
         TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
@@ -43,7 +43,7 @@ contract DeployAndUpgradeUsccScriptV2 is Script {
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USCC tokenV2 = USCC(address(tokenProxy));
+        USCC tokenV2 = USCC(tokenProxyAddress);
         tokenV2.initializeV2();
 
         // 4

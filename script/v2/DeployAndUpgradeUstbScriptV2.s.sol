@@ -30,7 +30,7 @@ contract DeployAndUpgradeUstbScriptV2 is Script {
         address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
-        address tokenProxyAddress = vm.envAddress("PROXY_TOKEN_ADDRESS");
+        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
         AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
         TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
@@ -44,7 +44,7 @@ contract DeployAndUpgradeUstbScriptV2 is Script {
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV2Implementation));
 
         // 3
-        USTB tokenV2 = USTB(address(tokenProxy));
+        USTB tokenV2 = USTB(tokenProxyAddress);
         tokenV2.initializeV2();
 
         // 4
