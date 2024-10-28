@@ -8,7 +8,7 @@ import {AllowList} from "src/AllowList.sol";
 interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
     /// @dev Struct for storing supported stablecoin configuration
     struct StablecoinConfig {
-        address out;
+        address sweepDestination;
         uint96 fee;
     }
 
@@ -34,7 +34,7 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
 
     /// @dev Event emitted when the configuration for a supported stablecoin changes
     event StablecoinConfigUpdated(
-        address indexed stablecoin, address oldOut, address newOut, uint96 oldFee, uint96 newFee
+        address indexed stablecoin, address oldSweepDestination, address newSweepDestination, uint96 oldFee, uint96 newFee
     );
 
     /// @dev Event emitted when the address for the pricing oracle changes
@@ -87,6 +87,9 @@ interface ISuperstateToken is IERC20Upgradeable, IERC7246 {
 
     /// @dev Thrown when owner tries to set the fee for a stablecoin too high
     error FeeTooHigh();
+
+    /// @dev Thrown when the msg.sender would receive 0 Superstate tokens out for their call to subscribe
+    error ZeroSuperstateTokensOut();
 
     function allowList() external view returns (AllowList);
 

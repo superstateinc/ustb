@@ -481,19 +481,19 @@ abstract contract SuperstateToken is
      * @notice The ```updateStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
      * @dev Requires msg.sender to be the owner address
      * @param stablecoin The address of the stablecoin
-     * @param newOut The new address to sweep stablecoin subscriptions to
+     * @param newSweepDestination The new address to sweep stablecoin subscriptions to
      * @param newFee The new fee in basis points to charge for subscriptions in ```stablecoin```
      */
-    function updateStablecoinConfig(address stablecoin, address newOut, uint96 newFee) external {
+    function updateStablecoinConfig(address stablecoin, address newSweepDestination, uint96 newFee) external {
         if (newFee > 10) revert FeeTooHigh(); // Max 0.1% fee
         _checkOwner();
 
         StablecoinConfig memory oldConfig = supportedStablecoins[stablecoin];
-        if (newOut == oldConfig.out && newFee == oldConfig.fee) revert BadArgs();
+        if (newSweepDestination == oldConfig.sweepDestination && newFee == oldConfig.fee) revert BadArgs();
 
-        supportedStablecoins[stablecoin] = StablecoinConfig({out: newOut, fee: newFee});
+        supportedStablecoins[stablecoin] = StablecoinConfig({sweepDestination: newSweepDestination, fee: newFee});
 
-        emit StablecoinConfigUpdated({stablecoin: stablecoin, oldOut: oldConfig.out, newOut: newOut, oldFee: oldConfig.fee, newFee: newFee});
+        emit StablecoinConfigUpdated({stablecoin: stablecoin, oldSweepDestination: oldConfig.sweepDestination, newSweepDestination: newSweepDestination, oldFee: oldConfig.fee, newFee: newFee});
     }
 
     function calculateFee(uint256 amount, uint256 subscriptionFee) public pure returns (uint256) {
@@ -510,7 +510,7 @@ abstract contract SuperstateToken is
      */
     function calculateSuperstateTokenOut(uint256 inAmount, address stablecoin) public view returns (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount) {
         StablecoinConfig memory config = supportedStablecoins[stablecoin];
-        if (config.out == address(0)) revert StablecoinNotSupported();
+        if (config.sweepDestination == address(0)) revert StablecoinNotSupported();
 
         feeOnStablecoinInAmount = calculateFee({amount: inAmount, subscriptionFee: config.fee});
         stablecoinInAmountAfterFee = inAmount - feeOnStablecoinInAmount;
@@ -539,10 +539,10 @@ abstract contract SuperstateToken is
 
         (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee,) = calculateSuperstateTokenOut({inAmount: inAmount, stablecoin: stablecoin});
 
-        // TODO: revert if superstateTokenOutAmount below a certain amount? like 0?
+        if (superstateTokenOutAmount == 0) revert ZeroSuperstateTokensOut();
 
         StablecoinConfig memory config = supportedStablecoins[stablecoin];
-        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: config.out, value: inAmount});
+        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: config.sweepDestination, value: inAmount});
         _mint({account: msg.sender, amount: superstateTokenOutAmount});
 
         emit Subscribe({
