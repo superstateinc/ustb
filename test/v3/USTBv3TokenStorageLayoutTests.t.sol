@@ -108,6 +108,27 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
         currentToken = newToken;
     }
 
+    function assertSuperstateTokenStorageLayout(bool hasUpgraded) public override {
+        super.assertSuperstateTokenStorageLayout(hasUpgraded);
+
+        if (hasUpgraded) {
+            bytes32 maximumOracleDelaySlot = keccak256(abi.encode(eve, uint256(755)));
+            uint256 maximumOracleDelaySlotValue = uint256(vm.load(address(tokenProxy), maximumOracleDelaySlot));
+            uint256 expectedMaximumOracleDelayValue = 0;
+            assertEq(maximumOracleDelaySlotValue, expectedMaximumOracleDelayValue);
+
+            bytes32 superstateOracleSlot = keccak256(abi.encode(eve, uint256(756)));
+            uint256 superstateOracleSlotValue = uint256(vm.load(address(tokenProxy), superstateOracleSlot));
+            uint256 expectedSuperstateOracleValue = 0;
+            assertEq(superstateOracleSlotValue, expectedSuperstateOracleValue);
+
+            bytes32 supportedStablecoinsSlot = keccak256(abi.encode(eve, uint256(757)));
+            uint256 supportedStablecoinsSlotValue = uint256(vm.load(address(tokenProxy), supportedStablecoinsSlot));
+            uint256 expectedSupportedStablecoinsValue = 0;
+            assertEq(supportedStablecoinsSlotValue, expectedSupportedStablecoinsValue);
+        }
+    }
+
     function assertOwnable2StepUpgradeableStorageLayout(bool) public override {
         // V2 and V3 does support this field, and the __owner is set within `upgradeAndInitializeNewToken`
 

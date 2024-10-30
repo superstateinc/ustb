@@ -51,8 +51,6 @@ contract USTBv3Test is SuperstateTokenTestBase {
         addrs[0] = charlie;
         perms.setEntityPermissionAndAddresses(abcEntityId, addrs, allowPerms);
 
-        // Pause accounting?
-
         // Now upgrade to V2
         tokenV2 = new USTBv2(address(this), perms);
         tokenProxyAdmin.upgradeAndCall(
@@ -84,6 +82,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         );
 
         token = USTB(address(tokenProxy));
+        // No initialization needed for V3
     }
 
     function testFoobar() public {
