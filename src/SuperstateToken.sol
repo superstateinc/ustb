@@ -96,15 +96,11 @@ abstract contract SuperstateToken is
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _existingAdmin The existing address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
-     * @param _maximumOracleDelay Value, in seconds, that determines if chainlink data is too old
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _existingAdmin, AllowList _allowList, uint256 _maximumOracleDelay) {
-        _deprecatedAdmin = _existingAdmin;
+    constructor(AllowList _allowList) {
         allowList = _allowList;
-        maximumOracleDelay = _maximumOracleDelay;
 
         // SUPERSTATE_TOKEN starts at $10.000000, Chainlink oracle with 6 decimals would represent as 10_000_000.
         // This math will give us 7_000_000 or $7.000000.

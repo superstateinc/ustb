@@ -25,11 +25,8 @@ contract DeployAndUpgradeUstbScriptV3 is Script {
             1. Broadcast tokenProxy.acceptOwnership()
     */
 
-    uint256 public constant MAXIMUM_ORACLE_DELAY = 120;
-
     function run() external {
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
-        address admin = vm.envAddress("ADMIN_ADDRESS");
         //        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
@@ -41,7 +38,7 @@ contract DeployAndUpgradeUstbScriptV3 is Script {
         vm.startBroadcast(deployer);
 
         // 1
-        USTB tokenV3Implementation = new USTB(admin, wrappedPerms, MAXIMUM_ORACLE_DELAY);
+        USTB tokenV3Implementation = new USTB(wrappedPerms);
 
         // 2
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV3Implementation));
