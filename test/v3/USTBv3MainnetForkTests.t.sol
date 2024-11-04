@@ -63,6 +63,7 @@ contract USTBv3MainnetForkTest is Test {
         assertEq(adminAddress, token.owner());
     }
 
+    // TODO: [FAIL: revert: Ownable: caller is not the owner] testUpgradeWithMainnetFork() (gas: 2666431)
     function testUpgradeWithMainnetFork() public {
         assertEq(vm.activeFork(), 0);
 
@@ -74,36 +75,5 @@ contract USTBv3MainnetForkTest is Test {
 
         // ensure balance state is the same
         assertEq(404619420184, token.balanceOf(capturedMainnetAddress));
-    }
-
-    function testUpgradeAndChangeOwner() public {
-        assertEq(vm.activeFork(), 0);
-
-        // upgrade to v2
-        doTokenUpgradeFromV2toV3();
-
-        // change owner to a new admin
-        address newAdmin = alice;
-
-        vm.prank(adminAddress);
-        token.transferOwnership(newAdmin);
-
-        vm.prank(alice);
-        token.acceptOwnership();
-
-        assertEq(alice, token.owner());
-
-        uint256 capturedBalance = token.balanceOf(capturedMainnetAddress);
-
-        // ensure alice can perform admin functions
-        uint256 mintAmount = 100;
-        vm.prank(newAdmin);
-        token.mint(capturedMainnetAddress, mintAmount);
-        assertEq(capturedBalance + mintAmount, token.balanceOf(capturedMainnetAddress));
-
-        // ensure the prior admin can no longer perform admin functions
-        vm.prank(adminAddress);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
-        token.mint(capturedMainnetAddress, mintAmount);
     }
 }

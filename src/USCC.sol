@@ -15,9 +15,7 @@ contract USCC is SuperstateToken {
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(AllowList _allowList)
-        SuperstateToken(_allowList)
-    {}
+    constructor(AllowList _allowList) SuperstateToken(_allowList) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering

@@ -425,14 +425,12 @@ abstract contract SuperstateToken is
      * @dev Requires msg.sender to be the owner address
      * @param _newOracle The address of the oracle contract to update to
      */
-    function updateOracle(address _newOracle) external {
+    function setOracle(address _newOracle) external {
         _checkOwner();
 
-        address _oldOracle = superstateOracle;
-        if (_newOracle == _oldOracle) revert BadArgs();
-
+        if (_newOracle == superstateOracle) revert BadArgs();
+        emit SetOracle({oldOracle: superstateOracle, newOracle: _newOracle});
         superstateOracle = _newOracle;
-        emit OracleUpdated({oldOracle: _oldOracle, newOracle: _newOracle});
     }
 
     // Oracle integration inspired by: https://github.com/FraxFinance/frax-oracles/blob/bd56532a3c33da95faed904a5810313deab5f13c/src/abstracts/ChainlinkOracleWithMaxDelay.sol
@@ -450,6 +448,31 @@ abstract contract SuperstateToken is
     function setMaximumOracleDelay(uint256 _newMaxOracleDelay) external {
         _checkOwner();
         _setMaximumOracleDelay(_newMaxOracleDelay);
+    }
+
+    /**
+     * @notice The ```updateStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
+     * @dev Requires msg.sender to be the owner address
+     * @param stablecoin The address of the stablecoin
+     * @param newSweepDestination The new address to sweep stablecoin subscriptions to
+     * @param newFee The new fee in basis points to charge for subscriptions in ```stablecoin```
+     */
+    function setStablecoinConfig(address stablecoin, address newSweepDestination, uint96 newFee) external {
+        if (newFee > 10) revert FeeTooHigh(); // Max 0.1% fee
+        _checkOwner();
+
+        StablecoinConfig memory oldConfig = supportedStablecoins[stablecoin];
+        if (newSweepDestination == oldConfig.sweepDestination && newFee == oldConfig.fee) revert BadArgs();
+
+        supportedStablecoins[stablecoin] = StablecoinConfig({sweepDestination: newSweepDestination, fee: newFee});
+
+        emit SetStablecoinConfig({
+            stablecoin: stablecoin,
+            oldSweepDestination: oldConfig.sweepDestination,
+            newSweepDestination: newSweepDestination,
+            oldFee: oldConfig.fee,
+            newFee: newFee
+        });
     }
 
     function _getChainlinkPrice() internal view returns (bool _isBadData, uint256 _updatedAt, uint256 _price) {
@@ -476,30 +499,6 @@ abstract contract SuperstateToken is
         return _getChainlinkPrice();
     }
 
-    /**
-     * @notice The ```updateStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
-     * @dev Requires msg.sender to be the owner address
-     * @param stablecoin The address of the stablecoin
-     * @param newSweepDestination The new address to sweep stablecoin subscriptions to
-     * @param newFee The new fee in basis points to charge for subscriptions in ```stablecoin```
-     */
-    function updateStablecoinConfig(address stablecoin, address newSweepDestination, uint96 newFee) external {
-        if (newFee > 10) revert FeeTooHigh(); // Max 0.1% fee
-        _checkOwner();
-
-        StablecoinConfig memory oldConfig = supportedStablecoins[stablecoin];
-        if (newSweepDestination == oldConfig.sweepDestination && newFee == oldConfig.fee) revert BadArgs();
-
-        supportedStablecoins[stablecoin] = StablecoinConfig({sweepDestination: newSweepDestination, fee: newFee});
-
-        emit StablecoinConfigUpdated({
-            stablecoin: stablecoin,
-            oldSweepDestination: oldConfig.sweepDestination,
-            newSweepDestination: newSweepDestination,
-            oldFee: oldConfig.fee,
-            newFee: newFee
-        });
-    }
 
     function calculateFee(uint256 amount, uint256 subscriptionFee) public pure returns (uint256) {
         return (amount * subscriptionFee) / FEE_DENOMINATOR;
@@ -551,8 +550,11 @@ abstract contract SuperstateToken is
 
         if (superstateTokenOutAmount == 0) revert ZeroSuperstateTokensOut();
 
-        StablecoinConfig memory config = supportedStablecoins[stablecoin];
-        IERC20(stablecoin).safeTransferFrom({from: msg.sender, to: config.sweepDestination, value: inAmount});
+        IERC20(stablecoin).safeTransferFrom({
+            from: msg.sender,
+            to: supportedStablecoins[stablecoin].sweepDestination,
+            value: inAmount
+        });
         _mint({account: msg.sender, amount: superstateTokenOutAmount});
 
         emit Subscribe({
