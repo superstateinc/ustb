@@ -11,7 +11,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTB} from "src/USTB.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 import "test/SuperstateTokenTestBase.t.sol";
 
 contract USTBv3Test is SuperstateTokenTestBase {

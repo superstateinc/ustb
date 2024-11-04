@@ -4,7 +4,7 @@ import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/AllowList.sol";
+import "src/allowlist/AllowList.sol";
 import "src/v2/USTBv2.sol";
 
 contract DeployAndUpgradeUstbScriptV2 is Script {

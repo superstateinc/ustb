@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 import "test/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";
 import {USCCV2} from "test/USCCV2.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 
 contract USCCv1Test is SuperstateTokenTestBase {

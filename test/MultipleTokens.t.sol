@@ -9,7 +9,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USCCv2} from "src/v2/USCCv2.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 
 contract MultiTokenTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);

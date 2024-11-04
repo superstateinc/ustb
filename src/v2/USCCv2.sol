@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 
 /**
  * @title USCC

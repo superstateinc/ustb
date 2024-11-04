@@ -8,7 +8,7 @@ import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDS
 
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 
 /**
  * @title SuperstateToken

@@ -12,7 +12,7 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/TokenTestBase.t.sol";

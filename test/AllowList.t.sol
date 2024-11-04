@@ -7,7 +7,7 @@ import {Vm} from "forge-std/Vm.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import "src/AllowList.sol";
+import "src/allowlist/AllowList.sol";
 import "test/AllowListV2.sol";
 
 contract AllowListTest is Test {
