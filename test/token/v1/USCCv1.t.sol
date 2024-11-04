@@ -106,12 +106,12 @@ contract USCCv1Test is SuperstateTokenTestBase {
     }
 
     function testUpgradingAllowListDoesNotAffectToken() public override {
-        TestAllowList permsV2Implementation = new TestAllowList(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
 
-        TestAllowList permsV2 = TestAllowList(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         assertEq(address(token.allowList()), address(permsProxy));
 
@@ -148,11 +148,11 @@ contract USCCv1Test is SuperstateTokenTestBase {
     }
 
     function testUpgradingAllowListAndTokenWorks() public override {
-        TestAllowList permsV2Implementation = new TestAllowList(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
-        TestAllowList permsV2 = TestAllowList(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         USCCV2 tokenV2Implementation = new USCCV2(address(this), permsV2);
         tokenProxyAdmin.upgradeAndCall(
@@ -189,8 +189,8 @@ contract USCCv1Test is SuperstateTokenTestBase {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        TestAllowList.Permission memory newPerms =
-            TestAllowList.Permission(false, true, false, false, false, false, false, true);
+        MockAllowList.Permission memory newPerms =
+            MockAllowList.Permission(false, true, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions

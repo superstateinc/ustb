@@ -14,7 +14,7 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/allowlist/mocks/TestAllowList.sol";
+import "test/allowlist/mocks/MockAllowList.sol";
 import "test/token/mocks/USTBV2.sol";
 import "test/token/TokenTestBase.t.sol";
 
@@ -1099,12 +1099,12 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListDoesNotAffectToken() public virtual {
-        TestAllowList permsV2Implementation = new TestAllowList(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
 
-        TestAllowList permsV2 = TestAllowList(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         assertEq(address(token.allowList()), address(permsProxy));
 
@@ -1141,11 +1141,11 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListAndTokenWorks() public virtual {
-        TestAllowList permsV2Implementation = new TestAllowList(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
-        TestAllowList permsV2 = TestAllowList(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         USTBV2 tokenV2Implementation = new USTBV2(address(this), permsV2);
         tokenProxyAdmin.upgradeAndCall(
@@ -1182,8 +1182,8 @@ contract SuperstateTokenTestBase is TokenTestBase {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        TestAllowList.Permission memory newPerms =
-            TestAllowList.Permission(true, false, false, false, false, false, false, true);
+        MockAllowList.Permission memory newPerms =
+            MockAllowList.Permission(true, false, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions
