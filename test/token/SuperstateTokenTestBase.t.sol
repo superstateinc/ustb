@@ -14,9 +14,9 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/TestAllowList.sol";
-import "test/USTBV2.sol";
-import "test/TokenTestBase.t.sol";
+import "test/allowlist/mocks/TestAllowList.sol";
+import "test/token/mocks/USTBV2.sol";
+import "test/token/TokenTestBase.t.sol";
 
 // TODO: Make this base abstract and have the implementing tests initialize the proxy.
 // That way the v1 tests can use OZv4, and the v2 tests can use OZv5

@@ -9,7 +9,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "src/allowlist/AllowList.sol";
-import "test/TestAllowList.sol";
+import "test/allowlist/mocks/TestAllowList.sol";
 
 contract AllowListTest is Test {
     event PermissionSet(uint256 indexed addr, IAllowList.Permission permission);

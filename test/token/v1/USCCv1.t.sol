@@ -1,8 +1,8 @@
 pragma solidity ^0.8.28;
 
-import "test/SuperstateTokenTestBase.t.sol";
+import "test/token/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";
-import {USCCV2} from "test/USCCV2.sol";
+import {USCCV2} from "test/token/mocks/USCCV2.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";

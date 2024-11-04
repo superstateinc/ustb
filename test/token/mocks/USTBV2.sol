@@ -8,7 +8,7 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDSA.sol";
 
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {TestAllowList} from "test/TestAllowList.sol";
+import {TestAllowList} from "test/allowlist/mocks/TestAllowList.sol";
 
 /**
  * @title USTBV2

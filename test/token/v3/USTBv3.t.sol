@@ -15,9 +15,9 @@ import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/SuperstateTokenTestBase.t.sol";
+import "test/token/SuperstateTokenTestBase.t.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
-import {SuperstateOracle} from "../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
+import {SuperstateOracle} from "../../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
 
 contract USTBv3Test is SuperstateTokenTestBase {
     SuperstateTokenV1 public tokenV1;

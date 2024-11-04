@@ -11,9 +11,9 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/TestAllowList.sol";
-import "test/USTBV2.sol";
-import "test/TokenTestBase.t.sol";
+import "test/allowlist/mocks/TestAllowList.sol";
+import "test/token/mocks/USTBV2.sol";
+import "test/token/TokenTestBase.t.sol";
 
 /*
  * Used as a test base for token upgrades to assert the storage slots and their mappings have been preserved. In cases where

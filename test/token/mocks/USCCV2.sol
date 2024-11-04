@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {USTBV2} from "test/USTBV2.sol";
-import {TestAllowList} from "test/TestAllowList.sol";
+import {USTBV2} from "test/token/mocks/USTBV2.sol";
+import {TestAllowList} from "test/allowlist/mocks/TestAllowList.sol";
 
 contract USCCV2 is USTBV2 {
     /**
