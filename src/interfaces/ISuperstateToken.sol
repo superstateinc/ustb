@@ -16,6 +16,18 @@ interface ISuperstateToken is ISuperstateTokenV2 {
     /// @dev Emitted when the max oracle delay is set
     event SetMaximumOracleDelay(uint256 oldMaxOracleDelay, uint256 newMaxOracleDelay);
 
+    /// @dev Event emitted when the address for the pricing oracle changes
+    event SetOracle(address oldOracle, address newOracle);
+
+    /// @dev Event emitted when the configuration for a supported stablecoin changes
+    event SetStablecoinConfig(
+        address indexed stablecoin,
+        address oldSweepDestination,
+        address newSweepDestination,
+        uint96 oldFee,
+        uint96 newFee
+    );
+
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
     event Subscribe(
         address indexed subscriber,
@@ -25,32 +37,20 @@ interface ISuperstateToken is ISuperstateTokenV2 {
         uint256 superstateTokenOutAmount
     );
 
-    /// @dev Event emitted when the configuration for a supported stablecoin changes
-    event StablecoinConfigUpdated(
-        address indexed stablecoin,
-        address oldSweepDestination,
-        address newSweepDestination,
-        uint96 oldFee,
-        uint96 newFee
-    );
-
-    /// @dev Event emitted when the address for the pricing oracle changes
-    event OracleUpdated(address oldOracle, address newOracle);
-
     /// @dev Thrown when an argument is invalid
     error BadArgs();
 
     /// @dev Thrown when Chainlink Oracle data is bad
     error BadChainlinkData();
 
+    /// @dev Thrown when owner tries to set the fee for a stablecoin too high
+    error FeeTooHigh();
+
     /// @dev Thrown when the superstateUstbOracle is the 0 address
     error OnchainSubscriptionsDisabled();
 
     /// @dev Thrown when trying to calculate amount of Superstate Tokens you'd get for an unsupported stablecoin
     error StablecoinNotSupported();
-
-    /// @dev Thrown when owner tries to set the fee for a stablecoin too high
-    error FeeTooHigh();
 
     /// @dev Thrown when the msg.sender would receive 0 Superstate tokens out for their call to subscribe
     error ZeroSuperstateTokensOut();

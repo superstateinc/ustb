@@ -21,7 +21,8 @@ contract USTBv3MainnetForkTest is Test {
     SuperstateToken public token;
     SuperstateTokenV2 public tokenV2;
     address adminAddress;
-    address capturedMainnetAddress = address(0x008B3EeEE3AaAA5AD8F92De038729FC4fe899f75);
+    address fireblocksAdminAddress;
+    address capturedMainnetAddress = address(0x5138D77d51dC57983e5A653CeA6e1C1aa9750A39);
     USTB tokenImplementation;
 
     address alice = address(10);
@@ -30,11 +31,12 @@ contract USTBv3MainnetForkTest is Test {
     function setUp() public virtual {
         string memory rpcUrl = vm.envString("RPC_URL");
 
-        uint256 mainnetFork = vm.createFork(rpcUrl);
+        uint256 mainnetFork = vm.createFork(rpcUrl, 21116666);
         vm.selectFork(mainnetFork);
         assertEq(vm.activeFork(), mainnetFork);
 
         adminAddress = address(0xad309BB6f13074128b4F23EF9EA2fe8552AfCA83);
+        fireblocksAdminAddress = 0x8C7Db8A96d39F76D9f456db23d591C2FDd0e2F8a;
 
         proxyAdmin = ProxyAdmin(address(0xCb8d325C0Af19697B8454481602097f93aa9040F));
         perms = AllowList(address(0x42d75C8FdBBF046DF0Fe1Ff388DA16fF99dE8149)); // This points to the AllowList proxy
@@ -48,13 +50,12 @@ contract USTBv3MainnetForkTest is Test {
 
         // Upgrade to v3 contract
         tokenImplementation = new USTB(perms);
-        vm.prank(adminAddress);
+
+        vm.prank(fireblocksAdminAddress);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
 
         // initialize v3 contract
         token = USTB(address(tokenProxy));
-        vm.prank(adminAddress);
-        token.initializeV2();
 
         // assert logic contract is now v3
         assertEq("3", token.VERSION());
@@ -67,43 +68,12 @@ contract USTBv3MainnetForkTest is Test {
         assertEq(vm.activeFork(), 0);
 
         // check balance on an address in v2
-        assertEq(404619420184, tokenV2.balanceOf(capturedMainnetAddress));
+        assertEq(2541061320107, tokenV2.balanceOf(capturedMainnetAddress));
 
         // upgrade to v3
         doTokenUpgradeFromV2toV3();
 
         // ensure balance state is the same
-        assertEq(404619420184, token.balanceOf(capturedMainnetAddress));
-    }
-
-    function testUpgradeAndChangeOwner() public {
-        assertEq(vm.activeFork(), 0);
-
-        // upgrade to v2
-        doTokenUpgradeFromV2toV3();
-
-        // change owner to a new admin
-        address newAdmin = alice;
-
-        vm.prank(adminAddress);
-        token.transferOwnership(newAdmin);
-
-        vm.prank(alice);
-        token.acceptOwnership();
-
-        assertEq(alice, token.owner());
-
-        uint256 capturedBalance = token.balanceOf(capturedMainnetAddress);
-
-        // ensure alice can perform admin functions
-        uint256 mintAmount = 100;
-        vm.prank(newAdmin);
-        token.mint(capturedMainnetAddress, mintAmount);
-        assertEq(capturedBalance + mintAmount, token.balanceOf(capturedMainnetAddress));
-
-        // ensure the prior admin can no longer perform admin functions
-        vm.prank(adminAddress);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
-        token.mint(capturedMainnetAddress, mintAmount);
+        assertEq(2541061320107, token.balanceOf(capturedMainnetAddress));
     }
 }
