@@ -11,7 +11,7 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/AllowListV2.sol";
+import "test/TestAllowList.sol";
 import "test/USTBV2.sol";
 import "test/TokenTestBase.t.sol";
 

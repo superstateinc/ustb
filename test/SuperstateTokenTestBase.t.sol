@@ -14,7 +14,7 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/AllowListV2.sol";
+import "test/TestAllowList.sol";
 import "test/USTBV2.sol";
 import "test/TokenTestBase.t.sol";
 
@@ -1099,12 +1099,12 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListDoesNotAffectToken() public virtual {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        TestAllowList permsV2Implementation = new TestAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
 
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        TestAllowList permsV2 = TestAllowList(address(permsProxy));
 
         assertEq(address(token.allowList()), address(permsProxy));
 
@@ -1141,11 +1141,11 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListAndTokenWorks() public virtual {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        TestAllowList permsV2Implementation = new TestAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        TestAllowList permsV2 = TestAllowList(address(permsProxy));
 
         USTBV2 tokenV2Implementation = new USTBV2(address(this), permsV2);
         tokenProxyAdmin.upgradeAndCall(
@@ -1182,8 +1182,8 @@ contract SuperstateTokenTestBase is TokenTestBase {
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        AllowListV2.Permission memory newPerms =
-            AllowListV2.Permission(true, false, false, false, false, false, false, true);
+        TestAllowList.Permission memory newPerms =
+            TestAllowList.Permission(true, false, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions

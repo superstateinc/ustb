@@ -8,7 +8,7 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDSA.sol";
 
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowListV2} from "test/AllowListV2.sol";
+import {TestAllowList} from "test/TestAllowList.sol";
 
 /**
  * @title USTBV2
@@ -31,7 +31,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     address public immutable admin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
-    AllowListV2 public immutable allowList;
+    TestAllowList public immutable allowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -99,7 +99,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @param _allowList Address of the AllowListV2 contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowListV2 _allowList) {
+    constructor(address _admin, TestAllowList _allowList) {
         admin = _admin;
         allowList = _allowList;
 
@@ -172,14 +172,14 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     function transfer(address dst, uint256 amount) public virtual override whenNotPaused returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        AllowListV2.Permission memory senderPermissions = allowList.getPermission(msg.sender);
+        TestAllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.isAllowed || !senderPermissions.state7) revert InsufficientPermissions();
 
         if (dst == address(0)) {
             _burn(msg.sender, amount);
             emit Burn(msg.sender, msg.sender, amount);
         } else {
-            AllowListV2.Permission memory dstPermissions = allowList.getPermission(dst);
+            TestAllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
@@ -231,7 +231,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
             _burn(src, amount);
             emit Burn(msg.sender, src, amount);
         } else {
-            AllowListV2.Permission memory dstPermissions = allowList.getPermission(dst);
+            TestAllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.isAllowed || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(src, dst, amount);
         }
@@ -304,7 +304,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view virtual returns (bool) {
-        AllowListV2.Permission memory permissions = allowList.getPermission(addr);
+        TestAllowList.Permission memory permissions = allowList.getPermission(addr);
         return permissions.isAllowed && permissions.state7;
     }
 
@@ -340,7 +340,7 @@ contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
      */
     function _encumber(address owner, address taker, uint256 amount) internal virtual {
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-        AllowListV2.Permission memory permissions = allowList.getPermission(owner);
+        TestAllowList.Permission memory permissions = allowList.getPermission(owner);
         if (!permissions.isAllowed || !permissions.state7) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;

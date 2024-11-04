@@ -12,7 +12,7 @@ import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
-import "test/AllowListV2.sol";
+import "test/TestAllowList.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenTestBase.t.sol";
 import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";

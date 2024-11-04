@@ -8,7 +8,7 @@ pragma solidity ^0.8.28;
  * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract AllowListV2 { // TODO - rename this (fast follow PR)
+contract TestAllowList {
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 

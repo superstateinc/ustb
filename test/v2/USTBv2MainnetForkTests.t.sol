@@ -12,7 +12,7 @@ import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
-import "test/AllowListV2.sol";
+import "test/TestAllowList.sol";
 import "test/USTBV2.sol";
 
 contract USTBv2MainnetForkTest is Test {
