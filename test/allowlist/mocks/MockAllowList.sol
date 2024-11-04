@@ -4,11 +4,11 @@ pragma solidity ^0.8.28;
 // THIS IS A TEST CONTRACT DO NOT USE IN PRODUCTION
 
 /**
- * @title AllowListV2
+ * @title MockAllowList
  * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract AllowListV2 { // TODO - rename this (fast follow PR)
+contract MockAllowList {
     /// @notice The major version of this contract
     string public constant VERSION = "2";
 

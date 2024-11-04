@@ -2,7 +2,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/StdUtils.sol";
 import {Test} from "forge-std/Test.sol";
-import "test/TokenTestBase.t.sol";
+import "test/token/TokenTestBase.t.sol";
 
 import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";

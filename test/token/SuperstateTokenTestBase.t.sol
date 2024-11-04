@@ -14,9 +14,9 @@ import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "test/AllowListV2.sol";
-import "test/USTBV2.sol";
-import "test/TokenTestBase.t.sol";
+import "test/allowlist/mocks/MockAllowList.sol";
+import "test/token/mocks/MockUSTBv1.sol";
+import "test/token/TokenTestBase.t.sol";
 
 // TODO: Make this base abstract and have the implementing tests initialize the proxy.
 // That way the v1 tests can use OZv4, and the v2 tests can use OZv5
@@ -1099,12 +1099,12 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListDoesNotAffectToken() public virtual {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
 
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         assertEq(address(token.allowList()), address(permsProxy));
 
@@ -1141,17 +1141,17 @@ contract SuperstateTokenTestBase is TokenTestBase {
     }
 
     function testUpgradingAllowListAndTokenWorks() public virtual {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
-        USTBV2 tokenV2Implementation = new USTBV2(address(this), permsV2);
+        MockUSTBv1 tokenV2Implementation = new MockUSTBv1(address(this), permsV2);
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), ""
         );
-        USTBV2 tokenV2 = USTBV2(address(tokenProxy));
+        MockUSTBv1 tokenV2 = MockUSTBv1(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
         // so Alice, Bob, and Charlie no longer have sufficient permissions...
@@ -1164,7 +1164,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
         // ...and cannot do regular token operations (transfer, transferFrom, encumber, encumberFrom)
         vm.prank(alice);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.transfer(bob, 10e6);
 
         vm.prank(charlie);
@@ -1172,18 +1172,18 @@ contract SuperstateTokenTestBase is TokenTestBase {
         tokenV2.transferFrom(alice, bob, 10e6);
 
         vm.prank(bob);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.encumber(charlie, 10e6);
 
         vm.prank(bob);
         tokenV2.approve(alice, 40e6);
         vm.prank(alice);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        AllowListV2.Permission memory newPerms =
-            AllowListV2.Permission(true, false, false, false, false, false, false, true);
+        MockAllowList.Permission memory newPerms =
+            MockAllowList.Permission(true, false, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions

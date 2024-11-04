@@ -14,7 +14,7 @@ import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
-import "test/SuperstateTokenStorageLayoutTestBase.t.sol";
+import "test/token/SuperstateTokenStorageLayoutTestBase.t.sol";
 
 /**
  *  SuperstateV2 Token storage layout:

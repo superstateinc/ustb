@@ -9,7 +9,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "src/allowlist/AllowList.sol";
-import "test/AllowListV2.sol";
+import "test/allowlist/mocks/MockAllowList.sol";
 
 contract AllowListTest is Test {
     event PermissionSet(uint256 indexed addr, IAllowList.Permission permission);
@@ -529,16 +529,17 @@ contract AllowListTest is Test {
         assertEq(perms.getPermission(alice), IAllowList.Permission(false, false, false, false, false, false));
         assertEq(perms.getPermission(bob), IAllowList.Permission(true, false, false, false, false, false));
 
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(proxy)), address(permsV2Implementation), "");
-        AllowListV2 permsV2 = AllowListV2(address(proxy));
+        MockAllowList permsV2 = MockAllowList(address(proxy));
 
         // check Permissions struct values are unchanged after upgrade
         assertEq(
-            permsV2.getPermission(alice), AllowListV2.Permission(false, false, false, false, false, false, false, false)
+            permsV2.getPermission(alice),
+            MockAllowList.Permission(false, false, false, false, false, false, false, false)
         );
         assertEq(
-            permsV2.getPermission(bob), AllowListV2.Permission(true, false, false, false, false, false, false, false)
+            permsV2.getPermission(bob), MockAllowList.Permission(true, false, false, false, false, false, false, false)
         );
 
         // check permission admin didn't change
@@ -552,8 +553,8 @@ contract AllowListTest is Test {
         assertEq(permsV2.getPermission(bob).state2, false);
 
         // set new multi-permission values for bob
-        AllowListV2.Permission memory multiPerms =
-            AllowListV2.Permission(true, true, false, false, false, false, false, false);
+        MockAllowList.Permission memory multiPerms =
+            MockAllowList.Permission(true, true, false, false, false, false, false, false);
         permsV2.setPermission(bobEntityId, multiPerms);
 
         assertEq(permsV2.getPermission(bob).isAllowed, true);
@@ -567,7 +568,7 @@ contract AllowListTest is Test {
         assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function
     }
 
-    function assertEq(AllowListV2.Permission memory expected, AllowListV2.Permission memory actual) internal {
+    function assertEq(MockAllowList.Permission memory expected, MockAllowList.Permission memory actual) internal {
         bytes memory expectedBytes = abi.encode(expected);
         bytes memory actualBytes = abi.encode(actual);
         assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function

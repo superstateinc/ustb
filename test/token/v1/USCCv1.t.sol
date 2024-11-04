@@ -1,8 +1,8 @@
 pragma solidity ^0.8.28;
 
-import "test/SuperstateTokenTestBase.t.sol";
+import "test/token/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";
-import {USCCV2} from "test/USCCV2.sol";
+import {MockUSCCv1} from "test/token/mocks/MockUSCCv1.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
@@ -106,12 +106,12 @@ contract USCCv1Test is SuperstateTokenTestBase {
     }
 
     function testUpgradingAllowListDoesNotAffectToken() public override {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
 
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
         assertEq(address(token.allowList()), address(permsProxy));
 
@@ -148,17 +148,17 @@ contract USCCv1Test is SuperstateTokenTestBase {
     }
 
     function testUpgradingAllowListAndTokenWorks() public override {
-        AllowListV2 permsV2Implementation = new AllowListV2(address(this));
+        MockAllowList permsV2Implementation = new MockAllowList(address(this));
         permsProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(permsProxy)), address(permsV2Implementation), ""
         );
-        AllowListV2 permsV2 = AllowListV2(address(permsProxy));
+        MockAllowList permsV2 = MockAllowList(address(permsProxy));
 
-        USCCV2 tokenV2Implementation = new USCCV2(address(this), permsV2);
+        MockUSCCv1 tokenV2Implementation = new MockUSCCv1(address(this), permsV2);
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2Implementation), ""
         );
-        USCCV2 tokenV2 = USCCV2(address(tokenProxy));
+        MockUSCCv1 tokenV2 = MockUSCCv1(address(tokenProxy));
 
         // Whitelisting criteria now requires `state7` (newly added state) be true,
         // so Alice, Bob, and Charlie no longer have sufficient permissions...
@@ -171,7 +171,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
         // ...and cannot do regular token operations (transfer, transferFrom, encumber, encumberFrom)
         vm.prank(alice);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.transfer(bob, 10e6);
 
         vm.prank(charlie);
@@ -179,18 +179,18 @@ contract USCCv1Test is SuperstateTokenTestBase {
         tokenV2.transferFrom(alice, bob, 10e6);
 
         vm.prank(bob);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.encumber(charlie, 10e6);
 
         vm.prank(bob);
         tokenV2.approve(alice, 40e6);
         vm.prank(alice);
-        vm.expectRevert(USTBV2.InsufficientPermissions.selector);
+        vm.expectRevert(MockUSTBv1.InsufficientPermissions.selector);
         tokenV2.encumberFrom(bob, charlie, 10e6);
 
         // But when we whitelist all three according to the new criteria...
-        AllowListV2.Permission memory newPerms =
-            AllowListV2.Permission(false, true, false, false, false, false, false, true);
+        MockAllowList.Permission memory newPerms =
+            MockAllowList.Permission(false, true, false, false, false, false, false, true);
         permsV2.setPermission(abcEntityId, newPerms);
 
         // ...they now have sufficient permissions

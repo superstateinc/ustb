@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {USTBV2} from "test/USTBV2.sol";
-import {AllowListV2} from "test/AllowListV2.sol";
+import {MockUSTBv1} from "test/token/mocks/MockUSTBv1.sol";
+import {MockAllowList} from "test/allowlist/mocks/MockAllowList.sol";
 
-contract USCCV2 is USTBV2 {
+contract MockUSCCv1 is MockUSTBv1 {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowListV2 _allowList) USTBV2(_admin, _allowList) {}
+    constructor(address _admin, MockAllowList _allowList) MockUSTBv1(_admin, _allowList) {}
 
     /**
      * @notice Moves `amount` tokens from the caller's account to `dst`
@@ -25,7 +25,7 @@ contract USCCV2 is USTBV2 {
     function transfer(address dst, uint256 amount) public override returns (bool) {
         // check but dont spend encumbrance
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        AllowListV2.Permission memory senderPermissions = allowList.getPermission(msg.sender);
+        MockAllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.state1) revert InsufficientPermissions();
 
         if (dst == address(this)) {
@@ -34,7 +34,7 @@ contract USCCV2 is USTBV2 {
             emit Burn(msg.sender, msg.sender, amount);
         } else {
             _requireNotPaused();
-            AllowListV2.Permission memory dstPermissions = allowList.getPermission(dst);
+            MockAllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.state1 || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
@@ -82,7 +82,7 @@ contract USCCV2 is USTBV2 {
             emit Burn(msg.sender, src, amount);
         } else {
             _requireNotPaused();
-            AllowListV2.Permission memory dstPermissions = allowList.getPermission(dst);
+            MockAllowList.Permission memory dstPermissions = allowList.getPermission(dst);
             if (!dstPermissions.state1 || !dstPermissions.state7) revert InsufficientPermissions();
             _transfer(src, dst, amount);
         }
@@ -96,7 +96,7 @@ contract USCCV2 is USTBV2 {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view override returns (bool) {
-        AllowListV2.Permission memory permissions = allowList.getPermission(addr);
+        MockAllowList.Permission memory permissions = allowList.getPermission(addr);
         return permissions.state1 && permissions.state7;
     }
 
@@ -114,7 +114,7 @@ contract USCCV2 is USTBV2 {
     function burn(uint256 amount) external {
         _requireNotAccountingPaused();
         if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
-        AllowListV2.Permission memory senderPermissions = allowList.getPermission(msg.sender);
+        MockAllowList.Permission memory senderPermissions = allowList.getPermission(msg.sender);
         if (!senderPermissions.state1) revert InsufficientPermissions();
 
         _burn(msg.sender, amount);
@@ -127,7 +127,7 @@ contract USCCV2 is USTBV2 {
     function _encumber(address owner, address taker, uint256 amount) internal override {
         if (owner == taker) revert SelfEncumberNotAllowed();
         if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
-        AllowListV2.Permission memory permissions = allowList.getPermission(owner);
+        MockAllowList.Permission memory permissions = allowList.getPermission(owner);
         if (!permissions.state1 || !permissions.state7) revert InsufficientPermissions();
 
         encumbrances[owner][taker] += amount;
