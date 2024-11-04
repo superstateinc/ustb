@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {USTBV2} from "test/token/mocks/USTBV2.sol";
+import {MockUSTBv1} from "test/token/mocks/MockUSTBv1.sol";
 import {MockAllowList} from "test/allowlist/mocks/MockAllowList.sol";
 
-contract USCCV2 is USTBV2 {
+contract MockUSCCv1 is MockUSTBv1 {
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
      * @param _admin The address designated as the admin with special privileges
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, MockAllowList _allowList) USTBV2(_admin, _allowList) {}
+    constructor(address _admin, MockAllowList _allowList) MockUSTBv1(_admin, _allowList) {}
 
     /**
      * @notice Moves `amount` tokens from the caller's account to `dst`

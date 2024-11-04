@@ -15,7 +15,7 @@ import {MockAllowList} from "test/allowlist/mocks/MockAllowList.sol";
  * @notice A Pausable ERC7246 token contract that interacts with the AllowListV2 contract to check if transfers are allowed
  * @author Compound
  */
-contract USTBV2 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
+contract MockUSTBv1 is ERC20Upgradeable, IERC7246, PausableUpgradeable {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
