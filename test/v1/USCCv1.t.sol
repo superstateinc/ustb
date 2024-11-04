@@ -3,23 +3,24 @@ pragma solidity ^0.8.28;
 import "test/SuperstateTokenTestBase.t.sol";
 import {USCCv1} from "src/v1/USCCv1.sol";
 import {USCCV2} from "test/USCCV2.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 
 contract USCCv1Test is SuperstateTokenTestBase {
     function setUp() public override {
         eve = vm.addr(evePrivateKey);
 
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
         permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(permsProxy));
+        perms = AllowListV1(address(permsProxy));
 
-        USCCv1 tokenImplementation = new USCCv1(address(this), perms);
+        USCCv1 tokenImplementation = new USCCv1(address(this), AllowListV1(address(perms)));
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
@@ -33,7 +34,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
         // Permission ordering: USTB, USCC, funds that dont yet exist ...
-        AllowList.Permission memory allowPerms = AllowList.Permission(false, true, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(false, true, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
@@ -54,7 +55,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        AllowList.Permission memory allowPerms = AllowList.Permission(false, true, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(false, true, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -64,7 +65,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
+        IAllowList.Permission memory forbidPerms = IAllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
@@ -85,7 +86,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        AllowList.Permission memory allowPerms = AllowList.Permission(false, true, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(false, true, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -95,7 +96,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
+        IAllowList.Permission memory forbidPerms = IAllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
@@ -226,7 +227,7 @@ contract USCCv1Test is SuperstateTokenTestBase {
         public
         override
     {
-        AllowList.Permission memory allowPerms = AllowList.Permission(false, true, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(false, true, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address
         // spender cannot be alice bob or charlie, they already have their permissions set

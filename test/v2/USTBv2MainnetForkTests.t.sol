@@ -11,14 +11,14 @@ import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 
 contract USTBv2MainnetForkTest is Test {
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
-    AllowList public perms;
+    AllowListV1 public perms;
     TransparentUpgradeableProxy tokenProxy;
     SuperstateTokenV2 public token;
     SuperstateTokenV1 public tokenV1;
@@ -39,7 +39,7 @@ contract USTBv2MainnetForkTest is Test {
         adminAddress = address(0x8C7Db8A96d39F76D9f456db23d591C2FDd0e2F8a);
 
         proxyAdmin = ProxyAdmin(address(0xCb8d325C0Af19697B8454481602097f93aa9040F));
-        perms = AllowList(address(0x42d75C8FdBBF046DF0Fe1Ff388DA16fF99dE8149)); // This points to the AllowList proxy
+        perms = AllowListV1(address(0x42d75C8FdBBF046DF0Fe1Ff388DA16fF99dE8149)); // This points to the AllowList proxy
         tokenProxy = TransparentUpgradeableProxy(payable(0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e));
         tokenV1 = USTBv1(address(tokenProxy));
     }

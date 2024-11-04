@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 
 /**
  * @title USTB
@@ -16,7 +16,7 @@ contract USTBv2 is SuperstateTokenV2 {
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) SuperstateTokenV2(_admin, _allowList) {}
+    constructor(address _admin, AllowListV1 _allowList) SuperstateTokenV2(_admin, _allowList) {}
 
     /**
      * @notice Check permissions of an address for transferring / encumbering
@@ -24,7 +24,7 @@ contract USTBv2 is SuperstateTokenV2 {
      * @return bool True if the address has sufficient permission, false otherwise
      */
     function hasSufficientPermissions(address addr) public view override returns (bool) {
-        AllowList.Permission memory permissions = allowList.getPermission(addr);
+        AllowListV1.Permission memory permissions = allowList.getPermission(addr);
         return permissions.isAllowed;
     }
 }

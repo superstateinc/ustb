@@ -1,54 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {IAllowList} from "../../interfaces/allowlist/IAllowList.sol";
+
 /**
  * @title AllowList
  * @notice A contract that provides allowlist functionalities
  * @author Compound
  */
-contract AllowList {
+contract AllowListV1 is IAllowList {
     /// @notice The major version of this contract
     string public constant VERSION = "1";
 
     /// @dev Address of the administrator with permissions to update the allowlist
     address public immutable permissionAdmin;
 
-    /// @dev Mapping of addresses to their permissions
-    struct Permission {
-        bool isAllowed;
-        bool state1;
-        bool state2;
-        bool state3;
-        bool state4;
-        bool state5;
-    }
-
     /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
     mapping(uint256 => Permission) public permissions;
 
     /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the allowList.
     mapping(address => uint256) public addressEntityIds;
-
-    /// @notice An event emitted when an entityId's permission status is changed
-    event PermissionSet(uint256 indexed entityId, Permission permission);
-
-    /// @notice An event emitted when an address is associated with an entityId
-    event EntityIdSet(address indexed addr, uint256 indexed entityId);
-
-    /// @dev Thrown when a request is not sent by the authorized admin
-    error Unauthorized();
-
-    /// @dev Thrown when the input for a function is invalid
-    error BadData();
-
-    /// @dev Thrown when the input is already equivalent to the storage being set
-    error AlreadySet();
-
-    /// @dev Default value for the addressEntityIds mapping is 0, so entityIds are 1 indexed and setting permissions for 0 is not allowed
-    error ZeroEntityIdNotAllowed();
-
-    /// @dev An address's entityId can not be changed once set, it can only be unset and then set to a new value
-    error NonZeroEntityIdMustBeChangedToZero();
 
     /**
      * @notice Construct a new AllowList instance

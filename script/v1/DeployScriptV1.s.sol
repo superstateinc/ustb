@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/allowlist/AllowList.sol";
+import "src/allowlist/v1/AllowListV1.sol";
 import "src/v1/USTBv1.sol";
 
 contract DeployScriptV1 is Script {
@@ -11,7 +11,7 @@ contract DeployScriptV1 is Script {
     TransparentUpgradeableProxy permsProxy;
     TransparentUpgradeableProxy tokenProxy;
 
-    AllowList public permsImplementation;
+    AllowListV1 public permsImplementation;
     USTBv1 public tokenImplementation;
 
     function run() external {
@@ -24,11 +24,11 @@ contract DeployScriptV1 is Script {
         // deploy proxy admin contract
         proxyAdmin = new ProxyAdmin();
 
-        permsImplementation = new AllowList(admin);
+        permsImplementation = new AllowListV1(admin);
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        AllowList wrappedPerms = AllowList(address(permsProxy));
+        AllowListV1 wrappedPerms = AllowListV1(address(permsProxy));
 
         tokenImplementation = new USTBv1(admin, wrappedPerms);
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(proxyAdmin), "");

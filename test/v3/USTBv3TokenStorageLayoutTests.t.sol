@@ -13,6 +13,7 @@ import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/SuperstateTokenStorageLayoutTestBase.t.sol";
 
 /**
@@ -66,7 +67,7 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
     }
 
     function initializeOldToken() public override {
-        USTBv1 oldTokenImplementation = new USTBv1(address(this), perms);
+        USTBv1 oldTokenImplementation = new USTBv1(address(this), AllowListV1(address(perms)));
         tokenProxy = new TransparentUpgradeableProxy(address(oldTokenImplementation), address(this), "");
         tokenProxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
 
@@ -75,7 +76,7 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
         oldToken.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
-        USTBv2 oldTokenImplementationV2 = new USTBv2(address(this), perms);
+        USTBv2 oldTokenImplementationV2 = new USTBv2(address(this), AllowListV1(address(perms)));
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(oldTokenImplementationV2), ""
         );
@@ -90,7 +91,7 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
     function upgradeAndInitializeNewToken() public override {
         // Now upgrade to V3
-        USTB newTokenImplementation = new USTB(perms);
+        USTB newTokenImplementation = new USTB(AllowList(address(perms))); // TODO - will need to upgrade this
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation), ""
         );

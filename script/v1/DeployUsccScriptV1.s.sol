@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 import "forge-std/Script.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/allowlist/AllowList.sol";
+import "src/allowlist/v1/AllowListV1.sol";
 import "src/v1/USCCv1.sol";
 
 contract DeployScriptV1 is Script {
@@ -17,7 +17,7 @@ contract DeployScriptV1 is Script {
         address admin = vm.envAddress("ADMIN_ADDRESS");
         address proxyAdmin = vm.envAddress("PROXY_ADMIN_ADDRESS");
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
-        AllowList wrappedPerms = AllowList(address(allowlist_address));
+        AllowListV1 wrappedPerms = AllowListV1(address(allowlist_address));
 
         vm.startBroadcast(deployer);
 

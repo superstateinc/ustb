@@ -11,7 +11,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenTestBase.t.sol";
@@ -23,16 +23,16 @@ contract USTBv2Test is SuperstateTokenTestBase {
     function setUp() public override {
         eve = vm.addr(evePrivateKey);
 
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
         permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(permsProxy));
+        perms = AllowListV1(address(permsProxy));
 
-        USTBv1 tokenV1Implementation = new USTBv1(address(this), perms);
+        USTBv1 tokenV1Implementation = new USTBv1(address(this), AllowListV1(address(perms)));
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(this), "");
@@ -45,7 +45,7 @@ contract USTBv2Test is SuperstateTokenTestBase {
         tokenV1.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
@@ -56,7 +56,7 @@ contract USTBv2Test is SuperstateTokenTestBase {
         // Pause accounting?
 
         // Now upgrade to V2
-        USTBv2 tokenImplementation = new USTBv2(address(this), perms);
+        USTBv2 tokenImplementation = new USTBv2(address(this), AllowListV1(address(perms)));
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );

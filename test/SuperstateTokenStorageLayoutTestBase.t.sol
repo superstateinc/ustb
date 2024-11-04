@@ -10,6 +10,7 @@ import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/TokenTestBase.t.sol";
@@ -21,7 +22,7 @@ import "test/TokenTestBase.t.sol";
 abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
     ProxyAdmin public permsProxyAdmin;
     TransparentUpgradeableProxy public permsProxy;
-    AllowList public perms;
+    IAllowList public perms;
     ProxyAdmin public tokenProxyAdmin;
     TransparentUpgradeableProxy public tokenProxy;
 
@@ -62,7 +63,7 @@ abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
         initializeOldToken();
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);

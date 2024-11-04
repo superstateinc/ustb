@@ -12,7 +12,7 @@ import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/SuperstateTokenStorageLayoutTestBase.t.sol";
@@ -59,7 +59,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
     }
 
     function initializeOldToken() public override {
-        USTBv1 oldTokenImplementation = new USTBv1(address(this), perms);
+        USTBv1 oldTokenImplementation = new USTBv1(address(this), AllowListV1(address(perms)));
         tokenProxy = new TransparentUpgradeableProxy(address(oldTokenImplementation), address(this), "");
         tokenProxyAdmin = ProxyAdmin(getAdminAddress(address(tokenProxy)));
 
@@ -73,7 +73,7 @@ contract USTBv2TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
 
     function upgradeAndInitializeNewToken() public override {
         // Now upgrade to V2
-        USTBv2 newTokenImplementation = new USTBv2(address(this), perms);
+        USTBv2 newTokenImplementation = new USTBv2(address(this), AllowListV1(address(perms)));
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation), ""
         );

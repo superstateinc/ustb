@@ -9,7 +9,8 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USCCv2} from "src/v2/USCCv2.sol";
-import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 
 contract MultiTokenTest is Test {
     event Encumber(address indexed owner, address indexed taker, uint256 amount);
@@ -22,7 +23,7 @@ contract MultiTokenTest is Test {
 
     ProxyAdmin proxyAdmin;
     TransparentUpgradeableProxy permsProxy;
-    AllowList public perms;
+    AllowListV1 public perms;
     TransparentUpgradeableProxy tokenProxyUstb;
     TransparentUpgradeableProxy tokenProxyUscc;
     USTBv2 public ustb;
@@ -43,7 +44,7 @@ contract MultiTokenTest is Test {
     function setUp() public {
         eve = vm.addr(evePrivateKey);
 
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy admin contract
         proxyAdmin = new ProxyAdmin(address(this));
@@ -52,7 +53,7 @@ contract MultiTokenTest is Test {
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(proxyAdmin), "");
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(permsProxy));
+        perms = AllowListV1(address(permsProxy));
 
         USTBv2 ustbImplementation = new USTBv2(address(this), perms);
         USCCv2 usccImplementation = new USCCv2(address(this), perms);
@@ -70,7 +71,7 @@ contract MultiTokenTest is Test {
         uscc.initialize("Superstate Crypto Carry Fund", "USCC");
 
         // whitelist alice bob, and charlie for both funds (so they can transfer to each other), but not mallory
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, true, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, true, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
