@@ -223,6 +223,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         assertEq(tokenV3.balanceOf(alice), ustbAmountOut);
+        assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
     function testSubscribeHappyPathFee() public {
@@ -251,6 +252,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         assertEq(tokenV3.balanceOf(alice), ustbAmountOut);
+        assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
     function testGetChainlinkPriceOnchainSubscriptionsDisabled() public {
