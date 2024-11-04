@@ -208,7 +208,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
         IERC20(USDC).approve(address(tokenV3), usdcAmountIn);
 
-        vm.expectEmit(true,true,true,true);
+        vm.expectEmit(true, true, true, true);
         emit ISuperstateToken.Subscribe({
             subscriber: alice,
             stablecoin: USDC,
@@ -236,7 +236,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
         IERC20(USDC).approve(address(tokenV3), usdcAmountIn);
 
-        vm.expectEmit(true,true,true,true);
+        vm.expectEmit(true, true, true, true);
         emit ISuperstateToken.Subscribe({
             subscriber: alice,
             stablecoin: USDC,

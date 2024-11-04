@@ -499,7 +499,6 @@ abstract contract SuperstateToken is
         return _getChainlinkPrice();
     }
 
-
     function calculateFee(uint256 amount, uint256 subscriptionFee) public pure returns (uint256) {
         return (amount * subscriptionFee) / FEE_DENOMINATOR;
     }
