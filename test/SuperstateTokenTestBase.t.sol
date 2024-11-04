@@ -12,7 +12,8 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "test/AllowListV2.sol";
 import "test/USTBV2.sol";
 import "test/TokenTestBase.t.sol";
@@ -30,7 +31,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
 
     ProxyAdmin permsProxyAdmin;
     TransparentUpgradeableProxy permsProxy;
-    AllowList public perms;
+    IAllowList public perms;
     ProxyAdmin tokenProxyAdmin;
     TransparentUpgradeableProxy tokenProxy;
     ISuperstateTokenV1 public token;
@@ -50,16 +51,16 @@ contract SuperstateTokenTestBase is TokenTestBase {
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
 
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
         permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(permsProxy));
+        perms = AllowListV1(address(permsProxy));
 
-        USTBv1 tokenImplementation = new USTBv1(address(this), perms);
+        USTBv1 tokenImplementation = new USTBv1(address(this), AllowListV1(address(perms)));
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenImplementation), address(this), "");
@@ -73,7 +74,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         token.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
@@ -773,7 +774,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -783,7 +784,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
+        IAllowList.Permission memory forbidPerms = IAllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
@@ -816,7 +817,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         deal(address(token), mallory, 100e6);
 
         // whitelist mallory for setting encumbrances
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
         address[] memory addrs = new address[](1);
         addrs[0] = mallory;
         perms.setEntityPermissionAndAddresses(2, addrs, allowPerms);
@@ -826,7 +827,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        AllowList.Permission memory forbidPerms = AllowList.Permission(false, false, false, false, false, false);
+        IAllowList.Permission memory forbidPerms = IAllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(2, forbidPerms);
 
         // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
@@ -1479,7 +1480,7 @@ contract SuperstateTokenTestBase is TokenTestBase {
         public
         virtual
     {
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
 
         // cannot be address 0 - ERC20: transfer from the zero address
         // spender cannot be alice bob or charlie, they already have their permissions set

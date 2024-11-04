@@ -4,7 +4,7 @@ import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/AllowList.sol";
+import "src/allowlist/v1/AllowListV1.sol";
 import "src/v2/USTBv2.sol";
 
 contract DeployAndUpgradeUstbScriptV2 is Script {
@@ -31,7 +31,7 @@ contract DeployAndUpgradeUstbScriptV2 is Script {
         address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         //        address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
         //        address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
-        AllowList wrappedPerms = AllowList(address(allowlist_address));
+        AllowListV1 wrappedPerms = AllowListV1(address(allowlist_address));
         //        ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
         //        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
 

@@ -8,7 +8,8 @@ import {ECDSA} from "openzeppelin-contracts-v4/contracts/utils/cryptography/ECDS
 
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowList} from "src/AllowList.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 
 /**
  * @title SuperstateToken
@@ -31,7 +32,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
     address public immutable admin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
-    AllowList public immutable allowList;
+    IAllowList public immutable allowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -54,7 +55,7 @@ abstract contract SuperstateTokenV1 is ERC20Upgradeable, ISuperstateTokenV1, Pau
      * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(address _admin, AllowList _allowList) {
+    constructor(address _admin, AllowListV1 _allowList) {
         admin = _admin;
         allowList = _allowList;
 

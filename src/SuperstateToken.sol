@@ -12,7 +12,8 @@ import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.s
 
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowList} from "src/AllowList.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 
 import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
 import {AggregatorV3Interface} from
@@ -53,7 +54,7 @@ abstract contract SuperstateToken is
     address public immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
-    AllowList public immutable allowList;
+    IAllowList public immutable allowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;

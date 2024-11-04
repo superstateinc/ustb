@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowList} from "src/AllowList.sol";
 import {ISuperstateTokenV1} from "./ISuperstateTokenV1.sol";
 
 interface ISuperstateTokenV2 is ISuperstateTokenV1 {

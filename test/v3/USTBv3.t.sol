@@ -12,7 +12,9 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {USTB} from "src/USTB.sol";
-import {AllowList} from "src/AllowList.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "test/SuperstateTokenTestBase.t.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {SuperstateOracle} from "../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
@@ -48,7 +50,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         // wrap in ABI to support easier calls
         perms = AllowList(address(permsProxy));
 
-        USTBv1 tokenV1Implementation = new USTBv1(address(this), perms);
+        USTBv1 tokenV1Implementation = new USTBv1(address(this), AllowListV1(address(perms)));
 
         // repeat for the token contract
         tokenProxy = new TransparentUpgradeableProxy(address(tokenV1Implementation), address(this), "");
@@ -61,7 +63,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         tokenV1.initialize("Superstate Short Duration US Government Securities Fund", "USTB");
 
         // whitelist alice bob, and charlie (so they can tranfer to each other), but not mallory
-        AllowList.Permission memory allowPerms = AllowList.Permission(true, false, false, false, false, false);
+        IAllowList.Permission memory allowPerms = IAllowList.Permission(true, false, false, false, false, false);
 
         perms.setEntityIdForAddress(abcEntityId, alice);
         perms.setEntityIdForAddress(abcEntityId, bob);
@@ -70,7 +72,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         perms.setEntityPermissionAndAddresses(abcEntityId, addrs, allowPerms);
 
         // Now upgrade to V2
-        tokenV2 = new USTBv2(address(this), perms);
+        tokenV2 = new USTBv2(address(this), AllowListV1(address(perms)));
         tokenProxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenV2), "");
 
         /*
@@ -92,7 +94,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         */
 
         // Now upgrade to V3
-        USTB tokenImplementation = new USTB(perms);
+        USTB tokenImplementation = new USTB(AllowList(address(perms))); // TODO - this will need to be allowListV2
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );
@@ -221,6 +223,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         assertEq(tokenV3.balanceOf(alice), ustbAmountOut);
+        assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
     function testSubscribeHappyPathFee() public {
@@ -249,6 +252,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         assertEq(tokenV3.balanceOf(alice), ustbAmountOut);
+        assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
     function testGetChainlinkPriceOnchainSubscriptionsDisabled() public {

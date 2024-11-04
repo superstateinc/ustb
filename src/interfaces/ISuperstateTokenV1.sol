@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
-import {AllowList} from "src/AllowList.sol";
+import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 
 interface ISuperstateTokenV1 is IERC20Upgradeable, IERC7246 {
     /// @dev Event emitted when tokens are minted
@@ -51,7 +51,7 @@ interface ISuperstateTokenV1 is IERC20Upgradeable, IERC7246 {
     /// @dev Thrown if array length arguments aren't equal
     error InvalidArgumentLengths();
 
-    function allowList() external view returns (AllowList);
+    function allowList() external view returns (IAllowList);
 
     /**
      * @notice Returns the domain separator used in the encoding of the
