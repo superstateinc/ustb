@@ -23,7 +23,7 @@ contract USTBv2MainnetForkTest is Test {
     SuperstateTokenV2 public token;
     SuperstateTokenV1 public tokenV1;
     address adminAddress;
-    address capturedMainnetAddress = address(0x008B3EeEE3AaAA5AD8F92De038729FC4fe899f75);
+    address capturedMainnetAddress = address(0x5138D77d51dC57983e5A653CeA6e1C1aa9750A39);
     USTBv2 tokenImplementation;
 
     address alice = address(10);
@@ -32,7 +32,7 @@ contract USTBv2MainnetForkTest is Test {
     function setUp() public virtual {
         string memory rpcUrl = vm.envString("RPC_URL");
 
-        uint256 mainnetFork = vm.createFork(rpcUrl);
+        uint256 mainnetFork = vm.createFork(rpcUrl, 21023910);
         vm.selectFork(mainnetFork);
         assertEq(vm.activeFork(), mainnetFork);
 
@@ -69,13 +69,13 @@ contract USTBv2MainnetForkTest is Test {
         assertEq(vm.activeFork(), 0);
 
         // check balance on an address in v1
-        assertEq(404619420184, tokenV1.balanceOf(capturedMainnetAddress));
+        assertEq(2401109347870, tokenV1.balanceOf(capturedMainnetAddress));
 
         // upgrade to v2
         doTokenUpgradeFromV1toV2();
 
         // ensure balance state is the same
-        assertEq(404619420184, token.balanceOf(capturedMainnetAddress));
+        assertEq(2401109347870, token.balanceOf(capturedMainnetAddress));
     }
 
     function testUpgradeAndChangeOwner() public {
