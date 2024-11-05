@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeabl
 import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
-import "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/allowlist/mocks/MockAllowList.sol";
 
 contract AllowListTest is Test {
@@ -18,7 +18,7 @@ contract AllowListTest is Test {
     TransparentUpgradeableProxy proxy;
     ProxyAdmin proxyAdmin;
 
-    AllowList public perms;
+    AllowListV1 public perms;
 
     address alice = address(10);
     address bob = address(11);
@@ -35,14 +35,14 @@ contract AllowListTest is Test {
     }
 
     function setUp() public {
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation
         proxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
         proxyAdmin = ProxyAdmin(getAdminAddress(address(proxy)));
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(proxy));
+        perms = AllowListV1(address(proxy));
 
         // whitelist bob
         address[] memory addrs = new address[](1);
@@ -111,7 +111,7 @@ contract AllowListTest is Test {
     }
 
     function testRemoveAddressFromEntity() public {
-        AllowList.Permission memory newPerms = IAllowList.Permission(true, false, false, true, false, true);
+        IAllowList.Permission memory newPerms = IAllowList.Permission(true, false, false, true, false, true);
 
         perms.setEntityIdForAddress(1, alice);
         perms.setPermission(1, newPerms);
@@ -246,7 +246,7 @@ contract AllowListTest is Test {
         assertEq(perms.getPermission(bob).isAllowed, true);
 
         // disallow bob
-        AllowList.Permission memory disallowPerms = IAllowList.Permission(false, false, false, false, false, false);
+        IAllowList.Permission memory disallowPerms = IAllowList.Permission(false, false, false, false, false, false);
         perms.setPermission(bobEntityId, disallowPerms);
 
         assertEq(perms.getPermission(bob).isAllowed, false);
@@ -562,7 +562,7 @@ contract AllowListTest is Test {
         assertEq(permsV2.getPermission(bob).state2, false);
     }
 
-    function assertEq(AllowList.Permission memory expected, AllowList.Permission memory actual) internal {
+    function assertEq(IAllowList.Permission memory expected, IAllowList.Permission memory actual) internal {
         bytes memory expectedBytes = abi.encode(expected);
         bytes memory actualBytes = abi.encode(actual);
         assertEq(expectedBytes, actualBytes); // use the forge-std/Test assertEq(bytes, bytes) function

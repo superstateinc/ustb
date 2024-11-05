@@ -10,6 +10,7 @@ import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateTokenV1} from "src/interfaces/ISuperstateTokenV1.sol";
 import {USTBv1} from "src/v1/USTBv1.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
+import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import "test/allowlist/mocks/MockAllowList.sol";
 import "test/token/mocks/MockUSTBv1.sol";
@@ -48,7 +49,7 @@ abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
 
-        AllowList permsImplementation = new AllowList(address(this));
+        AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation
         permsProxy = new TransparentUpgradeableProxy(address(permsImplementation), address(this), "");
@@ -57,7 +58,7 @@ abstract contract SuperstateTokenStorageLayoutTestBase is TokenTestBase {
         permsProxyAdmin = ProxyAdmin(getAdminAddress(address(permsProxy)));
 
         // wrap in ABI to support easier calls
-        perms = AllowList(address(permsProxy));
+        perms = AllowListV1(address(permsProxy));
 
         initializeExpectedTokenVersions();
         initializeOldToken();
