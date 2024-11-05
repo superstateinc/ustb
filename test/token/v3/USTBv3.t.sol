@@ -11,19 +11,24 @@ import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
-import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
+import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import "test/token/SuperstateTokenTestBase.t.sol";
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {SuperstateToken} from "src/SuperstateToken.sol";
 import {SuperstateOracle} from "../../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
 
 contract USTBv3Test is SuperstateTokenTestBase {
     SuperstateTokenV1 public tokenV1;
     SuperstateTokenV2 public tokenV2;
-    USTB public tokenV3;
+    SuperstateToken public tokenV3;
     SuperstateOracle public oracle;
+
+    AllowList permsV2;
+    ProxyAdmin permsProxyAdminV2;
+    TransparentUpgradeableProxy permsProxyV2;
 
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
@@ -94,15 +99,39 @@ contract USTBv3Test is SuperstateTokenTestBase {
             not even be initialized.
         */
 
-        // Now upgrade to V3
-        USTB tokenImplementation = new USTB(AllowList(address(perms))); // TODO - this will need to be allowListV2
+        // In preparation for token v3, create and deploy AllowListV2
+        AllowList permsImplementationV2 = new AllowList();
+
+        permsProxyV2 = new TransparentUpgradeableProxy(address(permsImplementationV2), address(this), "");
+        permsProxyAdminV2 = ProxyAdmin(getAdminAddress(address(permsProxyV2)));
+        permsV2 = AllowList(address(permsProxyV2));
+
+        // Initialize AllowListV2
+        permsV2.initialize();
+
+        // Re-populate AllowList state
+        address[] memory addrsToSet = new address[](2);
+        addrsToSet[0] = alice;
+        addrsToSet[1] = bob;
+        string[] memory fundsToSet = new string[](1);
+        fundsToSet[0] = "USTB";
+        bool[] memory fundPermissionsToSet = new bool[](1);
+        fundPermissionsToSet[0] = true;
+        permsV2.setEntityPermissionsAndAddresses(
+            IAllowListV2.EntityId.wrap(abcEntityId), addrsToSet, fundsToSet, fundPermissionsToSet
+        );
+
+        // Now upgrade token to V3
+        SuperstateToken tokenImplementation = new SuperstateToken();
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );
 
-        // No initialization needed for V3
-        token = USTB(address(tokenProxy));
-        tokenV3 = USTB(address(token));
+        token = SuperstateToken(address(tokenProxy));
+        tokenV3 = SuperstateToken(address(token));
+
+        // Initialize token v3
+        tokenV3.initializeV3(permsV2);
 
         // Set up oracle
         oracle = new SuperstateOracle(address(this), address(tokenV3));

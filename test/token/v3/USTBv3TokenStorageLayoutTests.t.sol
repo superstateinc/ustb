@@ -11,9 +11,10 @@ import {SuperstateTokenV1} from "src/v1/SuperstateTokenV1.sol";
 import {ISuperstateTokenV2} from "src/interfaces/ISuperstateTokenV2.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
-import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
+import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
+import {SuperstateToken} from "src/SuperstateToken.sol";
 import "test/token/SuperstateTokenStorageLayoutTestBase.t.sol";
 
 /**
@@ -58,9 +59,14 @@ import "test/token/SuperstateTokenStorageLayoutTestBase.t.sol";
  *  Slot 755: SuperstateToken.maximumOracleDelay
  *  Slot 756: SuperstateToken.superstateOracle
  *  Slot 757: SuperstateToken.supportedStablecoins
+ *  Slot 758: SuperstateToken.allowList
  *  Slot 758-854: SuperstateToken.__additionalFieldsGap
  */
 contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
+    AllowList permsV2;
+    ProxyAdmin permsProxyAdminV2;
+    TransparentUpgradeableProxy permsProxyV2;
+
     function initializeExpectedTokenVersions() public override {
         oldTokenVersion = "2";
         newTokenVersion = "3";
@@ -90,8 +96,30 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
     }
 
     function upgradeAndInitializeNewToken() public override {
+        // In preparation for token v3, create and deploy AllowListV2
+        AllowList permsImplementationV2 = new AllowList();
+
+        permsProxyV2 = new TransparentUpgradeableProxy(address(permsImplementationV2), address(this), "");
+        permsProxyAdminV2 = ProxyAdmin(getAdminAddress(address(permsProxyV2)));
+        permsV2 = AllowList(address(permsProxyV2));
+
+        // Initialize AllowListV2
+        permsV2.initialize();
+
+        // Re-populate AllowList state
+        address[] memory addrsToSet = new address[](2);
+        addrsToSet[0] = alice;
+        addrsToSet[1] = bob;
+        string[] memory fundsToSet = new string[](1);
+        fundsToSet[0] = "USTB";
+        bool[] memory fundPermissionsToSet = new bool[](1);
+        fundPermissionsToSet[0] = true;
+        permsV2.setEntityPermissionsAndAddresses(
+            IAllowListV2.EntityId.wrap(abcEntityId), addrsToSet, fundsToSet, fundPermissionsToSet
+        );
+
         // Now upgrade to V3
-        USTB newTokenImplementation = new USTB(AllowList(address(perms))); // TODO - will need to upgrade this
+        SuperstateToken newTokenImplementation = new SuperstateToken();
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(newTokenImplementation), ""
         );
@@ -103,10 +131,12 @@ contract USTBv3TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBase {
             admin() is the same from the prior version of the contract
         */
 
-        // v3 requires no new initialize function
-        newToken = USTB(address(tokenProxy));
+        // Initialize tokenV3
 
+        newToken = SuperstateToken(address(tokenProxy));
         currentToken = newToken;
+
+        SuperstateToken(address(tokenProxy)).initializeV3(permsV2);
     }
 
     function assertSuperstateTokenStorageLayout(bool hasUpgraded) public override {

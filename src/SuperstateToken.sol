@@ -13,6 +13,7 @@ import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.s
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
+import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 
 import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
@@ -24,12 +25,7 @@ import {AggregatorV3Interface} from
  * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-abstract contract SuperstateToken is
-    ISuperstateToken,
-    ERC20Upgradeable,
-    PausableUpgradeable,
-    Ownable2StepUpgradeable
-{
+contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
     using SafeERC20 for IERC20;
 
     /**
@@ -54,7 +50,8 @@ abstract contract SuperstateToken is
     address public immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
-    IAllowList public immutable allowList;
+    /// @notice As of v3, this field is
+    IAllowList public immutable _deprecatedAllowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
@@ -89,6 +86,9 @@ abstract contract SuperstateToken is
     /// @notice Mapping from a stablecoin's address to its configuration
     mapping(address stablecoin => StablecoinConfig) public supportedStablecoins;
 
+    /// @notice Address of the AllowList contract which determines permissions for transfers
+    IAllowListV2 public allowListV2;
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
      * any contracts that inherit `SuperstateToken`
@@ -97,12 +97,9 @@ abstract contract SuperstateToken is
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
-     * @param _allowList Address of the AllowList contract to use for permission checking
      * @dev Disables initialization on the implementation contract
      */
-    constructor(AllowList _allowList) {
-        allowList = _allowList;
-
+    constructor() {
         // SUPERSTATE_TOKEN starts at $10.000000, Chainlink oracle with 6 decimals would represent as 10_000_000.
         // This math will give us 7_000_000 or $7.000000.
         MINIMUM_ACCEPTABLE_PRICE = 7 * (10 ** uint256(DECIMALS));
@@ -129,6 +126,16 @@ abstract contract SuperstateToken is
         // After this call, owner() is the source of truth for authorization.
         if (msg.sender != _deprecatedAdmin) revert Unauthorized();
         __Ownable2Step_init();
+    }
+
+    /**
+     * @notice Initialize version 3 of the contract
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV3(AllowList _allowList) public reinitializer(3) {
+        _checkOwner();
+
+        allowListV2 = _allowList;
     }
 
     function _requireNotAccountingPaused() internal view {
@@ -353,7 +360,13 @@ abstract contract SuperstateToken is
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
-    function hasSufficientPermissions(address addr) public view virtual returns (bool);
+    function hasSufficientPermissions(address addr) public view virtual returns (bool) {
+        return allowListV2.isAddressAllowedForFund(addr, symbol());
+    }
+
+    function allowList() external view returns (IAllowList) {
+        return allowListV2;
+    }
 
     function _mintLogic(address dst, uint256 amount) internal {
         if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
