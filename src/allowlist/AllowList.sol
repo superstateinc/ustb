@@ -139,100 +139,50 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     /// DEPRECATED FUNCTIONS FROM V1
 
     /**
-     * @notice Fetches the permissions for a given address. No longer supported in v2.
-     * @param addr The address whose permissions are to be fetched
-     * @return Permission The permissions of the address
+     * @notice Fetches the permissions for a given address.
+     * @dev Deprecated in v2
      */
-    function getPermission(address addr) external pure returns (Permission memory) {
-        unchecked {
-            // ignore unused variable
-            addr;
-        }
+    function getPermission(address) external pure returns (Permission memory) {
         revert Deprecated();
     }
 
     /**
-     * @notice Sets permissions for a given entityId. Deprecated in v2.
-     * @param entityId The entityId to be updated
-     * @param permission The permission status to set
+     * @notice Sets permissions for a given entityId.
+     * @dev Deprecated in v2
      */
-    function setPermission(uint256 entityId, Permission calldata permission) external pure {
-        unchecked {
-            // ignore unused variable
-            entityId;
-            permission;
-        }
+    function setPermission(uint256, Permission calldata) external pure {
         revert Deprecated();
     }
 
     /**
-     * @notice Sets entity for an array of addresses and sets permissions for an entity. Deprecated in v2.
-     * @param entityId The entityId to be updated
-     * @param addresses The addresses to associate with an entityId
-     * @param permission The permissions to set
+     * @notice Sets entity for an array of addresses and sets permissions for an entity.
+     * @dev Deprecated in v2
      */
-    function setEntityPermissionAndAddresses(
-        uint256 entityId,
-        address[] calldata addresses,
-        Permission calldata permission
-    ) external pure {
-        unchecked {
-            // ignore unused variable
-            entityId;
-            addresses;
-            permission;
-        }
+    function setEntityPermissionAndAddresses(uint256, address[] calldata, Permission calldata) external pure {
         revert Deprecated();
     }
 
     /**
      * @notice Sets isAllowed permissions for a given entityId
-     * @param entityId The entityId to be updated
-     * @param value The isAllowed status to set
+     * @dev Deprecated in v2
      */
-    function setIsAllowed(uint256 entityId, bool value) external pure {
-        unchecked {
-            // ignore unused variable
-            entityId;
-            value;
-        }
+    function setIsAllowed(uint256, bool) external pure {
         revert Deprecated();
     }
 
     /**
-     * @notice Sets the nth permission for a given entityId. Deprecated in v2
-     * @param entityId The entityId to be updated
-     * @param index The index of the permission to update
-     * @param value The status to set
-     * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
+     * @notice Sets the nth permission for a given entityId.
+     * @dev Deprecated in v2
      */
-    function setNthPermission(uint256 entityId, uint256 index, bool value) external pure {
-        unchecked {
-            // ignore unused variable
-            entityId;
-            index;
-            value;
-        }
+    function setNthPermission(uint256, uint256, bool) external pure {
         revert Deprecated();
     }
 
     /**
-     * @dev Sets the nth permission for a Permission and returns the updated struct
-     * @param perms The Permission to be updated
-     * @param index The index of the permission to update
-     * @param value The status to set
+     * @notice Sets the nth permission for a Permission and returns the updated struct
+     * @dev Deprecated in v2
      */
-    function _setPermissionAtIndex(Permission memory perms, uint256 index, bool value)
-        internal
-        pure
-        returns (Permission memory)
-    {
-        unchecked {
-            // ignore unused variable
-            perms;
-            index;
-            value;
-        }
+    function _setPermissionAtIndex(Permission memory, uint256, bool) internal pure returns (Permission memory) {
         revert Deprecated();
     }
 }
