@@ -5,7 +5,7 @@ import {console} from "forge-std/console.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import "src/allowlist/AllowList.sol";
-import "src/USTB.sol";
+import {SuperstateToken} from "src/SuperstateToken.sol";
 
 contract DeployAndUpgradeUstbScriptV3 is Script {
     /*
@@ -28,17 +28,19 @@ contract DeployAndUpgradeUstbScriptV3 is Script {
     function run() external {
         address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
         //        address newAdminAddress = vm.envAddress("NEW_ADMIN_ADDRESS");
-        address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
+        //        address allowlist_address = vm.envAddress("ALLOWLIST_PROXY_ADDRESS");
         address tokenProxyAdminAddress = vm.envAddress("PROXY_ADMIN_ADDRESS");
         address payable tokenProxyAddress = payable(vm.envAddress("PROXY_TOKEN_ADDRESS"));
-        AllowList wrappedPerms = AllowList(address(allowlist_address));
+        //        AllowList wrappedPerms = AllowList(address(allowlist_address));
         ProxyAdmin tokenProxyAdmin = ProxyAdmin(tokenProxyAdminAddress);
         //        TransparentUpgradeableProxy tokenProxy = TransparentUpgradeableProxy(tokenProxyAddress);
 
         vm.startBroadcast(deployer);
 
         // 1
-        USTB tokenV3Implementation = new USTB(wrappedPerms);
+        SuperstateToken tokenV3Implementation = new SuperstateToken();
+
+        // TODO (though might not use this script anymore, so not investing time atm)
 
         // 2
         tokenProxyAdmin.upgrade(ITransparentUpgradeableProxy(tokenProxyAddress), address(tokenV3Implementation));

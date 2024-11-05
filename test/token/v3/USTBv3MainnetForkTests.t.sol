@@ -10,7 +10,6 @@ import {console} from "forge-std/console.sol";
 import {SuperstateToken} from "src/SuperstateToken.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
-import {USTB} from "src/USTB.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 
 contract USTBv3MainnetForkTest is Test {
@@ -23,7 +22,7 @@ contract USTBv3MainnetForkTest is Test {
     address adminAddress;
     address fireblocksAdminAddress;
     address capturedMainnetAddress = address(0x5138D77d51dC57983e5A653CeA6e1C1aa9750A39);
-    USTB tokenImplementation;
+    SuperstateToken tokenImplementation;
 
     address alice = address(10);
     address bob = address(11);
@@ -49,13 +48,15 @@ contract USTBv3MainnetForkTest is Test {
         assertEq("2", tokenV2.VERSION());
 
         // Upgrade to v3 contract
-        tokenImplementation = new USTB(perms);
+        tokenImplementation = new SuperstateToken();
 
         vm.prank(fireblocksAdminAddress);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
 
         // initialize v3 contract
-        token = USTB(address(tokenProxy));
+        token = SuperstateToken(address(tokenProxy));
+
+        // TODO - call initializeV3() with the newly deployed AllowListV2
 
         // assert logic contract is now v3
         assertEq("3", token.VERSION());
