@@ -1,72 +1,66 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {IAllowList} from "../interfaces/allowlist/IAllowList.sol";
+import {IAllowListV2} from "../interfaces/allowlist/IAllowListV2.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin/access/Ownable2StepUpgradeable.sol";
 
 /**
  * @title AllowList
  * @notice A contract that provides allowlist functionalities
- * @author Compound
+ * @author Chris Ridmann (Superstate)
  */
-contract AllowList is IAllowList {
+contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to inherit from new contracts
+     * without impacting the fields within `SuperstateToken`.
+     */
+    uint256[500] private __inheritanceGap;
+
     /// @notice The major version of this contract
-    string public constant VERSION = "1";
-
-    /// @dev Address of the administrator with permissions to update the allowlist
-    address public immutable permissionAdmin;
-
-    /// @notice A record of permissions for each entityId determining if they are allowed. One indexed, since 0 is the default value for all addresses
-    mapping(uint256 => Permission) public permissions;
+    string public constant VERSION = "2";
 
     /// @notice A record of entityIds associated with each address. Setting to 0 removes the address from the allowList.
-    mapping(address => uint256) public addressEntityIds;
+    mapping(address => EntityId) public addressEntityIds;
+
+    /// @notice A record of permissions for each entityId determining if they are allowed.
+    mapping(EntityId => mapping(string => bool)) fundPermissionsByEntityId;
+
+    /// Future allow lists could be added here
 
     /**
-     * @notice Construct a new AllowList instance
-     * @param _permissionAdmin Address of the permission administrator
+     * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
+     * any contracts that inherit `SuperstateToken`
      */
-    constructor(address _permissionAdmin) {
-        permissionAdmin = _permissionAdmin;
+    uint256[100] private __additionalFieldsGap;
+
+    constructor() {
+        _disableInitializers();
     }
 
     /**
-     * @notice Checks if the currentValue equals newValue and reverts if so
-     * @param currentValue The bool currently written to storage
-     * @param newValue The new bool passed in to change currentValue's storage to
+     * @notice Initialize the contract
      */
-    function _comparePermissionBooleans(bool currentValue, bool newValue) internal pure {
-        if (currentValue == newValue) revert AlreadySet();
+    function initialize() public initializer {
+        __Ownable2Step_init();
     }
 
-    /**
-     * @notice Checks if the caller is the permissionAdmin
-     */
-    function _requireAuthorized() internal view {
-        if (msg.sender != permissionAdmin) revert Unauthorized();
+    function isAddressAllowedForFund(address addr, string calldata fundSymbol) external view returns (bool) {
+        EntityId entityId = addressEntityIds[addr];
+        return isEntityAllowedForFund(entityId, fundSymbol);
     }
 
-    /**
-     * @notice Checks if the currentPermission equals newPermission and reverts if so
-     * @param currentPermission The Permission currently written to storage
-     * @param newPermission The new Permission passed in to change currentPermission's storage to
-     */
-    function _comparePermissionStructs(Permission memory currentPermission, Permission memory newPermission)
-        internal
-        pure
-    {
-        bytes32 currentHash = keccak256(abi.encode(currentPermission));
-        bytes32 newHash = keccak256(abi.encode(newPermission));
-        if (currentHash == newHash) revert AlreadySet();
+    function isEntityAllowedForFund(EntityId entityId, string calldata fundSymbol) public view returns (bool) {
+        return fundPermissionsByEntityId[entityId][fundSymbol];
     }
 
-    /**
-     * @notice Fetches the permissions for a given address
-     * @param addr The address whose permissions are to be fetched
-     * @return Permission The permissions of the address
-     */
-    function getPermission(address addr) external view returns (Permission memory) {
-        uint256 entityId = addressEntityIds[addr];
-        return permissions[entityId];
+    function setEntityAllowedForFund(EntityId entityId, string calldata fundSymbol, bool isAllowed) external {
+        _checkOwner();
+        _setEntityAllowedForFundInternal(entityId, fundSymbol, isAllowed);
+    }
+
+    function _setEntityAllowedForFundInternal(EntityId entityId, string calldata fundSymbol, bool isAllowed) internal {
+        fundPermissionsByEntityId[entityId][fundSymbol] = isAllowed;
+        emit FundPermissionSet(entityId, fundSymbol, isAllowed);
     }
 
     /**
@@ -75,17 +69,17 @@ contract AllowList is IAllowList {
      * @param addr The address to set entity for
      * @dev the caller must check if msg.sender is authenticated
      */
-    function _setEntityAddressInternal(uint256 entityId, address addr) internal {
-        uint256 prevId = addressEntityIds[addr];
+    function _setEntityAddressInternal(EntityId entityId, address addr) internal {
+        EntityId prevId = addressEntityIds[addr];
 
-        if (prevId == entityId) revert AlreadySet();
+        if (EntityId.unwrap(prevId) == EntityId.unwrap(entityId)) revert AlreadySet();
 
         // Must set entityId to zero before setting to a new value.
         // If prev id is nonzero, revert if entityId is not zero.
-        if (prevId != 0 && entityId != 0) revert NonZeroEntityIdMustBeChangedToZero();
+        if (EntityId.unwrap(prevId) != 0 && EntityId.unwrap(entityId) != 0) revert NonZeroEntityIdMustBeChangedToZero();
 
         addressEntityIds[addr] = entityId;
-        emit EntityIdSet(addr, entityId);
+        emit EntityIdSet(addr, EntityId.unwrap(entityId));
     }
 
     /**
@@ -94,8 +88,8 @@ contract AllowList is IAllowList {
      * @param addr The address to associate with an entityId
      */
     function setEntityIdForAddress(uint256 entityId, address addr) external {
-        _requireAuthorized();
-        _setEntityAddressInternal(entityId, addr);
+        _checkOwner();
+        _setEntityAddressInternal(EntityId.wrap(entityId), addr);
     }
 
     /**
@@ -104,124 +98,91 @@ contract AllowList is IAllowList {
      * @param addresses The addresses to associate with an entityId
      */
     function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
-        _requireAuthorized();
+        _checkOwner();
 
         for (uint256 i = 0; i < addresses.length; ++i) {
-            _setEntityAddressInternal(entityId, addresses[i]);
+            _setEntityAddressInternal(EntityId.wrap(entityId), addresses[i]);
         }
-    }
-
-    /**
-     * @notice Sets permissions for a given entityId. Admin check must be done by caller
-     * @param entityId The entityId to be updated
-     * @param permission The permission status to set
-     */
-    function _setPermissionInternal(uint256 entityId, Permission calldata permission) internal {
-        if (entityId == 0) revert ZeroEntityIdNotAllowed();
-
-        _comparePermissionStructs(permissions[entityId], permission);
-
-        permissions[entityId] = permission;
-
-        emit PermissionSet(entityId, permission);
-    }
-
-    /**
-     * @notice Sets permissions for a given entityId
-     * @param entityId The entityId to be updated
-     * @param permission The permission status to set
-     */
-    function setPermission(uint256 entityId, Permission calldata permission) external {
-        _requireAuthorized();
-        _setPermissionInternal(entityId, permission);
     }
 
     /**
      * @notice Sets entity for an array of addresses and sets permissions for an entity
      * @param entityId The entityId to be updated
      * @param addresses The addresses to associate with an entityId
-     * @param permission The permissions to set
+     * @param fundPermissionsToUpdate The funds to update permissions for
+     * @param fundPermissions The permissions for each fund
      */
-    function setEntityPermissionAndAddresses(
-        uint256 entityId,
+    function setEntityPermissionsAndAddresses(
+        EntityId entityId,
         address[] calldata addresses,
-        Permission calldata permission
+        string[] calldata fundPermissionsToUpdate,
+        bool[] calldata fundPermissions
     ) external {
-        _requireAuthorized();
-        _setPermissionInternal(entityId, permission);
+        _checkOwner();
 
+        // Ensure fundPermissionsToUpdate.length == fundPermissions.length
+        if (fundPermissionsToUpdate.length != fundPermissions.length) {
+            revert BadData();
+        }
+
+        // Set Entity for addresses
         for (uint256 i = 0; i < addresses.length; ++i) {
             _setEntityAddressInternal(entityId, addresses[i]);
         }
+
+        // Set permissions for entity
+        for (uint256 i = 0; i < fundPermissionsToUpdate.length; ++i) {
+            _setEntityAllowedForFundInternal(entityId, fundPermissionsToUpdate[i], fundPermissions[i]);
+        }
+    }
+
+    /// DEPRECATED FUNCTIONS FROM V1
+
+    /**
+     * @notice Fetches the permissions for a given address.
+     * @dev Deprecated in v2
+     */
+    function getPermission(address) external pure returns (Permission memory) {
+        revert Deprecated();
+    }
+
+    /**
+     * @notice Sets permissions for a given entityId.
+     * @dev Deprecated in v2
+     */
+    function setPermission(uint256, Permission calldata) external pure {
+        revert Deprecated();
+    }
+
+    /**
+     * @notice Sets entity for an array of addresses and sets permissions for an entity.
+     * @dev Deprecated in v2
+     */
+    function setEntityPermissionAndAddresses(uint256, address[] calldata, Permission calldata) external pure {
+        revert Deprecated();
     }
 
     /**
      * @notice Sets isAllowed permissions for a given entityId
-     * @param entityId The entityId to be updated
-     * @param value The isAllowed status to set
+     * @dev Deprecated in v2
      */
-    function setIsAllowed(uint256 entityId, bool value) external {
-        _requireAuthorized();
-        if (entityId == 0) revert ZeroEntityIdNotAllowed();
-
-        Permission storage perms = permissions[entityId];
-        _comparePermissionBooleans(perms.isAllowed, value);
-        perms.isAllowed = value;
-
-        emit PermissionSet(entityId, perms);
+    function setIsAllowed(uint256, bool) external pure {
+        revert Deprecated();
     }
 
     /**
-     * @notice Sets the nth permission for a given entityId
-     * @param entityId The entityId to be updated
-     * @param index The index of the permission to update
-     * @param value The status to set
-     * @dev Permissions are 0 indexed, meaning the first permission (isAllowed) has an index of 0
+     * @notice Sets the nth permission for a given entityId.
+     * @dev Deprecated in v2
      */
-    function setNthPermission(uint256 entityId, uint256 index, bool value) external {
-        _requireAuthorized();
-        if (entityId == 0) revert ZeroEntityIdNotAllowed();
-
-        Permission memory perms = permissions[entityId];
-        perms = _setPermissionAtIndex(perms, index, value);
-        permissions[entityId] = perms;
-
-        emit PermissionSet(entityId, perms);
+    function setNthPermission(uint256, uint256, bool) external pure {
+        revert Deprecated();
     }
 
     /**
-     * @dev Sets the nth permission for a Permission and returns the updated struct
-     * @param perms The Permission to be updated
-     * @param index The index of the permission to update
-     * @param value The status to set
+     * @notice Sets the nth permission for a Permission and returns the updated struct
+     * @dev Deprecated in v2
      */
-    function _setPermissionAtIndex(Permission memory perms, uint256 index, bool value)
-        internal
-        pure
-        returns (Permission memory)
-    {
-        if (index == 0) {
-            _comparePermissionBooleans(perms.isAllowed, value);
-            perms.isAllowed = value;
-        } else if (index == 1) {
-            _comparePermissionBooleans(perms.state1, value);
-            perms.state1 = value;
-        } else if (index == 2) {
-            _comparePermissionBooleans(perms.state2, value);
-            perms.state2 = value;
-        } else if (index == 3) {
-            _comparePermissionBooleans(perms.state3, value);
-            perms.state3 = value;
-        } else if (index == 4) {
-            _comparePermissionBooleans(perms.state4, value);
-            perms.state4 = value;
-        } else if (index == 5) {
-            _comparePermissionBooleans(perms.state5, value);
-            perms.state5 = value;
-        } else {
-            revert BadData();
-        }
-
-        return perms;
+    function _setPermissionAtIndex(Permission memory, uint256, bool) internal pure returns (Permission memory) {
+        revert Deprecated();
     }
 }
