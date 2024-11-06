@@ -46,7 +46,6 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
         eve = vm.addr(evePrivateKey);
 
-        // TODO - change this to `AllowList` once that is fully baked
         AllowListV1 permsImplementation = new AllowListV1(address(this));
 
         // deploy proxy contract and point it to implementation

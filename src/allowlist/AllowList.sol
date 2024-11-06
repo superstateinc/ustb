@@ -177,12 +177,4 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     function setNthPermission(uint256, uint256, bool) external pure {
         revert Deprecated();
     }
-
-    /**
-     * @notice Sets the nth permission for a Permission and returns the updated struct
-     * @dev Deprecated in v2
-     */
-    function _setPermissionAtIndex(Permission memory, uint256, bool) internal pure returns (Permission memory) {
-        revert Deprecated();
-    }
 }

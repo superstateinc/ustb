@@ -30,4 +30,6 @@ interface IAllowListV2 is IAllowList {
         string[] calldata fundPermissionsToUpdate,
         bool[] calldata fundPermissions
     ) external;
+
+    function initialize() external;
 }
