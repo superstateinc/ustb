@@ -11,7 +11,7 @@ import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import "test/allowlist/mocks/MockAllowList.sol";
 
-contract AllowListTest is Test {
+contract AllowListV1Test is Test {
     event PermissionSet(uint256 indexed addr, IAllowList.Permission permission);
     event EntityIdSet(address indexed addr, uint256 indexed entityId);
 
