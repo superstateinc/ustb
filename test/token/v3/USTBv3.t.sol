@@ -110,9 +110,10 @@ contract USTBv3Test is SuperstateTokenTestBase {
         permsV2.initialize();
 
         // Re-populate AllowList state
-        address[] memory addrsToSet = new address[](2);
+        address[] memory addrsToSet = new address[](3);
         addrsToSet[0] = alice;
         addrsToSet[1] = bob;
+        addrsToSet[2] = charlie;
         string[] memory fundsToSet = new string[](1);
         fundsToSet[0] = "USTB";
         bool[] memory fundPermissionsToSet = new bool[](1);
@@ -290,5 +291,167 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
         vm.expectRevert(ISuperstateToken.OnchainSubscriptionsDisabled.selector);
         tokenV3.getChainlinkPrice();
+    }
+
+    function testUpgradingAllowListDoesNotAffectToken() public override {
+        AllowList permsV2Implementation = new AllowList();
+        permsProxyAdminV2.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxyV2)), address(permsV2Implementation), "");
+
+        AllowList permsV3 = AllowList(address(permsProxyV2));
+
+        assertEq(address(token.allowList()), address(permsProxyV2));
+
+        // check Alice, Bob, and Charlie still whitelisted
+        assertTrue(permsV3.isAddressAllowedForFund(alice, "USTB"));
+        assertTrue(permsV3.isAddressAllowedForFund(bob, "USTB"));
+        assertTrue(permsV3.isAddressAllowedForFund(charlie, "USTB"));
+
+        deal(address(token), alice, 100e6);
+        deal(address(token), bob, 100e6);
+        // check Alice, Bob, and Charlie can still do whitelisted operations (transfer, transferFrom, encumber, encumberFrom)
+        vm.prank(alice);
+        token.transfer(bob, 10e6);
+
+        assertEq(token.balanceOf(alice), 90e6);
+        assertEq(token.balanceOf(bob), 110e6);
+
+        vm.prank(bob);
+        token.approve(alice, 40e6);
+
+        vm.prank(alice);
+        token.transferFrom(bob, charlie, 20e6);
+
+        assertEq(token.balanceOf(bob), 90e6);
+        assertEq(token.balanceOf(charlie), 20e6);
+
+        vm.prank(bob);
+        token.encumber(charlie, 20e6);
+
+        vm.prank(alice);
+        token.encumberFrom(bob, charlie, 10e6);
+
+        assertEq(token.encumbrances(bob, charlie), 30e6);
+    }
+
+    function testTransferFromWorksIfUsingEncumbranceAndSourceIsNotWhitelisted() public override {
+        deal(address(token), mallory, 100e6);
+
+        // whitelist mallory for setting encumbrances
+        address[] memory addrsToSet = new address[](1);
+        addrsToSet[0] = mallory;
+        string[] memory fundsToSet = new string[](1);
+        fundsToSet[0] = "USTB";
+        bool[] memory fundPermissionsToSet = new bool[](1);
+        fundPermissionsToSet[0] = true;
+        permsV2.setEntityPermissionsAndAddresses(
+            IAllowListV2.EntityId.wrap(2), addrsToSet, fundsToSet, fundPermissionsToSet
+        );
+        vm.startPrank(mallory);
+        token.encumber(bob, 20e6);
+        token.approve(bob, 10e6);
+        vm.stopPrank();
+
+        // now un-whitelist mallory
+        permsV2.setEntityAllowedForFund(
+            IAllowListV2.EntityId.wrap(2), "USTB", false
+        );
+
+        // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
+        vm.prank(bob);
+        vm.expectEmit(true, true, true, true);
+        emit Release(mallory, bob, 15e6);
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(mallory, alice, 15e6);
+        token.transferFrom(mallory, alice, 15e6);
+
+        assertEq(token.balanceOf(mallory), 85e6);
+        assertEq(token.balanceOf(alice), 15e6);
+        assertEq(token.balanceOf(bob), 0e6);
+        assertEq(token.encumbrances(mallory, bob), 5e6);
+    }
+
+    function testTransferFromRevertsIfEncumbranceLessThanAmountAndSourceNotWhitelisted() public override {
+        deal(address(token), mallory, 100e6);
+
+        // Re-populate AllowList state
+        address[] memory addrsToSet = new address[](1);
+        addrsToSet[0] = mallory;
+        string[] memory fundsToSet = new string[](1);
+        fundsToSet[0] = "USTB";
+        bool[] memory fundPermissionsToSet = new bool[](1);
+        fundPermissionsToSet[0] = true;
+        permsV2.setEntityPermissionsAndAddresses(
+            IAllowListV2.EntityId.wrap(2), addrsToSet, fundsToSet, fundPermissionsToSet
+        );
+        // whitelist mallory for setting encumbrances
+        vm.startPrank(mallory);
+        token.encumber(bob, 20e6);
+        token.approve(bob, 10e6);
+        vm.stopPrank();
+
+        // now un-whitelist mallory
+        permsV2.setEntityAllowedForFund(
+            IAllowListV2.EntityId.wrap(2), "USTB", false
+        );
+
+        assertFalse(permsV2.isAddressAllowedForFund(mallory, "USTB"));
+
+        // reverts because encumbrances[src][bob] = 20 < amount and src (mallory) is not whitelisted
+        vm.prank(bob);
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
+        token.transferFrom(mallory, alice, 30e6);
+    }
+
+    function testFuzzEncumbranceMustBeRespected(uint256 amt, address spender, address recipient, address recipient2)
+    public
+    override
+    {
+        // cannot be address 0 - ERC20: transfer from the zero address
+        // spender cannot be alice bob or charlie, they already have their permissions set
+        vm.assume(spender != address(0) && spender != alice && spender != bob && spender != charlie);
+        vm.assume(recipient != alice && recipient != bob && recipient != charlie);
+        vm.assume(recipient2 != alice && recipient2 != bob && recipient2 != charlie);
+        vm.assume(spender != recipient && recipient != recipient2 && spender != recipient2);
+        vm.assume(recipient != address(0) && recipient2 != address(0));
+        // proxy admin cant use protocol
+        vm.assume(
+            address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient
+            && address(permsProxyAdmin) != recipient2 && address(tokenProxyAdmin) != spender
+            && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
+        );
+
+        // whitelist spender and recipients
+        address[] memory addrsToSet = new address[](3);
+        addrsToSet[0] = spender;
+        addrsToSet[1] = recipient;
+        addrsToSet[2] = recipient2;
+        string[] memory fundsToSet = new string[](1);
+        fundsToSet[0] = "USTB";
+        bool[] memory fundPermissionsToSet = new bool[](1);
+        fundPermissionsToSet[0] = true;
+
+        permsV2.setEntityPermissionsAndAddresses(
+            IAllowListV2.EntityId.wrap(2), addrsToSet, fundsToSet, fundPermissionsToSet
+        );
+
+        // limit range of amount
+        uint256 amount = bound(amt, 1, type(uint128).max - 1);
+        deal(address(token), spender, amount * 2);
+
+        // encumber tokens to spender
+        vm.prank(spender);
+        token.encumber(recipient, amount);
+
+        // encumber tokens to spender
+        vm.prank(spender);
+        token.encumber(recipient2, amount);
+
+        // recipient calls transferFrom on spender
+        vm.prank(recipient);
+        token.transferFrom(spender, recipient, amount);
+
+        // recipient calls transferFrom on spender
+        vm.prank(recipient2);
+        token.transferFrom(spender, recipient2, amount);
     }
 }
