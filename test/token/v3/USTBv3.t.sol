@@ -34,6 +34,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
     uint256 public constant INITIAL_MAX_ORACLE_DELAY = 1 hours;
+    uint256 public constant MAXIMUM_ACCEPTABLE_PRICE_DELTA = 1_000_000;
 
     function setUp() public override {
         string memory rpcUrl = vm.envString("RPC_URL");
@@ -133,7 +134,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         tokenV3.initializeV3(permsV2);
 
         // Set up oracle
-        oracle = new SuperstateOracle(address(this), address(tokenV3));
+        oracle = new SuperstateOracle(address(this), address(tokenV3), MAXIMUM_ACCEPTABLE_PRICE_DELTA);
         oracle.addCheckpoint(1726779600, 1726779601, 10_374_862, false);
 
         vm.warp(1726866001);
