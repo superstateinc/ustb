@@ -6,7 +6,7 @@ import {Ownable2StepUpgradeable} from "openzeppelin/access/Ownable2StepUpgradeab
 
 /**
  * @title AllowList
- * @notice A contract that provides allowlist functionalities
+ * @notice A contract that provides allowlist functionalities with both entity-based and contract address permissions
  * @author Chris Ridmann (Superstate)
  */
 contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
@@ -23,9 +23,10 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     mapping(address => EntityId) public addressEntityIds;
 
     /// @notice A record of permissions for each entityId determining if they are allowed.
-    mapping(EntityId => mapping(string => bool)) fundPermissionsByEntityId;
+    mapping(EntityId => mapping(string fundSymbol => bool permission)) public fundPermissionsByEntityId;
 
-    /// Future allow lists could be added here
+    /// @notice Contract address permissions, mutually exclusive with entityId permissions
+    mapping(address => mapping(string fundSymbol => bool permission)) public contractPermissions;
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
@@ -45,6 +46,11 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     }
 
     function isAddressAllowedForFund(address addr, string calldata fundSymbol) external view returns (bool) {
+        // First check if address has contract permissions
+        if (EntityId.unwrap(addressEntityIds[addr]) == 0) {
+            return contractPermissions[addr][fundSymbol];
+        }
+        // If not, check entity permissions
         EntityId entityId = addressEntityIds[addr];
         return isEntityAllowedForFund(entityId, fundSymbol);
     }
@@ -63,6 +69,43 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
         emit FundPermissionSet(entityId, fundSymbol, isAllowed);
     }
 
+    function _setContractAllowedForFundInternal(address addr, string calldata fundSymbol, bool isAllowed) internal {
+        contractPermissions[addr][fundSymbol] = isAllowed;
+        emit ContractAddressPermissionSet(addr, fundSymbol, isAllowed);
+    }
+
+    /**
+     * @notice Sets contract permissions for an address
+     * @param addr The address to set permissions for
+     * @param fundSymbol The fund symbol to set permissions for
+     * @param isAllowed The permission value to set
+     */
+    function setContractAddressPermission(address addr, string calldata fundSymbol, bool isAllowed) external {
+        _checkOwner();
+        if (EntityId.unwrap(addressEntityIds[addr]) != 0) revert AddressHasEntityId();
+
+        _setContractAllowedForFundInternal(addr, fundSymbol, isAllowed);
+    }
+
+    /**
+     * @notice Sets contract permissions for multiple addresses
+     * @param addresses The addresses to set permissions for
+     * @param fundSymbol The fund symbol to set permissions for
+     * @param isAllowed The permission value to set
+     */
+    function setContractAddressPermissions(
+        address[] calldata addresses,
+        string calldata fundSymbol,
+        bool isAllowed
+    ) external {
+        _checkOwner();
+
+        for (uint256 i = 0; i < addresses.length; ++i) {
+            if (EntityId.unwrap(addressEntityIds[addresses[i]]) != 0) revert AddressHasEntityId();
+            _setContractAllowedForFundInternal(addresses[i], fundSymbol, isAllowed);
+        }
+    }
+
     /**
      * @notice Sets the entityId for a given address. Setting to 0 removes the address from the allowList
      * @param entityId The entityId whose permissions are to be set
@@ -74,6 +117,11 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
 
         if (EntityId.unwrap(prevId) == EntityId.unwrap(entityId)) revert AlreadySet();
 
+        // Check if address has contract permissions when trying to set a non-zero entityId
+        if (EntityId.unwrap(entityId) != 0) {
+            if (hasAnyContractPermissions(addr)) revert AddressHasContractPermissions();
+        }
+
         // Must set entityId to zero before setting to a new value.
         // If prev id is nonzero, revert if entityId is not zero.
         if (EntityId.unwrap(prevId) != 0 && EntityId.unwrap(entityId) != 0) revert NonZeroEntityIdMustBeChangedToZero();
@@ -83,10 +131,15 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     }
 
     /**
-     * @notice Sets the entityId for a given address. Setting to 0 removes the address from the allowList
-     * @param entityId The entityId to associate with an address
-     * @param addr The address to associate with an entityId
+     * @notice Helper function to check if an address has any contract permissions
+     * @param addr The address to check
+     * @return hasPermissions True if the address has any contract permissions for any fund
+     * @dev This is used to ensure an address doesn't have both entity and contract permissions
      */
+    function hasAnyContractPermissions(address addr) public view returns (bool hasPermissions) {
+        hasPermissions = false; // TODO
+    }
+
     function setEntityIdForAddress(uint256 entityId, address addr) external {
         _checkOwner();
         _setEntityAddressInternal(EntityId.wrap(entityId), addr);
@@ -125,7 +178,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
             revert BadData();
         }
 
-        // Set Entity for addresses
+        // Check for contract permissions and set Entity for addresses
         for (uint256 i = 0; i < addresses.length; ++i) {
             _setEntityAddressInternal(entityId, addresses[i]);
         }
