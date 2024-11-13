@@ -25,6 +25,9 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     /// @notice A record of permissions for each entityId determining if they are allowed.
     mapping(EntityId => mapping(string fundSymbol => bool permission)) public fundPermissionsByEntityId;
 
+    /// @notice TODO
+    mapping(address contractAddress => uint256 numberOfFunds) public contractPermissionsForFunds;
+
     /// @notice Contract address permissions, mutually exclusive with entityId permissions
     mapping(address => mapping(string fundSymbol => bool permission)) public contractPermissions;
 
@@ -70,6 +73,16 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     }
 
     function _setContractAllowedForFundInternal(address addr, string calldata fundSymbol, bool isAllowed) internal {
+        bool currentValue = contractPermissions[addr][fundSymbol];
+
+        if (currentValue == isAllowed) revert AlreadySet();
+
+        if (isAllowed) {
+            contractPermissionsForFunds[addr] += 1;
+        } else {
+            contractPermissionsForFunds[addr] -= 1;
+        }
+
         contractPermissions[addr][fundSymbol] = isAllowed;
         emit ContractAddressPermissionSet(addr, fundSymbol, isAllowed);
     }
@@ -137,7 +150,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
      * @dev This is used to ensure an address doesn't have both entity and contract permissions
      */
     function hasAnyContractPermissions(address addr) public view returns (bool hasPermissions) {
-        hasPermissions = false; // TODO
+        hasPermissions = contractPermissionsForFunds[addr] > 0;
     }
 
     function setEntityIdForAddress(uint256 entityId, address addr) external {
