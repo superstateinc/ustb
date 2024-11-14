@@ -6,7 +6,7 @@ import {Ownable2StepUpgradeable} from "openzeppelin/access/Ownable2StepUpgradeab
 
 /**
  * @title AllowList
- * @notice A contract that provides allowlist functionalities with both entity-based and contract address permissions
+ * @notice A contract that provides allowlist functionalities with both entity-based and protocol address permissions
  * @author Chris Ridmann (Superstate)
  */
 contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
@@ -25,11 +25,11 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     /// @notice A record of permissions for each entityId determining if they are allowed.
     mapping(EntityId => mapping(string fundSymbol => bool permission)) public fundPermissionsByEntityId;
 
-    /// @notice TODO
-    mapping(address contractAddress => uint256 numberOfFunds) public contractPermissionsForFunds;
+    /// @notice A record of how many funds a protocol is allowed for
+    mapping(address protcol => uint256 numberOfFunds) public protocolPermissionsForFunds;
 
-    /// @notice Contract address permissions, mutually exclusive with entityId permissions
-    mapping(address => mapping(string fundSymbol => bool permission)) public contractPermissions;
+    /// @notice Protocol address permissions, mutually exclusive with entityId permissions
+    mapping(address => mapping(string fundSymbol => bool permission)) public protocolPermissions;
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
@@ -49,11 +49,11 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     }
 
     function isAddressAllowedForFund(address addr, string calldata fundSymbol) external view returns (bool) {
-        // First check if address has contract permissions
+        // EntityId is 0 for unset addresses
         if (EntityId.unwrap(addressEntityIds[addr]) == 0) {
-            return contractPermissions[addr][fundSymbol];
+            return protocolPermissions[addr][fundSymbol];
         }
-        // If not, check entity permissions
+
         EntityId entityId = addressEntityIds[addr];
         return isEntityAllowedForFund(entityId, fundSymbol);
     }
@@ -72,41 +72,48 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
         emit FundPermissionSet(entityId, fundSymbol, isAllowed);
     }
 
-    function _setContractAllowedForFundInternal(address addr, string calldata fundSymbol, bool isAllowed) internal {
-        bool currentValue = contractPermissions[addr][fundSymbol];
+    function _setProtocolAllowedForFundInternal(address addr, string calldata fundSymbol, bool isAllowed) internal {
+        bool currentValue = protocolPermissions[addr][fundSymbol];
 
         if (currentValue == isAllowed) revert AlreadySet();
 
-        if (isAllowed) {
-            contractPermissionsForFunds[addr] += 1;
-        } else {
-            contractPermissionsForFunds[addr] -= 1;
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(addr)
         }
 
-        contractPermissions[addr][fundSymbol] = isAllowed;
-        emit ContractAddressPermissionSet(addr, fundSymbol, isAllowed);
+        if (codeSize == 0) revert CodeSizeZero();
+
+        if (isAllowed) {
+            protocolPermissionsForFunds[addr] += 1;
+        } else {
+            protocolPermissionsForFunds[addr] -= 1;
+        }
+
+        protocolPermissions[addr][fundSymbol] = isAllowed;
+        emit ProtocolAddressPermissionSet(addr, fundSymbol, isAllowed);
     }
 
     /**
-     * @notice Sets contract permissions for an address
+     * @notice Sets protocol permissions for an address
      * @param addr The address to set permissions for
      * @param fundSymbol The fund symbol to set permissions for
      * @param isAllowed The permission value to set
      */
-    function setContractAddressPermission(address addr, string calldata fundSymbol, bool isAllowed) external {
+    function setProtocolAddressPermission(address addr, string calldata fundSymbol, bool isAllowed) external {
         _checkOwner();
         if (EntityId.unwrap(addressEntityIds[addr]) != 0) revert AddressHasEntityId();
 
-        _setContractAllowedForFundInternal(addr, fundSymbol, isAllowed);
+        _setProtocolAllowedForFundInternal(addr, fundSymbol, isAllowed);
     }
 
     /**
-     * @notice Sets contract permissions for multiple addresses
+     * @notice Sets protocol permissions for multiple addresses
      * @param addresses The addresses to set permissions for
      * @param fundSymbol The fund symbol to set permissions for
      * @param isAllowed The permission value to set
      */
-    function setContractAddressPermissions(
+    function setProtocolAddressPermissions(
         address[] calldata addresses,
         string calldata fundSymbol,
         bool isAllowed
@@ -115,7 +122,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
 
         for (uint256 i = 0; i < addresses.length; ++i) {
             if (EntityId.unwrap(addressEntityIds[addresses[i]]) != 0) revert AddressHasEntityId();
-            _setContractAllowedForFundInternal(addresses[i], fundSymbol, isAllowed);
+            _setProtocolAllowedForFundInternal(addresses[i], fundSymbol, isAllowed);
         }
     }
 
@@ -130,9 +137,9 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
 
         if (EntityId.unwrap(prevId) == EntityId.unwrap(entityId)) revert AlreadySet();
 
-        // Check if address has contract permissions when trying to set a non-zero entityId
+        // Check if address has protocol permissions when trying to set a non-zero entityId
         if (EntityId.unwrap(entityId) != 0) {
-            if (hasAnyContractPermissions(addr)) revert AddressHasContractPermissions();
+            if (hasAnyProtocolPermissions(addr)) revert AddressHasProtocolPermissions();
         }
 
         // Must set entityId to zero before setting to a new value.
@@ -144,13 +151,13 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     }
 
     /**
-     * @notice Helper function to check if an address has any contract permissions
+     * @notice Helper function to check if an address has any protocol permissions
      * @param addr The address to check
-     * @return hasPermissions True if the address has any contract permissions for any fund
-     * @dev This is used to ensure an address doesn't have both entity and contract permissions
+     * @return hasPermissions True if the address has any protocol permissions for any fund
+     * @dev This is used to ensure an address doesn't have both entity and protocol permissions
      */
-    function hasAnyContractPermissions(address addr) public view returns (bool hasPermissions) {
-        hasPermissions = contractPermissionsForFunds[addr] > 0;
+    function hasAnyProtocolPermissions(address addr) public view returns (bool hasPermissions) {
+        hasPermissions = protocolPermissionsForFunds[addr] > 0;
     }
 
     function setEntityIdForAddress(uint256 entityId, address addr) external {
@@ -191,7 +198,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
             revert BadData();
         }
 
-        // Check for contract permissions and set Entity for addresses
+        // Check for protocol permissions and set Entity for addresses
         for (uint256 i = 0; i < addresses.length; ++i) {
             _setEntityAddressInternal(entityId, addresses[i]);
         }
