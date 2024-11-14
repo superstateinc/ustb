@@ -26,7 +26,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     mapping(EntityId => mapping(string fundSymbol => bool permission)) public fundPermissionsByEntityId;
 
     /// @notice A record of how many funds a protocol is allowed for
-    mapping(address protcol => uint256 numberOfFunds) public protocolPermissionsForFunds;
+    mapping(address protocol => uint256 numberOfFunds) public protocolPermissionsForFunds;
 
     /// @notice Protocol address permissions, mutually exclusive with entityId permissions
     mapping(address => mapping(string fundSymbol => bool permission)) public protocolPermissions;
