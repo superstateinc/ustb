@@ -100,7 +100,7 @@ contract AllowListV2Test is AllowListTestBase {
     function testSetProtocolAddressPermissionsRevertsForAddressWithEntityId() public {
         address[] memory protocols = new address[](2);
         protocols[0] = address(mockProtocol);
-        protocols[1] = bob;  // bob will have an entity ID
+        protocols[1] = bob; // bob will have an entity ID
 
         allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
 
@@ -153,7 +153,7 @@ contract AllowListV2Test is AllowListTestBase {
             bobEntityId,
             addrs,
             fundSymbols, // length 2
-            fundPerms    // length 1
+            fundPerms // length 1
         );
     }
 

@@ -10,6 +10,7 @@ import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import "test/token/TokenTestBase.t.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
+import {MockContract} from "test/allowlist/mocks/MockContract.sol";
 
 /*
 * Note: This is used for v2 and beyond, as v1 is incompatible and this is known/accepted.
@@ -32,7 +33,13 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
     IAllowListV2.EntityId aliceEntityId = IAllowListV2.EntityId.wrap(10);
     IAllowListV2.EntityId bobEntityId = IAllowListV2.EntityId.wrap(11);
 
+    MockContract public mockProtocol;
+    MockContract public mockProtocol2;
+
     function setUp() public virtual {
+        mockProtocol = new MockContract();
+        mockProtocol2 = new MockContract();
+
         initializeExpectedTokenVersions();
         initializeOldAllowList();
     }
@@ -55,6 +62,9 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
         fundPermissionsToSet[0] = true;
         fundPermissionsToSet[1] = false;
         oldAllowList.setEntityPermissionsAndAddresses(bobEntityId, addrsToSet, fundsToSet, fundPermissionsToSet);
+
+        oldAllowList.setProtocolAddressPermission(address(mockProtocol), "USTB", true);
+        //oldAllowList.setProtocolAddressPermission(address(mockProtocol), "USCC", false); // AlreadySet()
     }
 
     function loadSlot(uint256 slot) public view returns (bytes32) {
@@ -135,10 +145,30 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
         assertEq(fundPermissionBobSlotValue, expectedFundPermissionBobSlot);
 
         // assert fundPermissionsByEntityId from contract method
-        assertEq(currentAllowList.isEntityAllowedForFund(bobEntityId, "USTB"), true);
+        assertTrue(currentAllowList.isEntityAllowedForFund(bobEntityId, "USTB"));
 
-        // assert __additionalFieldsGap (storage slots 653-753)
-        for (uint256 i = 653; i <= 753; ++i) {
+        // assert protocolPermissionsForFunds (storage slot 653)
+        bytes32 protocolPermissionsForFundsProtocol = keccak256(abi.encode(address(mockProtocol), uint256(653)));
+        uint256 protocolPermissionsForFundsSlotValue =
+            uint256(vm.load(address(allowListProxy), protocolPermissionsForFundsProtocol));
+        uint256 expectedCount = 1;
+        assertEq(protocolPermissionsForFundsSlotValue, expectedCount, "butt");
+
+        // assert protocolPermissionsForFunds from contract method
+        assertEq(AllowList(address(allowListProxy)).protocolPermissionsForFunds(address(mockProtocol)), expectedCount);
+
+        // assert protocolPermissions (storage slot 654)
+        bytes32 protocolPermissionsProtocolSlot = keccak256(abi.encodePacked(address(mockProtocol), uint256(654)));
+        bytes32 protocolPermissionsSlot = keccak256(abi.encodePacked("USTB", uint256(protocolPermissionsProtocolSlot)));
+        uint256 protocolPermissionsSlotValue = uint256(vm.load(address(allowListProxy), protocolPermissionsSlot));
+        uint256 expectedValue = 1; // 1 == true
+        assertEq(protocolPermissionsSlotValue, expectedValue); // This fails
+
+        // assert protocolPermissions from contract method
+        assertTrue(currentAllowList.protocolPermissions(address(mockProtocol), "USTB"));
+
+        // assert __additionalFieldsGap (storage slots 655-755)
+        for (uint256 i = 655; i <= 755; ++i) {
             assertEq(uint256(loadSlot(i)), 0);
         }
     }

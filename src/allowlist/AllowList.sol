@@ -29,7 +29,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
     mapping(address protocol => uint256 numberOfFunds) public protocolPermissionsForFunds;
 
     /// @notice Protocol address permissions, mutually exclusive with entityId permissions
-    mapping(address => mapping(string fundSymbol => bool permission)) public protocolPermissions;
+    mapping(address protocol => mapping(string fundSymbol => bool permission)) public protocolPermissions;
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
@@ -113,11 +113,9 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
      * @param fundSymbol The fund symbol to set permissions for
      * @param isAllowed The permission value to set
      */
-    function setProtocolAddressPermissions(
-        address[] calldata addresses,
-        string calldata fundSymbol,
-        bool isAllowed
-    ) external {
+    function setProtocolAddressPermissions(address[] calldata addresses, string calldata fundSymbol, bool isAllowed)
+        external
+    {
         _checkOwner();
 
         for (uint256 i = 0; i < addresses.length; ++i) {
