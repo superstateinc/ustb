@@ -34,11 +34,9 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
     IAllowListV2.EntityId bobEntityId = IAllowListV2.EntityId.wrap(11);
 
     MockContract public mockProtocol;
-    MockContract public mockProtocol2;
 
     function setUp() public virtual {
         mockProtocol = new MockContract();
-        mockProtocol2 = new MockContract();
 
         initializeExpectedTokenVersions();
         initializeOldAllowList();
@@ -152,14 +150,14 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
         uint256 protocolPermissionsForFundsSlotValue =
             uint256(vm.load(address(allowListProxy), protocolPermissionsForFundsProtocol));
         uint256 expectedCount = 1;
-        assertEq(protocolPermissionsForFundsSlotValue, expectedCount, "butt");
+        assertEq(protocolPermissionsForFundsSlotValue, expectedCount);
 
         // assert protocolPermissionsForFunds from contract method
         assertEq(AllowList(address(allowListProxy)).protocolPermissionsForFunds(address(mockProtocol)), expectedCount);
 
         // assert protocolPermissions (storage slot 654)
-        bytes32 protocolPermissionsProtocolSlot = keccak256(abi.encodePacked(address(mockProtocol), uint256(654)));
-        bytes32 protocolPermissionsSlot = keccak256(abi.encodePacked("USTB", uint256(protocolPermissionsProtocolSlot)));
+        bytes32 protocolPermissionsProtocolSlot = keccak256(abi.encode(address(mockProtocol), uint256(654)));
+        bytes32 protocolPermissionsSlot = keccak256(abi.encode("USTB", uint256(protocolPermissionsProtocolSlot)));
         uint256 protocolPermissionsSlotValue = uint256(vm.load(address(allowListProxy), protocolPermissionsSlot));
         uint256 expectedValue = 1; // 1 == true
         assertEq(protocolPermissionsSlotValue, expectedValue); // This fails
