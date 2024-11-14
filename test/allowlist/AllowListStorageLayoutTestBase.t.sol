@@ -157,7 +157,7 @@ abstract contract AllowListStorageLayoutTestBase is TokenTestBase {
 
         // assert protocolPermissions (storage slot 654)
         bytes32 protocolPermissionsProtocolSlot = keccak256(abi.encode(address(mockProtocol), uint256(654)));
-        bytes32 protocolPermissionsSlot = keccak256(abi.encode("USTB", uint256(protocolPermissionsProtocolSlot)));
+        bytes32 protocolPermissionsSlot = keccak256(abi.encodePacked("USTB", uint256(protocolPermissionsProtocolSlot)));
         uint256 protocolPermissionsSlotValue = uint256(vm.load(address(allowListProxy), protocolPermissionsSlot));
         uint256 expectedValue = 1; // 1 == true
         assertEq(protocolPermissionsSlotValue, expectedValue); // This fails
