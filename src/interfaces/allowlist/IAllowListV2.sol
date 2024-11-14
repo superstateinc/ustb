@@ -58,5 +58,11 @@ interface IAllowListV2 is IAllowList {
         bool[] calldata fundPermissions
     ) external;
 
+    function hasAnyProtocolPermissions(address addr) external view returns (bool hasPermissions);
+
+    function protocolPermissionsForFunds(address protocol) external view returns (uint256);
+
+    function protocolPermissions(address, string calldata) external view returns (bool);
+
     function initialize() external;
 }
