@@ -295,7 +295,9 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
     function testUpgradingAllowListDoesNotAffectToken() public override {
         AllowList permsV2Implementation = new AllowList();
-        permsProxyAdminV2.upgradeAndCall(ITransparentUpgradeableProxy(address(permsProxyV2)), address(permsV2Implementation), "");
+        permsProxyAdminV2.upgradeAndCall(
+            ITransparentUpgradeableProxy(address(permsProxyV2)), address(permsV2Implementation), ""
+        );
 
         AllowList permsV3 = AllowList(address(permsProxyV2));
 
@@ -352,9 +354,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        permsV2.setEntityAllowedForFund(
-            IAllowListV2.EntityId.wrap(2), "USTB", false
-        );
+        permsV2.setEntityAllowedForFund(IAllowListV2.EntityId.wrap(2), "USTB", false);
 
         // bob can transferFrom now-un-whitelisted mallory by spending her encumbrance to him, without issues
         vm.prank(bob);
@@ -390,9 +390,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         vm.stopPrank();
 
         // now un-whitelist mallory
-        permsV2.setEntityAllowedForFund(
-            IAllowListV2.EntityId.wrap(2), "USTB", false
-        );
+        permsV2.setEntityAllowedForFund(IAllowListV2.EntityId.wrap(2), "USTB", false);
 
         assertFalse(permsV2.isAddressAllowedForFund(mallory, "USTB"));
 
@@ -403,8 +401,8 @@ contract USTBv3Test is SuperstateTokenTestBase {
     }
 
     function testFuzzEncumbranceMustBeRespected(uint256 amt, address spender, address recipient, address recipient2)
-    public
-    override
+        public
+        override
     {
         // cannot be address 0 - ERC20: transfer from the zero address
         // spender cannot be alice bob or charlie, they already have their permissions set
@@ -416,8 +414,8 @@ contract USTBv3Test is SuperstateTokenTestBase {
         // proxy admin cant use protocol
         vm.assume(
             address(permsProxyAdmin) != spender && address(permsProxyAdmin) != recipient
-            && address(permsProxyAdmin) != recipient2 && address(tokenProxyAdmin) != spender
-            && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
+                && address(permsProxyAdmin) != recipient2 && address(tokenProxyAdmin) != spender
+                && address(tokenProxyAdmin) != recipient && address(tokenProxyAdmin) != recipient2
         );
 
         // whitelist spender and recipients

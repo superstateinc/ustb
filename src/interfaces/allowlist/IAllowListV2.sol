@@ -38,11 +38,8 @@ interface IAllowListV2 is IAllowList {
      * @param fundSymbol The fund symbol to set permissions for
      * @param isAllowed The permission value to set
      */
-    function setProtocolAddressPermissions(
-        address[] calldata addresses,
-        string calldata fundSymbol,
-        bool isAllowed
-    ) external;
+    function setProtocolAddressPermissions(address[] calldata addresses, string calldata fundSymbol, bool isAllowed)
+        external;
 
     /**
      * @notice Sets entity for an array of addresses and sets permissions for an entity
@@ -57,6 +54,12 @@ interface IAllowListV2 is IAllowList {
         string[] calldata fundPermissionsToUpdate,
         bool[] calldata fundPermissions
     ) external;
+
+    function hasAnyProtocolPermissions(address addr) external view returns (bool hasPermissions);
+
+    function protocolPermissionsForFunds(address protocol) external view returns (uint256);
+
+    function protocolPermissions(address, string calldata) external view returns (bool);
 
     function initialize() external;
 }

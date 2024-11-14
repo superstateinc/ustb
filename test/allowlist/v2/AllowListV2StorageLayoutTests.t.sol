@@ -22,7 +22,9 @@ import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
  * Slot 101-650: AllowList.__inheritanceGap
  * Slot 651: AllowList.addressEntityIds
  * Slot 652: AllowList.fundPermissionsByEntityId
- * Slot 653-753: AllowList.__additionalFieldsGap
+ * Slot 653: AllowList.protocolPermissionsForFunds
+ * Slot 654: AllowList.protocolPermissions
+ * Slot 655-755: AllowList.__additionalFieldsGap
  */
 contract AllowListV2StorageLayoutTests is AllowListStorageLayoutTestBase {
     function initializeExpectedTokenVersions() public override {
