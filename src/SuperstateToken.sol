@@ -435,7 +435,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice The ```updateOracle``` function sets the address of the AggregatorV3Interface to be used to price the SuperstateToken
+     * @notice The ```setOracle``` function sets the address of the AggregatorV3Interface to be used to price the SuperstateToken
      * @dev Requires msg.sender to be the owner address
      * @param _newOracle The address of the oracle contract to update to
      */
