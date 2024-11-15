@@ -143,7 +143,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     function _requireOnchainSubscriptionsEnabled() internal view {
-        if (superstateOracle == address(0)) revert OnchainSubscriptionsDisabled();
+        if (superstateOracle == address(0) || maximumOracleDelay == 0) revert OnchainSubscriptionsDisabled();
     }
 
     /**
