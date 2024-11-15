@@ -194,7 +194,6 @@ contract USTBv3Test is SuperstateTokenTestBase {
         tokenV3.subscribe(0, USDC);
     }
 
-
     function testSubscribeStablecoinNotSupported() public {
         hoax(eve);
         vm.expectRevert(ISuperstateToken.StablecoinNotSupported.selector);
