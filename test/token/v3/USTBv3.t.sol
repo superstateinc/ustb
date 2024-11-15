@@ -194,6 +194,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         tokenV3.subscribe(0, USDC);
     }
 
+
     function testSubscribeStablecoinNotSupported() public {
         hoax(eve);
         vm.expectRevert(ISuperstateToken.StablecoinNotSupported.selector);
@@ -228,6 +229,22 @@ contract USTBv3Test is SuperstateTokenTestBase {
         tokenV3.subscribe(amount, USDC);
 
         vm.stopPrank();
+    }
+
+    function testSubscribeNotAllowed() public {
+        vm.warp(1726866001 + 1 days);
+
+        address faker = address(123456);
+
+        uint256 usdcAmountIn = 10_000_000; // $10
+        deal(address(USDC), faker, usdcAmountIn);
+
+        vm.startPrank(faker);
+
+        IERC20(USDC).approve(address(tokenV3), usdcAmountIn);
+
+        vm.expectRevert(ISuperstateTokenV1.InsufficientPermissions.selector);
+        tokenV3.subscribe(usdcAmountIn, USDC);
     }
 
     function testSubscribeHappyPath() public {

@@ -568,7 +568,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             to: supportedStablecoins[stablecoin].sweepDestination,
             value: inAmount
         });
-        _mint({account: msg.sender, amount: superstateTokenOutAmount});
+        _mintLogic({dst: msg.sender, amount: superstateTokenOutAmount});
 
         emit Subscribe({
             subscriber: msg.sender,
