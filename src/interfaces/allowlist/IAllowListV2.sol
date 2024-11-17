@@ -30,6 +30,8 @@ interface IAllowListV2 {
     error CodeSizeZero();
     /// @dev Thrown when a method is no longer supported
     error Deprecated();
+    /// @dev Thrown if an attempt to call `renounceOwnership` is made
+    error RenounceOwnershipDisabled();
 
     /**
      * @notice Checks whether an address is allowed to use a fund

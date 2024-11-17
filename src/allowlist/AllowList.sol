@@ -206,4 +206,8 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
             _setEntityAllowedForFundInternal(entityId, fundPermissionsToUpdate[i], fundPermissions[i]);
         }
     }
+
+    function renounceOwnership() public virtual override onlyOwner {
+        revert RenounceOwnershipDisabled();
+    }
 }
