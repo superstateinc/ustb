@@ -45,7 +45,7 @@ abstract contract AllowListTestBase is TokenTestBase {
 
     function testSetEntityAllowedForFund() public virtual {
         // allowlist bob
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
         allowList.setEntityAllowedForFund(bobEntityId, "USTB", true);
 
         // bob approved for USTB
@@ -57,7 +57,7 @@ abstract contract AllowListTestBase is TokenTestBase {
         assertEq(allowList.isEntityAllowedForFund(bobEntityId, "USCC"), false);
 
         // alice approved for neither USTB/USCC
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(aliceEntityId), alice);
+        allowList.setEntityIdForAddress(aliceEntityId, alice);
         assertEq(allowList.isAddressAllowedForFund(alice, "USTB"), false);
         assertEq(allowList.isEntityAllowedForFund(aliceEntityId, "USTB"), false);
         assertEq(allowList.isAddressAllowedForFund(alice, "USCC"), false);
@@ -83,7 +83,7 @@ abstract contract AllowListTestBase is TokenTestBase {
         assertEq(allowList.isEntityAllowedForFund(bobEntityId, "USCC"), false);
 
         // alice approved for neither USTB/USCC
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(aliceEntityId), alice);
+        allowList.setEntityIdForAddress(aliceEntityId, alice);
         assertEq(allowList.isAddressAllowedForFund(alice, "USTB"), false);
         assertEq(allowList.isEntityAllowedForFund(aliceEntityId, "USTB"), false);
         assertEq(allowList.isAddressAllowedForFund(alice, "USCC"), false);
@@ -118,7 +118,7 @@ abstract contract AllowListTestBase is TokenTestBase {
         assertEq(allowList.isAddressAllowedForFund(charlie, "USCC"), false);
 
         // alice approved for neither USTB/USCC
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(aliceEntityId), alice);
+        allowList.setEntityIdForAddress(aliceEntityId, alice);
         assertEq(allowList.isAddressAllowedForFund(alice, "USTB"), false);
         assertEq(allowList.isEntityAllowedForFund(aliceEntityId, "USTB"), false);
         assertEq(allowList.isAddressAllowedForFund(alice, "USCC"), false);
@@ -129,7 +129,7 @@ abstract contract AllowListTestBase is TokenTestBase {
         address[] memory addrsToSet = new address[](2);
         addrsToSet[0] = bob;
         addrsToSet[1] = charlie;
-        allowList.setEntityIdForMultipleAddresses(IAllowListV2.EntityId.unwrap(bobEntityId), addrsToSet);
+        allowList.setEntityIdForMultipleAddresses(bobEntityId, addrsToSet);
 
         AllowList allowListV2 = AllowList(address(allowListProxy));
         assertEq(
@@ -143,35 +143,35 @@ abstract contract AllowListTestBase is TokenTestBase {
 
     function testSetEntityIdRevertsChangedNonZero() public {
         // allowlist bob
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
         allowList.setEntityAllowedForFund(bobEntityId, "USTB", true);
 
         // block setting again
         vm.expectRevert(IAllowList.NonZeroEntityIdMustBeChangedToZero.selector);
-        allowList.setEntityIdForAddress(2, bob);
+        allowList.setEntityIdForAddress(IAllowListV2.EntityId.wrap(2), bob);
     }
 
     function testSetEntityIdRevertsAlreadySet() public {
         // allowlist bob
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
         allowList.setEntityAllowedForFund(bobEntityId, "USTB", true);
 
         // block setting to the same again
         vm.expectRevert(IAllowList.AlreadySet.selector);
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
     }
 
     function testSetEntityIdRevertsAlreadySetZero() public {
         // allowlist bob
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
         allowList.setEntityAllowedForFund(bobEntityId, "USTB", true);
 
         // set to zero
-        allowList.setEntityIdForAddress(0, bob);
+        allowList.setEntityIdForAddress(IAllowListV2.EntityId.wrap(0), bob);
 
         // blocking setting to zero again
         vm.expectRevert(IAllowList.AlreadySet.selector);
-        allowList.setEntityIdForAddress(0, bob);
+        allowList.setEntityIdForAddress(IAllowListV2.EntityId.wrap(0), bob);
     }
 
     function testSetEntityAllowedForFundRevertsUnauthorized() public {
@@ -179,7 +179,7 @@ abstract contract AllowListTestBase is TokenTestBase {
 
         // should revert, since alice is not the permission admin
         vm.expectRevert("Ownable: caller is not the owner");
-        allowList.setEntityIdForAddress(0, alice);
+        allowList.setEntityIdForAddress(IAllowListV2.EntityId.wrap(0), alice);
     }
 
     function testSetEntityPermissionsAndAddressesRevertsUnauthorized() public {
@@ -195,24 +195,5 @@ abstract contract AllowListTestBase is TokenTestBase {
         vm.prank(alice);
         vm.expectRevert("Ownable: caller is not the owner");
         allowList.setEntityPermissionsAndAddresses(bobEntityId, addrsToSet, fundsToSet, fundPermissionsToSet);
-    }
-
-    function testV1FunctionsDeprecated() public {
-        vm.expectRevert(IAllowListV2.Deprecated.selector);
-        allowList.getPermission(bob);
-
-        vm.expectRevert(IAllowListV2.Deprecated.selector);
-        allowList.setPermission(0, allowPerms);
-
-        vm.expectRevert(IAllowListV2.Deprecated.selector);
-        address[] memory addrsToSet = new address[](1);
-        addrsToSet[0] = bob;
-        allowList.setEntityPermissionAndAddresses(0, addrsToSet, allowPerms);
-
-        vm.expectRevert(IAllowListV2.Deprecated.selector);
-        allowList.setIsAllowed(0, true);
-
-        vm.expectRevert(IAllowListV2.Deprecated.selector);
-        allowList.setNthPermission(0, 0, true);
     }
 }

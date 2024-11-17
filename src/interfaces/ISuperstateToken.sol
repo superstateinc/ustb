@@ -5,6 +5,7 @@ import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/I
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {ISuperstateTokenV2} from "./ISuperstateTokenV2.sol";
+import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 
 interface ISuperstateToken is ISuperstateTokenV2 {
     /// @dev Struct for storing supported stablecoin configuration
@@ -54,4 +55,9 @@ interface ISuperstateToken is ISuperstateTokenV2 {
 
     /// @dev Thrown when the msg.sender would receive 0 Superstate tokens out for their call to subscribe
     error ZeroSuperstateTokensOut();
+
+    /// @dev Thrown when the v1 of allowList is attempted to be accessed. Use "allowListV2" instead.
+    error DeprecatedAllowList();
+
+    function allowListV2() external view returns (IAllowListV2);
 }
