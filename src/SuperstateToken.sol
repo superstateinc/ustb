@@ -364,8 +364,8 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         return allowListV2.isAddressAllowedForFund(addr, symbol());
     }
 
-    function allowList() external view returns (IAllowList) {
-        return allowListV2;
+    function allowList() external pure returns (IAllowList) {
+        revert DeprecatedAllowList();
     }
 
     function _mintLogic(address dst, uint256 amount) internal {

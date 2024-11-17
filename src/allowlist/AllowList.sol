@@ -158,9 +158,9 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
         hasPermissions = protocolPermissionsForFunds[addr] > 0;
     }
 
-    function setEntityIdForAddress(uint256 entityId, address addr) external {
+    function setEntityIdForAddress(EntityId entityId, address addr) external {
         _checkOwner();
-        _setEntityAddressInternal(EntityId.wrap(entityId), addr);
+        _setEntityAddressInternal(entityId, addr);
     }
 
     /**
@@ -168,11 +168,11 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
      * @param entityId The entityId to associate with an address
      * @param addresses The addresses to associate with an entityId
      */
-    function setEntityIdForMultipleAddresses(uint256 entityId, address[] calldata addresses) external {
+    function setEntityIdForMultipleAddresses(EntityId entityId, address[] calldata addresses) external {
         _checkOwner();
 
         for (uint256 i = 0; i < addresses.length; ++i) {
-            _setEntityAddressInternal(EntityId.wrap(entityId), addresses[i]);
+            _setEntityAddressInternal(entityId, addresses[i]);
         }
     }
 
@@ -207,45 +207,7 @@ contract AllowList is IAllowListV2, Ownable2StepUpgradeable {
         }
     }
 
-    /// DEPRECATED FUNCTIONS FROM V1
-
-    /**
-     * @notice Fetches the permissions for a given address.
-     * @dev Deprecated in v2
-     */
-    function getPermission(address) external pure returns (Permission memory) {
-        revert Deprecated();
-    }
-
-    /**
-     * @notice Sets permissions for a given entityId.
-     * @dev Deprecated in v2
-     */
-    function setPermission(uint256, Permission calldata) external pure {
-        revert Deprecated();
-    }
-
-    /**
-     * @notice Sets entity for an array of addresses and sets permissions for an entity.
-     * @dev Deprecated in v2
-     */
-    function setEntityPermissionAndAddresses(uint256, address[] calldata, Permission calldata) external pure {
-        revert Deprecated();
-    }
-
-    /**
-     * @notice Sets isAllowed permissions for a given entityId
-     * @dev Deprecated in v2
-     */
-    function setIsAllowed(uint256, bool) external pure {
-        revert Deprecated();
-    }
-
-    /**
-     * @notice Sets the nth permission for a given entityId.
-     * @dev Deprecated in v2
-     */
-    function setNthPermission(uint256, uint256, bool) external pure {
-        revert Deprecated();
+    function renounceOwnership() public virtual override onlyOwner {
+        revert RenounceOwnershipDisabled();
     }
 }

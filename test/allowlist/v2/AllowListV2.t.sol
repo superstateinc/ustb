@@ -61,7 +61,7 @@ contract AllowListV2Test is AllowListTestBase {
 
     function testSetProtocolAddressPermissionRevertsForAddressWithEntityId() public {
         // First set entity ID
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
 
         vm.expectRevert(IAllowListV2.AddressHasEntityId.selector);
         allowList.setProtocolAddressPermission(bob, "USTB", true);
@@ -102,7 +102,7 @@ contract AllowListV2Test is AllowListTestBase {
         protocols[0] = address(mockProtocol);
         protocols[1] = bob; // bob will have an entity ID
 
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
 
         vm.expectRevert(IAllowListV2.AddressHasEntityId.selector);
         allowList.setProtocolAddressPermissions(protocols, "USTB", true);
@@ -122,12 +122,12 @@ contract AllowListV2Test is AllowListTestBase {
         allowList.setProtocolAddressPermission(address(mockProtocol), "USTB", true);
 
         vm.expectRevert(IAllowListV2.AddressHasProtocolPermissions.selector);
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), address(mockProtocol));
+        allowList.setEntityIdForAddress(bobEntityId, address(mockProtocol));
     }
 
     function testProtocolPermissionsAndEntityPermissions() public {
         // Test entity permissions work
-        allowList.setEntityIdForAddress(IAllowListV2.EntityId.unwrap(bobEntityId), bob);
+        allowList.setEntityIdForAddress(bobEntityId, bob);
         allowList.setEntityAllowedForFund(bobEntityId, "USTB", true);
         assertEq(allowList.isAddressAllowedForFund(bob, "USTB"), true);
 
