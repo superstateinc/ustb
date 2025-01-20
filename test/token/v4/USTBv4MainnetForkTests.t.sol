@@ -52,7 +52,6 @@ contract USTBv4MainnetForkTest is Test {
 
         // initialize v4 contract
         token = SuperstateToken(address(tokenProxy));
-        // TODO: call initializev4
 
         // assert logic contract is now v3
         assertEq("4", token.VERSION());
