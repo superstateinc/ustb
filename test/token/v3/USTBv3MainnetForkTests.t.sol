@@ -7,7 +7,7 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "openzeppelin-contracts-v4/contracts/proxy/transparent/ProxyAdmin.sol";
 import {console} from "forge-std/console.sol";
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {SuperstateTokenV3} from "src/v3/SuperstateTokenV3.sol";
 import {SuperstateTokenV2} from "src/v2/SuperstateTokenV2.sol";
 import {USTBv2} from "src/v2/USTBv2.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
@@ -17,12 +17,12 @@ contract USTBv3MainnetForkTest is Test {
     TransparentUpgradeableProxy permsProxy;
     AllowList public perms;
     TransparentUpgradeableProxy tokenProxy;
-    SuperstateToken public token;
+    SuperstateTokenV3 public token;
     SuperstateTokenV2 public tokenV2;
     address adminAddress;
     address fireblocksAdminAddress;
     address capturedMainnetAddress = address(0x5138D77d51dC57983e5A653CeA6e1C1aa9750A39);
-    SuperstateToken tokenImplementation;
+    SuperstateTokenV3 tokenImplementation;
 
     address alice = address(10);
     address bob = address(11);
@@ -48,13 +48,13 @@ contract USTBv3MainnetForkTest is Test {
         assertEq("2", tokenV2.VERSION());
 
         // Upgrade to v3 contract
-        tokenImplementation = new SuperstateToken();
+        tokenImplementation = new SuperstateTokenV3();
 
         vm.prank(fireblocksAdminAddress);
         proxyAdmin.upgrade(ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation));
 
         // initialize v3 contract
-        token = SuperstateToken(address(tokenProxy));
+        token = SuperstateTokenV3(address(tokenProxy));
 
         // TODO - call initializeV3() with the newly deployed AllowListV2
 
