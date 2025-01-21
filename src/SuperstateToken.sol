@@ -256,7 +256,6 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
         if (dst == address(this)) {
             _requireNotAccountingPaused();
-
             _spendAllowance({owner: src, spender: msg.sender, amount: amount});
             _burn(src, amount);
             // burner receives redemption payout from src

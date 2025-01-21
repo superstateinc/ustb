@@ -62,7 +62,7 @@ contract USTBv4 is TokenTestBase {
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function setUp() virtual public {
+    function setUp() public virtual {
         string memory rpcUrl = vm.envString("RPC_URL");
 
         uint256 mainnetFork = vm.createFork(rpcUrl, 20_993_400);
