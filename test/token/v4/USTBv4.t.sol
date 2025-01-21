@@ -60,7 +60,7 @@ contract USTBv4 is TokenTestBase {
     uint256 abcEntityId = 1;
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     function setUp() public {
         string memory rpcUrl = vm.envString("RPC_URL");
@@ -435,7 +435,6 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit();
         emit ISuperstateToken.OffchainRedeem(alice, alice, 50e6);
 
-
         // alice calls burn(amount) to self-burn
         vm.prank(alice);
         token.offchainRedeem(50e6);
@@ -736,9 +735,9 @@ contract USTBv4 is TokenTestBase {
     }
 
     function eveAuthorization(uint256 value, uint256 nonce, uint256 deadline)
-    internal
-    view
-    returns (uint8, bytes32, bytes32)
+        internal
+        view
+        returns (uint8, bytes32, bytes32)
     {
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, value, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
@@ -1191,9 +1190,9 @@ contract USTBv4 is TokenTestBase {
         assertEq(MAINNET_REDEMPTION_IDLE, token.redemptionContract());
     }
 
-//vm.expectEmit(true, true, true, true);
-//emitISuperstateToken.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
-//token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
+    //vm.expectEmit(true, true, true, true);
+    //emitISuperstateToken.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
+    //token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
 
     function testRedemptionContractNotOwnerRevert() public {
         hoax(bob);
@@ -1230,12 +1229,28 @@ contract USTBv4 is TokenTestBase {
         token.bridge(0, bob, string(new bytes(0)), 9000);
     }
 
+    function testBridgeOnchainDestinationSetForBridgeToBookEntryRevert() public {
+        token.mint(bob, 100e6);
+
+        hoax(bob);
+        vm.expectRevert(ISuperstateToken.OnchainDestinationSetForBridgeToBookEntry.selector);
+        token.bridge(1, bob, string(new bytes(0)), 0);
+
+        hoax(bob);
+        vm.expectRevert(ISuperstateToken.OnchainDestinationSetForBridgeToBookEntry.selector);
+        token.bridge(1, address(0), "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 0);
+    }
+
     function testBridgeTwoDestinationsRevert() public {
         token.mint(bob, 100e6);
 
         hoax(bob);
         vm.expectRevert(ISuperstateToken.TwoDestinationsInvalid.selector);
         token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 9000);
+
+        hoax(bob);
+        vm.expectRevert(ISuperstateToken.TwoDestinationsInvalid.selector);
+        token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 0);
     }
 
     function testBridgeAccountingPausedRevert() public {
@@ -1264,13 +1279,27 @@ contract USTBv4 is TokenTestBase {
         vm.startPrank(bob);
         vm.expectEmit(true, true, true, true);
         emit Transfer(bob, address(0), 1);
-        emit ISuperstateToken.Bridge({caller: bob, src: bob, amount: 1, ethDestinationAddress: address(0), otherDestinationAddress: "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", chainId: 9000});
+        emit ISuperstateToken.Bridge({
+            caller: bob,
+            src: bob,
+            amount: 1,
+            ethDestinationAddress: address(0),
+            otherDestinationAddress: "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv",
+            chainId: 9000
+        });
         token.bridge(1, address(0), "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 9000);
 
         vm.startPrank(bob);
         vm.expectEmit(true, true, true, true);
         emit Transfer(bob, address(0), 2);
-        emit ISuperstateToken.Bridge({caller: bob, src: bob, amount: 2, ethDestinationAddress: bob, otherDestinationAddress: string(new bytes(0)), chainId: 42161});
+        emit ISuperstateToken.Bridge({
+            caller: bob,
+            src: bob,
+            amount: 2,
+            ethDestinationAddress: bob,
+            otherDestinationAddress: string(new bytes(0)),
+            chainId: 42161
+        });
         token.bridge(2, bob, string(new bytes(0)), 42161);
     }
 }

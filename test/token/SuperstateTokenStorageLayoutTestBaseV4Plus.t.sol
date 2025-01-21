@@ -45,7 +45,7 @@ abstract contract SuperstateTokenStorageLayoutTestBaseV4Plus is TokenTestBase {
     uint256 public abcEntityId = 1;
 
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
-    keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     function setUp() public virtual {
         eve = vm.addr(evePrivateKey);
@@ -81,9 +81,9 @@ abstract contract SuperstateTokenStorageLayoutTestBaseV4Plus is TokenTestBase {
     function upgradeAndInitializeNewToken() public virtual;
 
     function eveAuthorization(uint256 value, uint256 nonce, uint256 deadline)
-    internal
-    view
-    returns (uint8, bytes32, bytes32)
+        internal
+        view
+        returns (uint8, bytes32, bytes32)
     {
         bytes32 structHash = keccak256(abi.encode(AUTHORIZATION_TYPEHASH, eve, bob, value, nonce, deadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", oldToken.DOMAIN_SEPARATOR(), structHash));

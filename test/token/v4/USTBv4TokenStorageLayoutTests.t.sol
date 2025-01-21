@@ -21,7 +21,6 @@ import "test/token/SuperstateTokenStorageLayoutTestBaseV4Plus.t.sol";
 
 import {console} from "forge-std/console.sol";
 
-
 /**
  *  SuperstateV2 Token storage layout:
  *
@@ -92,14 +91,12 @@ import {console} from "forge-std/console.sol";
  *  Slot 759: SuperstateToken.redemptionContract
  *  Slot 759-854: SuperstateToken.__additionalFieldsGap
  */
-
 contract USTBv4TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBaseV4Plus {
     AllowList permsV2;
     ProxyAdmin permsProxyAdminV2;
     TransparentUpgradeableProxy permsProxyV2;
 
     address public constant MAINNET_REDEMPTION_IDLE = 0x4c21B7577C8FE8b0B0669165ee7C8f67fa1454Cf;
-
 
     function initializeExpectedTokenVersions() public override {
         oldTokenVersion = "3";

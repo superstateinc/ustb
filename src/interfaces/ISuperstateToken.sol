@@ -90,7 +90,7 @@ interface ISuperstateToken is IERC20Upgradeable {
      * @param s Half of the ECDSA signature pair
      */
     function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-    external;
+        external;
 
     /**
      * @notice Mint new tokens to a recipient
@@ -170,7 +170,14 @@ interface ISuperstateToken is IERC20Upgradeable {
     event AdminBurn(address burner, address src, uint256 amount);
 
     /// @dev Event emitted when the user wants to bridge their tokens to another chain or book entry
-    event Bridge(address caller, address src, uint256 amount, address ethDestinationAddress, string otherDestinationAddress, uint256 chainId);
+    event Bridge(
+        address caller,
+        address src,
+        uint256 amount,
+        address ethDestinationAddress,
+        string otherDestinationAddress,
+        uint256 chainId
+    );
 
     /// @dev Event emitted when the users wants to redeem their shares with an offchain payout
     event OffchainRedeem(address burner, address src, uint256 amount);
@@ -180,6 +187,9 @@ interface ISuperstateToken is IERC20Upgradeable {
 
     /// @dev Thrown when bridge function arguments have two destinations
     error TwoDestinationsInvalid();
+
+    /// @dev Thrown when bridge function chainId is set to 0 but onchain destination arguments are provided
+    error OnchainDestinationSetForBridgeToBookEntry();
 
     /**
      * @notice Check permissions of an address for transferring / encumbering
@@ -210,7 +220,12 @@ interface ISuperstateToken is IERC20Upgradeable {
      * @param otherDestinationAddress Non-EVM addresses to send to on another chain
      * @param chainId Numerical identifier of destination chain to send tokens to
      */
-    function bridge(uint256 amount, address ethDestinationAddress, string calldata otherDestinationAddress, uint256 chainId) external;
+    function bridge(
+        uint256 amount,
+        address ethDestinationAddress,
+        string calldata otherDestinationAddress,
+        uint256 chainId
+    ) external;
 
     /**
      * @notice Burn tokens from the caller's address to bridge to Superstate book entry

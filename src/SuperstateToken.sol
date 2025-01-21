@@ -91,7 +91,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     /// @notice Address of the AllowList contract which determines permissions for transfers
     IAllowListV2 public allowListV2;
 
-    /// @notice The address of the contract used to facilitate atomic redemptions, if such a contract exists.
+    /// @notice The address of the contract used to facilitate protocol redemptions, if such a contract exists.
     address public redemptionContract;
 
     /**
@@ -179,8 +179,6 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
     /**
      * @notice Moves `amount` tokens from the caller's account to `dst`
-     * @dev Confirms the available balance of the caller is sufficient to cover
-     * transfer
      * @dev Includes extra functionality to burn tokens if `dst` is the token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
@@ -338,16 +336,22 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
     /**
      * @notice Burn tokens from the caller's address to bridge to another chain
-     * @dev If destination address on chainId isn't on allowlist, or chainID isn't supported, tokens wind up in book entry
+     * @dev If destination address on chainId isn't on allowlist, or chainID isn't supported, tokens burn to book entry.
+     * @dev chainId as 0 indicates wanting to burn tokens to book entry, for use through the Superstate UI.
      * @param amount Amount of tokens to burn
      * @param ethDestinationAddress ETH address to send to on another chain
      * @param otherDestinationAddress Non-EVM addresses to send to on another chain
      * @param chainId Numerical identifier of destination chain to send tokens to
      */
-    function bridge(uint256 amount, address ethDestinationAddress, string memory otherDestinationAddress, uint256 chainId) public {
+    function bridge(
+        uint256 amount,
+        address ethDestinationAddress,
+        string memory otherDestinationAddress,
+        uint256 chainId
+    ) public {
         _requireNotAccountingPaused();
 
-        if (!isAllowed(msg.sender)) { revert InsufficientPermissions(); }
+        if (!isAllowed(msg.sender)) revert InsufficientPermissions();
 
         if (amount == 0) {
             revert ZeroSuperstateTokensOut();
@@ -357,8 +361,19 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             revert TwoDestinationsInvalid();
         }
 
+        if (chainId == 0 && (ethDestinationAddress != address(0) || bytes(otherDestinationAddress).length != 0)) {
+            revert OnchainDestinationSetForBridgeToBookEntry();
+        }
+
         _burn(msg.sender, amount);
-        emit Bridge({caller: msg.sender, src: msg.sender, amount: amount, ethDestinationAddress: ethDestinationAddress, otherDestinationAddress: otherDestinationAddress, chainId: chainId});
+        emit Bridge({
+            caller: msg.sender,
+            src: msg.sender,
+            amount: amount,
+            ethDestinationAddress: ethDestinationAddress,
+            otherDestinationAddress: otherDestinationAddress,
+            chainId: chainId
+        });
     }
 
     /**
@@ -366,12 +381,20 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param amount Amount of tokens to burn
      */
     function bridgeToBookEntry(uint256 amount) external {
-        bridge({amount: amount, ethDestinationAddress: address(0), otherDestinationAddress: string(new bytes(0)), chainId: 0});
+        bridge({
+            amount: amount,
+            ethDestinationAddress: address(0),
+            otherDestinationAddress: string(new bytes(0)),
+            chainId: 0
+        });
     }
 
     function _setRedemptionContract(address _newRedemptionContract) internal {
         if (redemptionContract == _newRedemptionContract) revert BadArgs();
-        emit SetRedemptionContract({oldRedemptionContract: redemptionContract, newRedemptionContract: _newRedemptionContract});
+        emit SetRedemptionContract({
+            oldRedemptionContract: redemptionContract,
+            newRedemptionContract: _newRedemptionContract
+        });
         redemptionContract = _newRedemptionContract;
     }
 
