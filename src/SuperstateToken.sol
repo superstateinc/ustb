@@ -112,6 +112,39 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         _disableInitializers();
     }
 
+    /**
+     * @notice Initialize the contract
+     * @param _name The token name
+     * @param _symbol The token symbol
+     */
+    function initialize(string calldata _name, string calldata _symbol) public initializer {
+        __ERC20_init(_name, _symbol);
+        __Pausable_init();
+    }
+
+    /**
+     * @notice Initialize version 2 of the contract.
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV2() public reinitializer(2) {
+        // Last usage of `_deprecatedAdmin` variable here.
+        // After this call, owner() is the source of truth for authorization.
+        if (msg.sender != _deprecatedAdmin) revert Unauthorized();
+        __Ownable2Step_init();
+    }
+
+    /**
+     * @notice Initialize version 3 of the contract
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV3(AllowList _allowList) public reinitializer(3) {
+        _checkOwner();
+
+        allowListV2 = _allowList;
+    }
+
+    // No need for initializeV4
+
     function _requireNotAccountingPaused() internal view {
         if (accountingPaused) revert AccountingIsPaused();
     }

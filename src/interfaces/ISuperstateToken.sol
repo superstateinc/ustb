@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/IERC20Upgradeable.sol";
+import {AllowList} from "src/allowlist/AllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 
 interface ISuperstateToken is IERC20Upgradeable {
@@ -108,12 +109,27 @@ interface ISuperstateToken is IERC20Upgradeable {
      */
     function bulkMint(address[] calldata dsts, uint256[] calldata amounts) external;
 
+    /**
+     * @notice Initialize the contract
+     * @param _name The token name
+     * @param _symbol The token symbol
+     */
+    function initialize(string calldata _name, string calldata _symbol) external;
+
     // V2 remaining
 
     /// @dev Thrown if an attempt to call `renounceOwnership` is made
     error RenounceOwnershipDisabled();
 
+
+    /**
+     * @notice Initialize version 2 of the contract.
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV2() external;
+
     // V3 remaining
+
     /// @dev Struct for storing supported stablecoin configuration
     struct StablecoinConfig {
         address sweepDestination;
@@ -163,6 +179,12 @@ interface ISuperstateToken is IERC20Upgradeable {
     error ZeroSuperstateTokensOut();
 
     function allowListV2() external view returns (IAllowListV2);
+
+    /**
+     * @notice Initialize version 3 of the contract
+     * @notice If creating an entirely new contract, the original `initialize` method still needs to be called.
+     */
+    function initializeV3(AllowList _allowList) external;
 
     // V4
 
