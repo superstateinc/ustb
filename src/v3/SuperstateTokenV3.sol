@@ -10,7 +10,7 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV3} from "src/interfaces/ISuperstateTokenV3.sol";
 import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
@@ -22,10 +22,10 @@ import {AggregatorV3Interface} from
 
 /**
  * @title SuperstateToken
- * @notice A Pausable ERC20 token contract that interacts with the AllowList contract to check if transfers are allowed
+ * @notice A Pausable ERC7246 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
+contract SuperstateTokenV3 is ISuperstateTokenV3, ERC20Upgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
     using SafeERC20 for IERC20;
 
     /**
@@ -35,7 +35,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     uint256[500] private __inheritanceGap;
 
     /// @notice The major version of this contract
-    string public constant VERSION = "4";
+    string public constant VERSION = "3";
 
     /// @dev The EIP-712 typehash for authorization via permit
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
@@ -50,19 +50,17 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     address public immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
-    /// @notice As of v3, this field is deprecated
+    /// @notice As of v3, this field is
     IAllowList public immutable _deprecatedAllowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
 
     /// @notice Amount of an address's token balance that is encumbered
-    /// @notice As of v4, this field is deprecated
-    mapping(address => uint256) public _deprecatedEncumberedBalanceOf;
+    mapping(address => uint256) public encumberedBalanceOf;
 
     /// @notice Amount encumbered from owner to taker (owner => taker => balance)
-    /// @notice As of v4, this field is deprecated
-    mapping(address => mapping(address => uint256)) public _deprecatedEncumbrances;
+    mapping(address => mapping(address => uint256)) public encumbrances;
 
     /// @notice If all minting and burning operations are paused
     bool public accountingPaused;
@@ -91,14 +89,11 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     /// @notice Address of the AllowList contract which determines permissions for transfers
     IAllowListV2 public allowListV2;
 
-    /// @notice The address of the contract used to facilitate protocol redemptions, if such a contract exists.
-    address public redemptionContract;
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
      * any contracts that inherit `SuperstateToken`
      */
-    uint256[96] private __additionalFieldsGap;
+    uint256[97] private __additionalFieldsGap;
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
@@ -142,8 +137,6 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
         allowListV2 = _allowList;
     }
-
-    // No need for initializeV4
 
     function _requireNotAccountingPaused() internal view {
         if (accountingPaused) revert AccountingIsPaused();
@@ -211,7 +204,18 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
+     * @notice Amount of an address's token balance that is not encumbered
+     * @param owner Address to check the available balance of
+     * @return uint256 Unencumbered balance
+     */
+    function availableBalanceOf(address owner) public view returns (uint256) {
+        return balanceOf(owner) - encumberedBalanceOf[owner];
+    }
+
+    /**
      * @notice Moves `amount` tokens from the caller's account to `dst`
+     * @dev Confirms the available balance of the caller is sufficient to cover
+     * transfer
      * @dev Includes extra functionality to burn tokens if `dst` is the token address, namely its TransparentUpgradeableProxy
      * @param dst Address to transfer tokens to
      * @param amount Amount of token to transfer
@@ -222,15 +226,17 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         override(IERC20Upgradeable, ERC20Upgradeable)
         returns (bool)
     {
-        if (!isAllowed(msg.sender)) revert InsufficientPermissions();
+        // check but dont spend encumbrance
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
+        if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
 
         if (dst == address(this)) {
             _requireNotAccountingPaused();
             _burn(msg.sender, amount);
-            emit OffchainRedeem({burner: msg.sender, src: msg.sender, amount: amount});
+            emit Burn(msg.sender, msg.sender, amount);
         } else {
             _requireNotPaused();
-            if (!isAllowed(dst)) revert InsufficientPermissions();
+            if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
             _transfer(msg.sender, dst, amount);
         }
 
@@ -238,8 +244,8 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice Moves `amount` tokens from `src` to `dst` using the
-     * allowance of the caller
+     * @notice Moves `amount` tokens from `src` to `dst` using the encumbrance
+     * and allowance of the caller
      * @dev Spends the caller's encumbrance from `src` first, then their
      * allowance from `src` (if necessary)
      * @param src Address to transfer tokens from
@@ -252,21 +258,77 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         override(IERC20Upgradeable, ERC20Upgradeable)
         returns (bool)
     {
-        if (!isAllowed(src)) revert InsufficientPermissions();
+        uint256 encumberedToTaker = encumbrances[src][msg.sender];
+        // check src permissions if amount encumbered is less than amount being transferred
+        if (encumberedToTaker < amount && !hasSufficientPermissions(src)) {
+            revert InsufficientPermissions();
+        }
+
+        if (amount > encumberedToTaker) {
+            uint256 excessAmount;
+            unchecked {
+                excessAmount = amount - encumberedToTaker;
+            }
+            // Ensure that `src` has enough available balance (funds not encumbered to others)
+            // to cover the excess amount
+            if (availableBalanceOf(src) < excessAmount) revert InsufficientAvailableBalance();
+
+            // Exceeds Encumbrance, so spend all of it
+            if (encumberedToTaker > 0) {
+                _releaseEncumbrance(src, msg.sender, encumberedToTaker);
+            }
+
+            _spendAllowance(src, msg.sender, excessAmount);
+        } else {
+            _releaseEncumbrance(src, msg.sender, amount);
+        }
 
         if (dst == address(this)) {
             _requireNotAccountingPaused();
-            _spendAllowance({owner: src, spender: msg.sender, amount: amount});
             _burn(src, amount);
-            // burner receives redemption payout from src
-            emit OffchainRedeem({burner: msg.sender, src: src, amount: amount});
+            emit Burn(msg.sender, src, amount);
         } else {
             _requireNotPaused();
-            if (!isAllowed(dst)) revert InsufficientPermissions();
-            ERC20Upgradeable.transferFrom({from: src, to: dst, amount: amount});
+            if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
+            _transfer(src, dst, amount);
         }
 
         return true;
+    }
+
+    /**
+     * @notice Increases the amount of tokens that the caller has encumbered to
+     * `taker` by `amount`
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance by
+     */
+    function encumber(address taker, uint256 amount) external whenNotPaused {
+        _encumber(msg.sender, taker, amount);
+    }
+
+    /**
+     * @notice Increases the amount of tokens that `owner` has encumbered to
+     * `taker` by `amount`.
+     * @dev Spends the caller's `allowance`
+     * @param owner Address to increase encumbrance from
+     * @param taker Address to increase encumbrance to
+     * @param amount Amount of tokens to increase the encumbrance to `taker` by
+     */
+    function encumberFrom(address owner, address taker, uint256 amount) external whenNotPaused {
+        // spend caller's allowance
+        _spendAllowance(owner, msg.sender, amount);
+        _encumber(owner, taker, amount);
+    }
+
+    /**
+     * @notice Reduces amount of tokens encumbered from `owner` to caller by
+     * `amount`
+     * @dev Reverts if `amount` is greater than `owner`'s current encumbrance to caller
+     * @param owner Address to decrease encumbrance from
+     * @param amount Amount of tokens to decrease the encumbrance by
+     */
+    function release(address owner, uint256 amount) external {
+        _releaseEncumbrance(owner, msg.sender, amount);
     }
 
     /**
@@ -298,12 +360,16 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
-    function isAllowed(address addr) public view virtual returns (bool) {
+    function hasSufficientPermissions(address addr) public view virtual returns (bool) {
         return allowListV2.isAddressAllowedForFund(addr, symbol());
     }
 
+    function allowList() external pure returns (IAllowList) {
+        revert DeprecatedAllowList();
+    }
+
     function _mintLogic(address dst, uint256 amount) internal {
-        if (!isAllowed(dst)) revert InsufficientPermissions();
+        if (!hasSufficientPermissions(dst)) revert InsufficientPermissions();
 
         _mint(dst, amount);
         emit Mint(msg.sender, dst, amount);
@@ -346,99 +412,26 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param src Source address from which tokens will be burned
      * @param amount Amount of tokens to burn
      */
-    function adminBurn(address src, uint256 amount) external {
+    function burn(address src, uint256 amount) external {
         _checkOwner();
         _requireNotAccountingPaused();
+        if (availableBalanceOf(src) < amount) revert InsufficientAvailableBalance();
 
         _burn(src, amount);
-        emit AdminBurn({burner: msg.sender, src: src, amount: amount});
+        emit Burn(msg.sender, src, amount);
     }
 
     /**
-     * @notice Burn tokens from the caller's address for offchain redemption
+     * @notice Burn tokens from the caller's address
      * @param amount Amount of tokens to burn
      */
-    function offchainRedeem(uint256 amount) external {
+    function burn(uint256 amount) external {
         _requireNotAccountingPaused();
-        if (!isAllowed(msg.sender)) revert InsufficientPermissions();
+        if (availableBalanceOf(msg.sender) < amount) revert InsufficientAvailableBalance();
+        if (!hasSufficientPermissions(msg.sender)) revert InsufficientPermissions();
 
         _burn(msg.sender, amount);
-        emit OffchainRedeem({burner: msg.sender, src: msg.sender, amount: amount});
-    }
-
-    /**
-     * @notice Burn tokens from the caller's address to bridge to another chain
-     * @dev If destination address on chainId isn't on allowlist, or chainID isn't supported, tokens burn to book entry.
-     * @dev chainId as 0 indicates wanting to burn tokens to book entry, for use through the Superstate UI.
-     * @param amount Amount of tokens to burn
-     * @param ethDestinationAddress ETH address to send to on another chain
-     * @param otherDestinationAddress Non-EVM addresses to send to on another chain
-     * @param chainId Numerical identifier of destination chain to send tokens to
-     */
-    function bridge(
-        uint256 amount,
-        address ethDestinationAddress,
-        string memory otherDestinationAddress,
-        uint256 chainId
-    ) public {
-        _requireNotAccountingPaused();
-
-        if (!isAllowed(msg.sender)) revert InsufficientPermissions();
-
-        if (amount == 0) {
-            revert ZeroSuperstateTokensOut();
-        }
-
-        if (ethDestinationAddress != address(0) && bytes(otherDestinationAddress).length != 0) {
-            revert TwoDestinationsInvalid();
-        }
-
-        if (chainId == 0 && (ethDestinationAddress != address(0) || bytes(otherDestinationAddress).length != 0)) {
-            revert OnchainDestinationSetForBridgeToBookEntry();
-        }
-
-        _burn(msg.sender, amount);
-        emit Bridge({
-            caller: msg.sender,
-            src: msg.sender,
-            amount: amount,
-            ethDestinationAddress: ethDestinationAddress,
-            otherDestinationAddress: otherDestinationAddress,
-            chainId: chainId
-        });
-    }
-
-    /**
-     * @notice Burn tokens from the caller's address to bridge to Superstate book entry
-     * @param amount Amount of tokens to burn
-     */
-    function bridgeToBookEntry(uint256 amount) external {
-        bridge({
-            amount: amount,
-            ethDestinationAddress: address(0),
-            otherDestinationAddress: string(new bytes(0)),
-            chainId: 0
-        });
-    }
-
-    function _setRedemptionContract(address _newRedemptionContract) internal {
-        if (redemptionContract == _newRedemptionContract) revert BadArgs();
-        emit SetRedemptionContract({
-            oldRedemptionContract: redemptionContract,
-            newRedemptionContract: _newRedemptionContract
-        });
-        redemptionContract = _newRedemptionContract;
-    }
-
-    /**
-     * @notice Sets redemption contract address
-     * @dev Used for convenience for devs
-     * @dev Set to address(0) if no such contract exists for the token
-     * @param _newRedemptionContract New contract address
-     */
-    function setRedemptionContract(address _newRedemptionContract) external {
-        _checkOwner();
-        _setRedemptionContract(_newRedemptionContract);
+        emit Burn(msg.sender, msg.sender, amount);
     }
 
     /**
@@ -584,6 +577,30 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             stablecoinInAmountAfterFee: stablecoinInAmountAfterFee,
             superstateTokenOutAmount: superstateTokenOutAmount
         });
+    }
+
+    /**
+     * @dev Increase `owner`'s encumbrance to `taker` by `amount`
+     */
+    function _encumber(address owner, address taker, uint256 amount) internal {
+        if (owner == taker) revert SelfEncumberNotAllowed();
+        if (availableBalanceOf(owner) < amount) revert InsufficientAvailableBalance();
+        if (!hasSufficientPermissions(owner)) revert InsufficientPermissions();
+
+        encumbrances[owner][taker] += amount;
+        encumberedBalanceOf[owner] += amount;
+        emit Encumber(owner, taker, amount);
+    }
+
+    /**
+     * @dev Reduce `owner`'s encumbrance to `taker` by `amount`
+     */
+    function _releaseEncumbrance(address owner, address taker, uint256 amount) internal {
+        if (encumbrances[owner][taker] < amount) revert InsufficientEncumbrance();
+
+        encumbrances[owner][taker] -= amount;
+        encumberedBalanceOf[owner] -= amount;
+        emit Release(owner, taker, amount);
     }
 
     /**

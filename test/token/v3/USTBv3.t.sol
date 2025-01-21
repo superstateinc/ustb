@@ -16,14 +16,14 @@ import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import "test/token/SuperstateTokenTestBase.t.sol";
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {ISuperstateTokenV3} from "src/interfaces/ISuperstateTokenV3.sol";
+import {SuperstateTokenV3} from "src/v3/SuperstateTokenV3.sol";
 import {SuperstateOracle} from "../../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
 
 contract USTBv3Test is SuperstateTokenTestBase {
     SuperstateTokenV1 public tokenV1;
     SuperstateTokenV2 public tokenV2;
-    SuperstateToken public tokenV3;
+    SuperstateTokenV3 public tokenV3;
     SuperstateOracle public oracle;
 
     AllowList permsV2;
@@ -123,13 +123,13 @@ contract USTBv3Test is SuperstateTokenTestBase {
         );
 
         // Now upgrade token to V3
-        SuperstateToken tokenImplementation = new SuperstateToken();
+        SuperstateTokenV3 tokenImplementation = new SuperstateTokenV3();
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );
 
-        token = SuperstateToken(address(tokenProxy));
-        tokenV3 = SuperstateToken(address(token));
+        token = SuperstateTokenV3(address(tokenProxy));
+        tokenV3 = SuperstateTokenV3(address(token));
 
         // Initialize token v3
         tokenV3.initializeV3(permsV2);
@@ -156,7 +156,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
     }
 
     function testUpdateOracleSameAddress() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV3.BadArgs.selector);
         tokenV3.setOracle(address(oracle));
     }
 
@@ -167,7 +167,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
     }
 
     function testSetMaximumOracleDelaySameDelay() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV3.BadArgs.selector);
         tokenV3.setMaximumOracleDelay(INITIAL_MAX_ORACLE_DELAY);
     }
 
@@ -178,25 +178,25 @@ contract USTBv3Test is SuperstateTokenTestBase {
     }
 
     function testSetStablecoinConfigFeeTooHigh() public {
-        vm.expectRevert(ISuperstateToken.FeeTooHigh.selector);
+        vm.expectRevert(ISuperstateTokenV3.FeeTooHigh.selector);
         tokenV3.setStablecoinConfig(address(0), address(0), 11);
     }
 
     function testSetStablecoinConfigAllArgsIdentical() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV3.BadArgs.selector);
         tokenV3.setStablecoinConfig(address(0), address(0), 0);
     }
 
     // subscribe
     function testSubscribeInAmountZero() public {
         hoax(eve);
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV3.BadArgs.selector);
         tokenV3.subscribe(0, USDC);
     }
 
     function testSubscribeStablecoinNotSupported() public {
         hoax(eve);
-        vm.expectRevert(ISuperstateToken.StablecoinNotSupported.selector);
+        vm.expectRevert(ISuperstateTokenV3.StablecoinNotSupported.selector);
         tokenV3.subscribe(1, USDT);
     }
 
@@ -224,7 +224,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
 
         IERC20(USDC).approve(address(tokenV3), amount);
 
-        vm.expectRevert(ISuperstateToken.ZeroSuperstateTokensOut.selector);
+        vm.expectRevert(ISuperstateTokenV3.ZeroSuperstateTokensOut.selector);
         tokenV3.subscribe(amount, USDC);
 
         vm.stopPrank();
@@ -258,7 +258,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         IERC20(USDC).approve(address(tokenV3), usdcAmountIn);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.Subscribe({
+        emit ISuperstateTokenV3.Subscribe({
             subscriber: alice,
             stablecoin: USDC,
             stablecoinInAmount: usdcAmountIn,
@@ -287,7 +287,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
         IERC20(USDC).approve(address(tokenV3), usdcAmountIn);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.Subscribe({
+        emit ISuperstateTokenV3.Subscribe({
             subscriber: alice,
             stablecoin: USDC,
             stablecoinInAmount: usdcAmountIn,
@@ -305,7 +305,7 @@ contract USTBv3Test is SuperstateTokenTestBase {
     function testGetChainlinkPriceOnchainSubscriptionsDisabled() public {
         tokenV3.setOracle(address(0));
 
-        vm.expectRevert(ISuperstateToken.OnchainSubscriptionsDisabled.selector);
+        vm.expectRevert(ISuperstateTokenV3.OnchainSubscriptionsDisabled.selector);
         tokenV3.getChainlinkPrice();
     }
 
@@ -316,8 +316,6 @@ contract USTBv3Test is SuperstateTokenTestBase {
         );
 
         AllowList permsV3 = AllowList(address(permsProxyV2));
-
-        assertEq(address(token.allowList()), address(permsProxyV2));
 
         // check Alice, Bob, and Charlie still whitelisted
         assertTrue(permsV3.isAddressAllowedForFund(alice, "USTB"));
