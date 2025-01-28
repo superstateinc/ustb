@@ -1329,6 +1329,12 @@ contract USTBv4 is TokenTestBase {
         token.setChainIdSupport(9001, true);
     }
 
+    function testSetChainIdSupportSetFalseSuccess() public {
+        vm.expectEmit(true, true, true, true);
+        emit ISuperstateToken.SetChainIdSupport(0, true, false);
+        token.setChainIdSupport(0, false);
+    }
+
     function testSetChainIdSupportAlreadySupportedRevert() public {
         vm.expectRevert(ISuperstateToken.BadArgs.selector);
         token.setChainIdSupport(0, true);
