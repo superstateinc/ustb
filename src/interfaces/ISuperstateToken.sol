@@ -188,23 +188,26 @@ interface ISuperstateToken is IERC20Upgradeable {
     // V4
 
     /// @dev Event emitted when the admin burns tokens
-    event AdminBurn(address burner, address src, uint256 amount);
+    event AdminBurn(address indexed burner, address indexed src, uint256 amount);
 
     /// @dev Event emitted when the user wants to bridge their tokens to another chain or book entry
     event Bridge(
         address caller,
-        address src,
+        address indexed src,
         uint256 amount,
-        address ethDestinationAddress,
-        string otherDestinationAddress,
+        address indexed ethDestinationAddress,
+        string indexed otherDestinationAddress,
         uint256 chainId
     );
 
     /// @dev Event emitted when the users wants to redeem their shares with an offchain payout
-    event OffchainRedeem(address burner, address src, uint256 amount);
+    event OffchainRedeem(address indexed burner, address indexed src, uint256 amount);
 
     /// @dev Event emitted when the owner changes the redemption contract address
     event SetRedemptionContract(address oldRedemptionContract, address newRedemptionContract);
+
+    /// @notice Emitted when a chain ID's support status is updated
+    event SetChainIdSupport(uint256 indexed chainId, bool oldSupported, bool newSupported);
 
     /// @dev Thrown when bridge function arguments have two destinations
     error TwoDestinationsInvalid();
@@ -212,8 +215,11 @@ interface ISuperstateToken is IERC20Upgradeable {
     /// @dev Thrown when bridge function chainId is set to 0 but onchain destination arguments are provided
     error OnchainDestinationSetForBridgeToBookEntry();
 
+    /// @dev Thrown when bridge function chainId is not supported
+    error BridgeChainIdDestinationNotSupported();
+
     /**
-     * @notice Check permissions of an address for transferring / encumbering
+     * @notice Check permissions of an address for transferring
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
@@ -261,4 +267,11 @@ interface ISuperstateToken is IERC20Upgradeable {
      * @param _newRedemptionContract New contract address
      */
     function setRedemptionContract(address _newRedemptionContract) external;
+
+    /**
+     * @notice Sets support status for a specific chain ID
+     * @param _chainId The chain ID to update
+     * @param _supported Whether the chain ID should be supported
+     */
+    function setChainIdSupport(uint256 _chainId, bool _supported) external;
 }

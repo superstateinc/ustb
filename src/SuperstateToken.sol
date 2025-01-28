@@ -38,31 +38,31 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     string public constant VERSION = "4";
 
     /// @dev The EIP-712 typehash for authorization via permit
-    bytes32 internal constant AUTHORIZATION_TYPEHASH =
+    bytes32 private constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
-    bytes32 internal constant DOMAIN_TYPEHASH =
+    bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
     /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to properly implement the transfer of ownership and will be removed in subsequent contract versions.
-    address public immutable _deprecatedAdmin;
+    address private immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
     /// @notice As of v3, this field is deprecated
-    IAllowList public immutable _deprecatedAllowList;
+    IAllowList private immutable _deprecatedAllowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
 
     /// @notice Amount of an address's token balance that is encumbered
     /// @notice As of v4, this field is deprecated
-    mapping(address => uint256) public _deprecatedEncumberedBalanceOf;
+    mapping(address => uint256) private _deprecatedEncumberedBalanceOf;
 
     /// @notice Amount encumbered from owner to taker (owner => taker => balance)
     /// @notice As of v4, this field is deprecated
-    mapping(address => mapping(address => uint256)) public _deprecatedEncumbrances;
+    mapping(address => mapping(address => uint256)) private _deprecatedEncumbrances;
 
     /// @notice If all minting and burning operations are paused
     bool public accountingPaused;
@@ -94,11 +94,14 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     /// @notice The address of the contract used to facilitate protocol redemptions, if such a contract exists.
     address public redemptionContract;
 
+    /// @notice Supported chainIds for bridging
+    mapping(uint256 chainId => bool supported) public supportedChainIds;
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
      * any contracts that inherit `SuperstateToken`
      */
-    uint256[96] private __additionalFieldsGap;
+    uint256[95] private __additionalFieldsGap;
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
@@ -294,7 +297,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice Check permissions of an address for transferring / encumbering
+     * @notice Check permissions of an address for transferring
      * @param addr Address to check permissions for
      * @return bool True if the address has sufficient permission, false otherwise
      */
@@ -385,9 +388,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
         if (!isAllowed(msg.sender)) revert InsufficientPermissions();
 
-        if (amount == 0) {
-            revert ZeroSuperstateTokensOut();
-        }
+        if (amount == 0) revert ZeroSuperstateTokensOut();
 
         if (ethDestinationAddress != address(0) && bytes(otherDestinationAddress).length != 0) {
             revert TwoDestinationsInvalid();
@@ -396,6 +397,8 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         if (chainId == 0 && (ethDestinationAddress != address(0) || bytes(otherDestinationAddress).length != 0)) {
             revert OnchainDestinationSetForBridgeToBookEntry();
         }
+
+        if (!supportedChainIds[chainId]) revert BridgeChainIdDestinationNotSupported();
 
         _burn(msg.sender, amount);
         emit Bridge({
@@ -419,6 +422,32 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             otherDestinationAddress: string(new bytes(0)),
             chainId: 0
         });
+    }
+
+    /**
+     * @notice Internal function to set chain ID support status
+     * @param _chainId The chain ID to update
+     * @param _supported New support status for the chain
+     */
+    function _setChainIdSupport(uint256 _chainId, bool _supported) internal {
+        if (supportedChainIds[_chainId] == _supported) revert BadArgs();
+
+        // Can't bridge to the chain you're already on
+        if (_chainId == block.chainid) revert BridgeChainIdDestinationNotSupported();
+
+        emit SetChainIdSupport({chainId: _chainId, oldSupported: supportedChainIds[_chainId], newSupported: _supported});
+
+        supportedChainIds[_chainId] = _supported;
+    }
+
+    /**
+     * @notice Sets support status for a specific chain ID
+     * @param _chainId The chain ID to update
+     * @param _supported Whether the chain ID should be supported
+     */
+    function setChainIdSupport(uint256 _chainId, bool _supported) external {
+        _checkOwner();
+        _setChainIdSupport({_chainId: _chainId, _supported: _supported});
     }
 
     function _setRedemptionContract(address _newRedemptionContract) internal {
