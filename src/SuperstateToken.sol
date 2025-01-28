@@ -38,11 +38,11 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     string public constant VERSION = "4";
 
     /// @dev The EIP-712 typehash for authorization via permit
-    bytes32 private constant AUTHORIZATION_TYPEHASH =
+    bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
-    bytes32 private constant DOMAIN_TYPEHASH =
+    bytes32 internal constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
