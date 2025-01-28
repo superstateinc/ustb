@@ -202,7 +202,7 @@ contract USTBv4TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBaseV4
         uint256 expectedSupportedStablecoinsValue = 0;
         assertEq(supportedStablecoinsSlotValue, expectedSupportedStablecoinsValue);
 
-        bytes32 supportedChainIdSlot = keccak256(abi.encode(eve, uint256(760))); // address should be usdc instead of eve
+        bytes32 supportedChainIdSlot = keccak256(abi.encode(eve, uint256(760)));
         uint256 supportedChainIdSlotValue = uint256(vm.load(address(tokenProxy), supportedChainIdSlot));
         uint256 expectedSupportedChainIdValue = 0;
         assertEq(supportedChainIdSlotValue, expectedSupportedChainIdValue);
