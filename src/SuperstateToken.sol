@@ -38,31 +38,31 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     string public constant VERSION = "4";
 
     /// @dev The EIP-712 typehash for authorization via permit
-    bytes32 internal constant AUTHORIZATION_TYPEHASH =
+    bytes32 private constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// @dev The EIP-712 typehash for the contract's domain
-    bytes32 internal constant DOMAIN_TYPEHASH =
+    bytes32 private constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice Admin address with exclusive privileges for minting and burning
     /// @notice As of v2, this field is no longer used due to implementing Ownable2Step. The field is kept here to properly implement the transfer of ownership and will be removed in subsequent contract versions.
-    address internal immutable _deprecatedAdmin;
+    address private immutable _deprecatedAdmin;
 
     /// @notice Address of the AllowList contract which determines permissions for transfers
     /// @notice As of v3, this field is deprecated
-    IAllowList internal immutable _deprecatedAllowList;
+    IAllowList private immutable _deprecatedAllowList;
 
     /// @notice The next expected nonce for an address, for validating authorizations via signature
     mapping(address => uint256) public nonces;
 
     /// @notice Amount of an address's token balance that is encumbered
     /// @notice As of v4, this field is deprecated
-    mapping(address => uint256) internal _deprecatedEncumberedBalanceOf;
+    mapping(address => uint256) private _deprecatedEncumberedBalanceOf;
 
     /// @notice Amount encumbered from owner to taker (owner => taker => balance)
     /// @notice As of v4, this field is deprecated
-    mapping(address => mapping(address => uint256)) internal _deprecatedEncumbrances;
+    mapping(address => mapping(address => uint256)) private _deprecatedEncumbrances;
 
     /// @notice If all minting and burning operations are paused
     bool public accountingPaused;
@@ -101,7 +101,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @dev This empty reserved space is put in place to allow future versions to add new fields without impacting
      * any contracts that inherit `SuperstateToken`
      */
-    uint256[96] private __additionalFieldsGap;
+    uint256[95] private __additionalFieldsGap;
 
     /**
      * @notice Construct a new ERC20 token instance with the given admin and AllowList
