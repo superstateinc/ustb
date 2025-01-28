@@ -186,6 +186,18 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit(true, true, true, true);
         emit ISuperstateToken.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
         token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
+
+        vm.expectEmit(true, true, true, true);
+        emit ISuperstateToken.SetChainIdSupport(9000, false, true);
+        token.setChainIdSupport(9000, true);
+
+        vm.expectEmit(true, true, true, true);
+        emit ISuperstateToken.SetChainIdSupport(42161, false, true);
+        token.setChainIdSupport(42161, true);
+
+        vm.expectEmit(true, true, true, true);
+        emit ISuperstateToken.SetChainIdSupport(0, false, true);
+        token.setChainIdSupport(0, true);
     }
 
     function testTokenName() public virtual {
@@ -1301,5 +1313,29 @@ contract USTBv4 is TokenTestBase {
             chainId: 42161
         });
         token.bridge(2, bob, string(new bytes(0)), 42161);
+    }
+
+    function testBridgeUnsupportedChainIdRevert() public {
+        token.mint(bob, 100e6);
+
+        vm.startPrank(bob);
+        vm.expectRevert(ISuperstateToken.BridgeChainIdDestinationNotSupported.selector);
+        token.bridge(2, bob, string(new bytes(0)), 1);
+    }
+
+    function testSetChainIdSupportSuccess() public {
+        vm.expectEmit(true, true, true, true);
+        emit ISuperstateToken.SetChainIdSupport(9001, false, true);
+        token.setChainIdSupport(9001, true);
+    }
+
+    function testSetChainIdSupportAlreadySupportedRevert() public {
+        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        token.setChainIdSupport(0, true);
+    }
+
+    function testBridgeChainIdCantSetCurrentChainIdRevert() public {
+        vm.expectRevert(ISuperstateToken.BridgeChainIdDestinationNotSupported.selector);
+        token.setChainIdSupport(block.chainid, true);
     }
 }

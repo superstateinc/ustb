@@ -89,7 +89,8 @@ import {console} from "forge-std/console.sol";
  *  Slot 757: SuperstateToken.supportedStablecoins
  *  Slot 758: SuperstateToken.allowListV2
  *  Slot 759: SuperstateToken.redemptionContract
- *  Slot 759-854: SuperstateToken.__additionalFieldsGap
+ *  Slot 760: SuperstateToken.redemptionContract
+ *  Slot 760-854: SuperstateToken.__additionalFieldsGap
  */
 contract USTBv4TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBaseV4Plus {
     AllowList permsV2;
@@ -200,6 +201,11 @@ contract USTBv4TokenStorageLayoutTests is SuperstateTokenStorageLayoutTestBaseV4
         uint256 supportedStablecoinsSlotValue = uint256(vm.load(address(tokenProxy), supportedStablecoinsSlot));
         uint256 expectedSupportedStablecoinsValue = 0;
         assertEq(supportedStablecoinsSlotValue, expectedSupportedStablecoinsValue);
+
+        bytes32 supportedChainIdSlot = keccak256(abi.encode(eve, uint256(760))); // address should be usdc instead of eve
+        uint256 supportedChainIdSlotValue = uint256(vm.load(address(tokenProxy), supportedChainIdSlot));
+        uint256 expectedSupportedChainIdValue = 0;
+        assertEq(supportedChainIdSlotValue, expectedSupportedChainIdValue);
 
         if (!hasUpgraded) {
             // should be zero'ed before upgrade
