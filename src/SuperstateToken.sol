@@ -11,7 +11,6 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
-import {IERC7246} from "src/interfaces/IERC7246.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
