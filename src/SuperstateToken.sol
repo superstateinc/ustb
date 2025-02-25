@@ -585,10 +585,11 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
     /**
      * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
+     * @param to The where USTB will be deposited at
      * @param inAmount The amount of the stablecoin in
      * @param stablecoin The address of the stablecoin to calculate with
      */
-    function subscribe(uint256 inAmount, address stablecoin) external {
+    function subscribe(address to, uint256 inAmount, address stablecoin) external {
         //@TODO: update function, add support for to address
         if (inAmount == 0) revert BadArgs();
         _requireNotPaused();
@@ -604,11 +605,11 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             to: supportedStablecoins[stablecoin].sweepDestination,
             value: inAmount
         });
-        _mintLogic({dst: msg.sender, amount: superstateTokenOutAmount});
+        _mintLogic({dst: to, amount: superstateTokenOutAmount});
 
-        //@TODO: use SubscribeV2 with to address
-        emit Subscribe({
+        emit SubscribeV2({
             subscriber: msg.sender,
+            to: to,
             stablecoin: stablecoin,
             stablecoinInAmount: inAmount,
             stablecoinInAmountAfterFee: stablecoinInAmountAfterFee,
