@@ -151,6 +151,7 @@ interface ISuperstateToken is IERC20Upgradeable {
     );
 
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
+    //@TODO: update event -> SubscribeV2 add to address
     event Subscribe(
         address indexed subscriber,
         address stablecoin,

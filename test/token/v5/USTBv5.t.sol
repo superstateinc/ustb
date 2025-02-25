@@ -22,7 +22,8 @@ import {SuperstateTokenV3} from "src/v3/SuperstateTokenV3.sol";
 import {SuperstateOracle} from "../../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
 import {SuperstateToken} from "src/SuperstateToken.sol";
 
-contract USTBv4 is TokenTestBase {
+//@TODO: update subscribe tests in subsequent PR
+contract USTBv5 is TokenTestBase {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Mint(address indexed minter, address indexed to, uint256 amount);
     event AccountingPaused(address admin);

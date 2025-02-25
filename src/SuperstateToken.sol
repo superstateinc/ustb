@@ -589,6 +589,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param stablecoin The address of the stablecoin to calculate with
      */
     function subscribe(uint256 inAmount, address stablecoin) external {
+        //@TODO: update function, add support for to address
         if (inAmount == 0) revert BadArgs();
         _requireNotPaused();
         _requireNotAccountingPaused();
@@ -605,6 +606,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
         });
         _mintLogic({dst: msg.sender, amount: superstateTokenOutAmount});
 
+        //@TODO: use SubscribeV2 with to address
         emit Subscribe({
             subscriber: msg.sender,
             stablecoin: stablecoin,
