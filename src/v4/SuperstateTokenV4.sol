@@ -10,7 +10,6 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import {AllowList} from "src/allowlist/AllowList.sol";
@@ -18,13 +17,14 @@ import {AllowList} from "src/allowlist/AllowList.sol";
 import {SuperstateOracle} from "onchain-redemptions/src/oracle/SuperstateOracle.sol";
 import {AggregatorV3Interface} from
     "lib/onchain-redemptions/lib/chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {ISuperstateTokenV4} from "src/interfaces/ISuperstateTokenV4.sol";
 
 /**
  * @title SuperstateToken
  * @notice A Pausable ERC20 token contract that interacts with the AllowList contract to check if transfers are allowed
  * @author Superstate
  */
-contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
+contract SuperstateTokenV4 is ISuperstateTokenV4, ERC20Upgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
     using SafeERC20 for IERC20;
 
     /**
