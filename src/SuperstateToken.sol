@@ -583,17 +583,10 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             / (usdPerSuperstateTokenChainlinkRaw * stablecoinPrecision);
     }
 
-    /**
-     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
-     * @param to The address where USTB will be deposited at
-     * @param inAmount The amount of the stablecoin in
-     * @param stablecoin The address of the stablecoin to calculate with
-     */
-    function subscribe(address to, uint256 inAmount, address stablecoin) external {
-        AllowList allowList = AllowList(address(allowListV2));
+    function _subscribe(address to, uint256 inAmount, address stablecoin) internal {
         if (
-            IAllowListV2.EntityId.unwrap(allowList.addressEntityIds(msg.sender))
-                != IAllowListV2.EntityId.unwrap(allowList.addressEntityIds(to))
+            IAllowListV2.EntityId.unwrap(allowListV2.addressEntityIds(msg.sender))
+                != IAllowListV2.EntityId.unwrap(allowListV2.addressEntityIds(to))
         ) revert MismatchEntityIds();
 
         if (inAmount == 0) revert BadArgs();
@@ -620,6 +613,25 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             stablecoinInAmountAfterFee: stablecoinInAmountAfterFee,
             superstateTokenOutAmount: superstateTokenOutAmount
         });
+    }
+
+    /**
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
+     * @param to The address where USTB will be deposited at
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribeTo(address to, uint256 inAmount, address stablecoin) external {
+        _subscribe(to, inAmount, stablecoin);
+    }
+
+    /**
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(uint256 inAmount, address stablecoin) external {
+        _subscribe(msg.sender, inAmount, stablecoin);
     }
 
     /**

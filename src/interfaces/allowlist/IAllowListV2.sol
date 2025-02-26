@@ -33,6 +33,8 @@ interface IAllowListV2 {
     /// @dev Thrown if an attempt to call `renounceOwnership` is made
     error RenounceOwnershipDisabled();
 
+    function addressEntityIds(address addr) external view returns (EntityId);
+
     /**
      * @notice Checks whether an address is allowed to use a fund
      * @param addr The address to check permissions for
