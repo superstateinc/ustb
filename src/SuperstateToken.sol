@@ -585,7 +585,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
 
     function _subscribe(address to, uint256 inAmount, address stablecoin) internal {
         if (
-            IAllowListV2.EntityId.unwrap(allowListV2.addressEntityIds(msg.sender))
+            to != msg.sender && IAllowListV2.EntityId.unwrap(allowListV2.addressEntityIds(msg.sender))
                 != IAllowListV2.EntityId.unwrap(allowListV2.addressEntityIds(to))
         ) revert MismatchEntityIds();
 
