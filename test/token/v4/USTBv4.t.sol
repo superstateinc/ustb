@@ -62,7 +62,7 @@ contract USTBv4 is TokenTestBase {
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function setUp() public virtual  {
+    function setUp() public virtual {
         string memory rpcUrl = vm.envString("RPC_URL");
 
         uint256 mainnetFork = vm.createFork(rpcUrl, 20_993_400);
@@ -1044,19 +1044,19 @@ contract USTBv4 is TokenTestBase {
     }
 
     // subscribe
-    function testSubscribeInAmountZero() virtual public {
+    function testSubscribeInAmountZero() public virtual {
         hoax(eve);
         vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         tokenV4.subscribe(0, USDC);
     }
 
-    function testSubscribeStablecoinNotSupported() virtual public {
+    function testSubscribeStablecoinNotSupported() public virtual {
         hoax(eve);
         vm.expectRevert(ISuperstateTokenV4.StablecoinNotSupported.selector);
         tokenV4.subscribe(1, USDT);
     }
 
-    function testSubscribePaused() virtual public {
+    function testSubscribePaused() public virtual {
         tokenV4.pause();
 
         hoax(eve);
@@ -1064,7 +1064,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(1, USDC);
     }
 
-    function testSubscribeAccountingPaused() virtual public {
+    function testSubscribeAccountingPaused() public virtual {
         tokenV4.accountingPause();
 
         hoax(eve);
@@ -1072,7 +1072,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(1, USDC);
     }
 
-    function testSubscribeZeroSuperstateTokensOut() virtual public {
+    function testSubscribeZeroSuperstateTokensOut() public virtual {
         uint256 amount = 10;
         deal(address(USDC), alice, amount);
 
@@ -1086,7 +1086,7 @@ contract USTBv4 is TokenTestBase {
         vm.stopPrank();
     }
 
-    function testSubscribeNotAllowed() virtual public {
+    function testSubscribeNotAllowed() public virtual {
         vm.warp(1726866001 + 1 days);
 
         address faker = address(123456);
@@ -1102,7 +1102,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(usdcAmountIn, USDC);
     }
 
-    function testSubscribeHappyPath() virtual public {
+    function testSubscribeHappyPath() public virtual {
         vm.warp(1726866001 + 1 days);
 
         uint256 usdcAmountIn = 10_000_000; // $10
@@ -1129,7 +1129,7 @@ contract USTBv4 is TokenTestBase {
         assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
-    function testSubscribeHappyPathFee() virtual public {
+    function testSubscribeHappyPathFee() public virtual {
         vm.warp(1726866001 + 1 days);
         tokenV4.setStablecoinConfig(USDC, address(this), 10);
 

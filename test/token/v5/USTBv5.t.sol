@@ -19,7 +19,7 @@ contract USTBv5 is USTBv4 {
     SuperstateToken public token;
     address public constant USTB_RECEIVER = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
-    function setUp() public override  {
+    function setUp() public override {
         super.setUp();
 
         // update AllowList associate USTB_RECEIVER with abcEntityId
