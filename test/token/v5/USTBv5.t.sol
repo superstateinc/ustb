@@ -74,7 +74,7 @@ contract USTBv5 is USTBv4 {
         IERC20(USDC).approve(address(token), amount);
 
         vm.expectRevert(ISuperstateToken.ZeroSuperstateTokensOut.selector);
-        token.subscribeTo(USTB_RECEIVER, amount, USDC);
+        token.subscribe(USTB_RECEIVER, amount, USDC);
 
         vm.stopPrank();
     }
@@ -92,7 +92,7 @@ contract USTBv5 is USTBv4 {
         IERC20(USDC).approve(address(token), usdcAmountIn);
 
         vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
-        token.subscribeTo(faker, usdcAmountIn, USDC);
+        token.subscribe(faker, usdcAmountIn, USDC);
     }
 
     function testSubscribeHappyPath() public override {
@@ -115,7 +115,7 @@ contract USTBv5 is USTBv4 {
             stablecoinInAmountAfterFee: usdcAmountIn,
             superstateTokenOutAmount: ustbAmountOut
         });
-        token.subscribeTo(USTB_RECEIVER, usdcAmountIn, USDC);
+        token.subscribe(USTB_RECEIVER, usdcAmountIn, USDC);
 
         vm.stopPrank();
 
@@ -145,7 +145,7 @@ contract USTBv5 is USTBv4 {
             stablecoinInAmountAfterFee: usdcAmountIn - usdcAmountFee,
             superstateTokenOutAmount: ustbAmountOut
         });
-        token.subscribeTo(USTB_RECEIVER, usdcAmountIn, USDC);
+        token.subscribe(USTB_RECEIVER, usdcAmountIn, USDC);
 
         vm.stopPrank();
 
@@ -156,6 +156,6 @@ contract USTBv5 is USTBv4 {
     function testSubscribeMismatchEntityIds() public {
         hoax(eve);
         vm.expectRevert(ISuperstateToken.MismatchEntityIds.selector);
-        token.subscribeTo(USTB_RECEIVER, 1, USDC);
+        token.subscribe(USTB_RECEIVER, 1, USDC);
     }
 }

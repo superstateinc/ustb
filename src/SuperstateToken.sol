@@ -621,7 +621,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param inAmount The amount of the stablecoin in
      * @param stablecoin The address of the stablecoin to calculate with
      */
-    function subscribeTo(address to, uint256 inAmount, address stablecoin) external {
+    function subscribe(address to, uint256 inAmount, address stablecoin) external {
         _subscribe(to, inAmount, stablecoin);
     }
 
