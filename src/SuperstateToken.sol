@@ -616,7 +616,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
+     * @notice The ```subscribeTo``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
      * @param to The address where USTB will be deposited at
      * @param inAmount The amount of the stablecoin in
      * @param stablecoin The address of the stablecoin to calculate with
