@@ -17,10 +17,10 @@ import {AllowListV1} from "src/allowlist/v1/AllowListV1.sol";
 import {IAllowList} from "src/interfaces/allowlist/IAllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 import "test/token/SuperstateTokenTestBase.t.sol";
-import {ISuperstateToken} from "src/interfaces/ISuperstateToken.sol";
+import {ISuperstateTokenV4} from "src/interfaces/ISuperstateTokenV4.sol";
 import {SuperstateTokenV3} from "src/v3/SuperstateTokenV3.sol";
 import {SuperstateOracle} from "../../../lib/onchain-redemptions/src/oracle/SuperstateOracle.sol";
-import {SuperstateToken} from "src/SuperstateToken.sol";
+import {SuperstateTokenV4} from "src/v4/SuperstateTokenV4.sol";
 
 contract USTBv4 is TokenTestBase {
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -31,7 +31,7 @@ contract USTBv4 is TokenTestBase {
     SuperstateTokenV1 public tokenV1;
     SuperstateTokenV2 public tokenV2;
     SuperstateTokenV3 public tokenV3;
-    SuperstateToken public token;
+    SuperstateTokenV4 public token;
     SuperstateOracle public oracle;
 
     ProxyAdmin permsProxyAdmin;
@@ -62,7 +62,7 @@ contract USTBv4 is TokenTestBase {
     bytes32 internal constant AUTHORIZATION_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    function setUp() public virtual {
+    function setUp() public virtual  {
         string memory rpcUrl = vm.envString("RPC_URL");
 
         uint256 mainnetFork = vm.createFork(rpcUrl, 20_993_400);
@@ -154,7 +154,7 @@ contract USTBv4 is TokenTestBase {
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementation), ""
         );
 
-        token = SuperstateToken(address(tokenProxy));
+        token = SuperstateTokenV4(address(tokenProxy));
         tokenV3 = SuperstateTokenV3(address(token));
 
         // Initialize token v3
@@ -175,28 +175,28 @@ contract USTBv4 is TokenTestBase {
         tokenV3.setStablecoinConfig(USDC, address(this), 0);
 
         // Upgrade to v4
-        SuperstateToken tokenImplementationV4 = new SuperstateToken();
+        SuperstateTokenV4 tokenImplementationV4 = new SuperstateTokenV4();
 
         tokenProxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenProxy)), address(tokenImplementationV4), ""
         );
 
-        token = SuperstateToken(address(tokenProxy));
+        token = SuperstateTokenV4(address(tokenProxy));
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
+        emit ISuperstateTokenV4.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
         token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetChainIdSupport(9000, false, true);
+        emit ISuperstateTokenV4.SetChainIdSupport(9000, false, true);
         token.setChainIdSupport(9000, true);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetChainIdSupport(42161, false, true);
+        emit ISuperstateTokenV4.SetChainIdSupport(42161, false, true);
         token.setChainIdSupport(42161, true);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetChainIdSupport(0, false, true);
+        emit ISuperstateTokenV4.SetChainIdSupport(0, false, true);
         token.setChainIdSupport(0, true);
     }
 
@@ -271,7 +271,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob tries to transfer from but alice is no longe ron allowed list
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.transferFrom(alice, charlie, approvedAmount);
     }
 
@@ -296,7 +296,7 @@ contract USTBv4 is TokenTestBase {
 
     function testMintRevertInsufficientPermissions() public {
         // cannot mint to Mallory since un-whitelisted
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.mint(mallory, 100e6);
     }
 
@@ -351,7 +351,7 @@ contract USTBv4 is TokenTestBase {
 
         token.accountingPause();
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.bulkMint(dsts, amounts);
 
         assertEq(token.balanceOf(alice), 0);
@@ -368,7 +368,7 @@ contract USTBv4 is TokenTestBase {
         amounts[1] = 333e6;
 
         // cannot mint to Mallory since un-whitelisted
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.bulkMint(dsts, amounts);
 
         assertEq(token.balanceOf(mallory), 0);
@@ -383,7 +383,7 @@ contract USTBv4 is TokenTestBase {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 100e6;
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV4.InvalidArgumentLengths.selector);
         token.bulkMint(dsts, amounts);
 
         address[] memory dsts1 = new address[](1);
@@ -393,13 +393,13 @@ contract USTBv4 is TokenTestBase {
         amounts1[0] = 100e6;
         amounts1[1] = 333e6;
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV4.InvalidArgumentLengths.selector);
         token.bulkMint(dsts1, amounts1);
 
         address[] memory dsts2 = new address[](0);
         uint256[] memory amounts2 = new uint256[](0);
 
-        vm.expectRevert(ISuperstateToken.InvalidArgumentLengths.selector);
+        vm.expectRevert(ISuperstateTokenV4.InvalidArgumentLengths.selector);
         token.bulkMint(dsts2, amounts2);
     }
 
@@ -412,7 +412,7 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 100e6);
         vm.expectEmit();
-        emit ISuperstateToken.AdminBurn(address(this), alice, 100e6);
+        emit ISuperstateTokenV4.AdminBurn(address(this), alice, 100e6);
 
         token.adminBurn(alice, 100e6);
         assertEq(token.balanceOf(alice), 0);
@@ -427,7 +427,7 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
-        emit ISuperstateToken.OffchainRedeem(alice, alice, 50e6);
+        emit ISuperstateTokenV4.OffchainRedeem(alice, alice, 50e6);
 
         // alice calls transfer(0, amount) to self-burn
         vm.prank(alice);
@@ -445,7 +445,7 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
-        emit ISuperstateToken.OffchainRedeem(alice, alice, 50e6);
+        emit ISuperstateTokenV4.OffchainRedeem(alice, alice, 50e6);
 
         // alice calls burn(amount) to self-burn
         vm.prank(alice);
@@ -466,7 +466,7 @@ contract USTBv4 is TokenTestBase {
         vm.expectEmit(true, true, true, true);
         emit Transfer(alice, address(0), 50e6);
         vm.expectEmit();
-        emit ISuperstateToken.OffchainRedeem(bob, alice, 50e6);
+        emit ISuperstateTokenV4.OffchainRedeem(bob, alice, 50e6);
 
         // bob calls transferFrom(alice, 0, amount) to self-burn
         vm.prank(bob);
@@ -509,13 +509,13 @@ contract USTBv4 is TokenTestBase {
 
         // mallory tries to burn her tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.offchainRedeem(50e6);
     }
 
     function testTransferToZeroReverts() public {
         deal(address(token), alice, 100e6);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         vm.prank(alice);
         token.transfer(address(0), 10e6);
     }
@@ -525,7 +525,7 @@ contract USTBv4 is TokenTestBase {
         vm.prank(alice);
         token.approve(bob, 50e6);
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.transferFrom(alice, address(0), 10e6);
     }
 
@@ -534,7 +534,7 @@ contract USTBv4 is TokenTestBase {
 
         // mallory tries to transfer tokens, but isn't whitelisted
         vm.prank(mallory);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.transfer(charlie, 30e6);
     }
 
@@ -543,7 +543,7 @@ contract USTBv4 is TokenTestBase {
 
         // alice tries to transfer tokens to mallory, but mallory isn't whitelisted
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.transfer(mallory, 30e6);
     }
 
@@ -556,7 +556,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob tries to transfer alice's tokens to mallory, but mallory isn't whitelisted
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.transferFrom(alice, mallory, 50e6);
     }
 
@@ -633,9 +633,9 @@ contract USTBv4 is TokenTestBase {
         deal(address(token), bob, 100e6);
 
         token.accountingPause();
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.mint(alice, 30e6);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.adminBurn(bob, 30e6);
 
         vm.prank(alice);
@@ -680,7 +680,7 @@ contract USTBv4 is TokenTestBase {
     // cannot double set any pause
     function testCannotDoublePause() public {
         token.accountingPause();
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.accountingPause();
 
         token.pause();
@@ -692,7 +692,7 @@ contract USTBv4 is TokenTestBase {
         token.accountingPause();
 
         token.accountingUnpause();
-        vm.expectRevert(ISuperstateToken.AccountingIsNotPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsNotPaused.selector);
         token.accountingUnpause();
 
         token.pause();
@@ -714,22 +714,22 @@ contract USTBv4 is TokenTestBase {
 
         assertEq(token.balanceOf(alice), 100e6);
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.mint(alice, 100e6);
 
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.adminBurn(alice, 100e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.transfer(address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.transferFrom(alice, address(tokenProxy), 50e6);
 
         vm.prank(alice);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.offchainRedeem(10e6);
 
         token.accountingUnpause();
@@ -789,7 +789,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the owner
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(charlie, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -811,7 +811,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the spender
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, charlie, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -833,7 +833,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the allowance
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, bob, allowance + 1 wei, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -855,7 +855,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature, but he manipulates the expiry
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry + 1, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -879,7 +879,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -916,7 +916,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob tries to reuse the same signature twice
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -941,7 +941,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature after the expiry
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.SignatureExpired.selector);
+        vm.expectRevert(ISuperstateTokenV4.SignatureExpired.selector);
         token.permit(eve, bob, allowance, expiry, v, r, s);
 
         // bob's allowance from eve is unchanged
@@ -966,7 +966,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature with invalid `s` value
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.InvalidSignatureS.selector);
+        vm.expectRevert(ISuperstateTokenV4.InvalidSignatureS.selector);
         token.permit(eve, bob, allowance, expiry, v, r, invalidS);
 
         // bob's allowance from eve is unchanged
@@ -990,7 +990,7 @@ contract USTBv4 is TokenTestBase {
 
         // bob calls permit with the signature with an invalid nonce
         vm.prank(bob);
-        vm.expectRevert(ISuperstateToken.BadSignatory.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadSignatory.selector);
         token.permit(eve, bob, allowance, expiry, invalidV, r, s);
 
         // bob's allowance from eve is unchanged
@@ -1013,7 +1013,7 @@ contract USTBv4 is TokenTestBase {
     }
 
     function testUpdateOracleSameAddress() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.setOracle(address(oracle));
     }
 
@@ -1024,7 +1024,7 @@ contract USTBv4 is TokenTestBase {
     }
 
     function testSetMaximumOracleDelaySameDelay() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.setMaximumOracleDelay(INITIAL_MAX_ORACLE_DELAY);
     }
 
@@ -1035,25 +1035,25 @@ contract USTBv4 is TokenTestBase {
     }
 
     function testSetStablecoinConfigFeeTooHigh() public {
-        vm.expectRevert(ISuperstateToken.FeeTooHigh.selector);
+        vm.expectRevert(ISuperstateTokenV4.FeeTooHigh.selector);
         token.setStablecoinConfig(address(0), address(0), 11);
     }
 
     function testSetStablecoinConfigAllArgsIdentical() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.setStablecoinConfig(address(0), address(0), 0);
     }
 
     // subscribe
     function testSubscribeInAmountZero() public {
         hoax(eve);
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.subscribe(0, USDC);
     }
 
     function testSubscribeStablecoinNotSupported() public {
         hoax(eve);
-        vm.expectRevert(ISuperstateToken.StablecoinNotSupported.selector);
+        vm.expectRevert(ISuperstateTokenV4.StablecoinNotSupported.selector);
         token.subscribe(1, USDT);
     }
 
@@ -1069,7 +1069,7 @@ contract USTBv4 is TokenTestBase {
         token.accountingPause();
 
         hoax(eve);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.subscribe(1, USDC);
     }
 
@@ -1081,7 +1081,7 @@ contract USTBv4 is TokenTestBase {
 
         IERC20(USDC).approve(address(token), amount);
 
-        vm.expectRevert(ISuperstateToken.ZeroSuperstateTokensOut.selector);
+        vm.expectRevert(ISuperstateTokenV4.ZeroSuperstateTokensOut.selector);
         token.subscribe(amount, USDC);
 
         vm.stopPrank();
@@ -1099,7 +1099,7 @@ contract USTBv4 is TokenTestBase {
 
         IERC20(USDC).approve(address(token), usdcAmountIn);
 
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.subscribe(usdcAmountIn, USDC);
     }
 
@@ -1115,7 +1115,7 @@ contract USTBv4 is TokenTestBase {
         IERC20(USDC).approve(address(token), usdcAmountIn);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.Subscribe({
+        emit ISuperstateTokenV4.Subscribe({
             subscriber: alice,
             stablecoin: USDC,
             stablecoinInAmount: usdcAmountIn,
@@ -1144,7 +1144,7 @@ contract USTBv4 is TokenTestBase {
         IERC20(USDC).approve(address(token), usdcAmountIn);
 
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.Subscribe({
+        emit ISuperstateTokenV4.Subscribe({
             subscriber: alice,
             stablecoin: USDC,
             stablecoinInAmount: usdcAmountIn,
@@ -1162,7 +1162,7 @@ contract USTBv4 is TokenTestBase {
     function testGetChainlinkPriceOnchainSubscriptionsDisabled() public {
         token.setOracle(address(0));
 
-        vm.expectRevert(ISuperstateToken.OnchainSubscriptionsDisabled.selector);
+        vm.expectRevert(ISuperstateTokenV4.OnchainSubscriptionsDisabled.selector);
         token.getChainlinkPrice();
     }
 
@@ -1203,7 +1203,7 @@ contract USTBv4 is TokenTestBase {
     }
 
     //vm.expectEmit(true, true, true, true);
-    //emitISuperstateToken.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
+    //emitISuperstateTokenV4.SetRedemptionContract(address(0), MAINNET_REDEMPTION_IDLE);
     //token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
 
     function testRedemptionContractNotOwnerRevert() public {
@@ -1213,13 +1213,13 @@ contract USTBv4 is TokenTestBase {
     }
 
     function testRedemptionContractAlreadySetRevert() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.setRedemptionContract(MAINNET_REDEMPTION_IDLE);
     }
 
     function testRedemptionContractSuccess() public {
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetRedemptionContract(MAINNET_REDEMPTION_IDLE, address(1234));
+        emit ISuperstateTokenV4.SetRedemptionContract(MAINNET_REDEMPTION_IDLE, address(1234));
         token.setRedemptionContract(address(1234));
     }
 
@@ -1229,7 +1229,7 @@ contract USTBv4 is TokenTestBase {
         hoax(bob);
         vm.expectEmit(true, true, true, true);
         emit Transfer(bob, address(0), 100e6);
-        emit ISuperstateToken.Bridge(bob, bob, 100e6, address(0), string(new bytes(0)), 0);
+        emit ISuperstateTokenV4.Bridge(bob, bob, 100e6, address(0), string(new bytes(0)), 0);
         token.bridgeToBookEntry(100e6);
     }
 
@@ -1237,7 +1237,7 @@ contract USTBv4 is TokenTestBase {
         token.mint(bob, 100e6);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.ZeroSuperstateTokensOut.selector);
+        vm.expectRevert(ISuperstateTokenV4.ZeroSuperstateTokensOut.selector);
         token.bridge(0, bob, string(new bytes(0)), 9000);
     }
 
@@ -1245,11 +1245,11 @@ contract USTBv4 is TokenTestBase {
         token.mint(bob, 100e6);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.OnchainDestinationSetForBridgeToBookEntry.selector);
+        vm.expectRevert(ISuperstateTokenV4.OnchainDestinationSetForBridgeToBookEntry.selector);
         token.bridge(1, bob, string(new bytes(0)), 0);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.OnchainDestinationSetForBridgeToBookEntry.selector);
+        vm.expectRevert(ISuperstateTokenV4.OnchainDestinationSetForBridgeToBookEntry.selector);
         token.bridge(1, address(0), "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 0);
     }
 
@@ -1257,11 +1257,11 @@ contract USTBv4 is TokenTestBase {
         token.mint(bob, 100e6);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.TwoDestinationsInvalid.selector);
+        vm.expectRevert(ISuperstateTokenV4.TwoDestinationsInvalid.selector);
         token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 9000);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.TwoDestinationsInvalid.selector);
+        vm.expectRevert(ISuperstateTokenV4.TwoDestinationsInvalid.selector);
         token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 0);
     }
 
@@ -1271,7 +1271,7 @@ contract USTBv4 is TokenTestBase {
         token.accountingPause();
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
+        vm.expectRevert(ISuperstateTokenV4.AccountingIsPaused.selector);
         token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 9000);
     }
 
@@ -1281,7 +1281,7 @@ contract USTBv4 is TokenTestBase {
         permsV2.setEntityAllowedForFund(IAllowListV2.EntityId.wrap(abcEntityId), "USTB", false);
 
         hoax(bob);
-        vm.expectRevert(ISuperstateToken.InsufficientPermissions.selector);
+        vm.expectRevert(ISuperstateTokenV4.InsufficientPermissions.selector);
         token.bridge(1, bob, "At3rMxZEKKkMeC7V52pL6WAAL9wSGpQ45usq84D3nAqv", 9000);
     }
 
@@ -1291,7 +1291,7 @@ contract USTBv4 is TokenTestBase {
         vm.startPrank(bob);
         vm.expectEmit(true, true, true, true);
         emit Transfer(bob, address(0), 1);
-        emit ISuperstateToken.Bridge({
+        emit ISuperstateTokenV4.Bridge({
             caller: bob,
             src: bob,
             amount: 1,
@@ -1304,7 +1304,7 @@ contract USTBv4 is TokenTestBase {
         vm.startPrank(bob);
         vm.expectEmit(true, true, true, true);
         emit Transfer(bob, address(0), 2);
-        emit ISuperstateToken.Bridge({
+        emit ISuperstateTokenV4.Bridge({
             caller: bob,
             src: bob,
             amount: 2,
@@ -1319,29 +1319,29 @@ contract USTBv4 is TokenTestBase {
         token.mint(bob, 100e6);
 
         vm.startPrank(bob);
-        vm.expectRevert(ISuperstateToken.BridgeChainIdDestinationNotSupported.selector);
+        vm.expectRevert(ISuperstateTokenV4.BridgeChainIdDestinationNotSupported.selector);
         token.bridge(2, bob, string(new bytes(0)), 1);
     }
 
     function testSetChainIdSupportSuccess() public {
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetChainIdSupport(9001, false, true);
+        emit ISuperstateTokenV4.SetChainIdSupport(9001, false, true);
         token.setChainIdSupport(9001, true);
     }
 
     function testSetChainIdSupportSetFalseSuccess() public {
         vm.expectEmit(true, true, true, true);
-        emit ISuperstateToken.SetChainIdSupport(0, true, false);
+        emit ISuperstateTokenV4.SetChainIdSupport(0, true, false);
         token.setChainIdSupport(0, false);
     }
 
     function testSetChainIdSupportAlreadySupportedRevert() public {
-        vm.expectRevert(ISuperstateToken.BadArgs.selector);
+        vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         token.setChainIdSupport(0, true);
     }
 
     function testBridgeChainIdCantSetCurrentChainIdRevert() public {
-        vm.expectRevert(ISuperstateToken.BridgeChainIdDestinationNotSupported.selector);
+        vm.expectRevert(ISuperstateTokenV4.BridgeChainIdDestinationNotSupported.selector);
         token.setChainIdSupport(block.chainid, true);
     }
 }
