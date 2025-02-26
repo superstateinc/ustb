@@ -41,6 +41,9 @@ interface ISuperstateToken is IERC20Upgradeable {
     /// @dev Thrown if array length arguments aren't equal
     error InvalidArgumentLengths();
 
+    /// @dev Thrown if `to` does not share the same `entityId` as `msg.sender` during subscribe
+    error MismatchEntityIds();
+
     /**
      * @notice Returns the domain separator used in the encoding of the
      * signature for permit

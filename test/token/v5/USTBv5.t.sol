@@ -8,7 +8,6 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/security/P
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-//import "openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {USTBv4} from "test/token/v4/USTBv4.t.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
@@ -24,6 +23,7 @@ contract USTBv5 is USTBv4 {
         super.setUp();
 
         // update AllowList associate USTB_RECEIVER with abcEntityId
+        // USTB_RECEIVER will have same entityId as alice, bob and charlie
         permsV2.setEntityIdForAddress(IAllowListV2.EntityId.wrap(abcEntityId), USTB_RECEIVER);
 
         // Upgrade to v5
@@ -40,13 +40,13 @@ contract USTBv5 is USTBv4 {
     function testSubscribeInAmountZero() public override {
         hoax(eve);
         vm.expectRevert(ISuperstateToken.BadArgs.selector);
-        token.subscribe(USTB_RECEIVER, 0, USDC);
+        token.subscribe(eve, 0, USDC);
     }
 
     function testSubscribeStablecoinNotSupported() public override {
         hoax(eve);
         vm.expectRevert(ISuperstateToken.StablecoinNotSupported.selector);
-        token.subscribe(USTB_RECEIVER, 1, USDT);
+        token.subscribe(eve, 1, USDT);
     }
 
     function testSubscribePaused() public override {
@@ -54,7 +54,7 @@ contract USTBv5 is USTBv4 {
 
         hoax(eve);
         vm.expectRevert("Pausable: paused");
-        token.subscribe(USTB_RECEIVER, 1, USDC);
+        token.subscribe(eve, 1, USDC);
     }
 
     function testSubscribeAccountingPaused() public override {
@@ -62,7 +62,7 @@ contract USTBv5 is USTBv4 {
 
         hoax(eve);
         vm.expectRevert(ISuperstateToken.AccountingIsPaused.selector);
-        token.subscribe(USTB_RECEIVER, 1, USDC);
+        token.subscribe(eve, 1, USDC);
     }
 
     function testSubscribeZeroSuperstateTokensOut() public override {
@@ -151,5 +151,11 @@ contract USTBv5 is USTBv4 {
 
         assertEq(token.balanceOf(USTB_RECEIVER), ustbAmountOut);
         assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
+    }
+
+    function testSubscribeMismatchEntityIds() public {
+        hoax(eve);
+        vm.expectRevert(ISuperstateToken.MismatchEntityIds.selector);
+        token.subscribe(USTB_RECEIVER, 1, USDC);
     }
 }
