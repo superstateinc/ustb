@@ -1044,19 +1044,19 @@ contract USTBv4 is TokenTestBase {
     }
 
     // subscribe
-    function testSubscribeInAmountZero() public {
+    function testSubscribeInAmountZero() virtual public {
         hoax(eve);
         vm.expectRevert(ISuperstateTokenV4.BadArgs.selector);
         tokenV4.subscribe(0, USDC);
     }
 
-    function testSubscribeStablecoinNotSupported() public {
+    function testSubscribeStablecoinNotSupported() virtual public {
         hoax(eve);
         vm.expectRevert(ISuperstateTokenV4.StablecoinNotSupported.selector);
         tokenV4.subscribe(1, USDT);
     }
 
-    function testSubscribePaused() public {
+    function testSubscribePaused() virtual public {
         tokenV4.pause();
 
         hoax(eve);
@@ -1064,7 +1064,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(1, USDC);
     }
 
-    function testSubscribeAccountingPaused() public {
+    function testSubscribeAccountingPaused() virtual public {
         tokenV4.accountingPause();
 
         hoax(eve);
@@ -1072,7 +1072,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(1, USDC);
     }
 
-    function testSubscribeZeroSuperstateTokensOut() public {
+    function testSubscribeZeroSuperstateTokensOut() virtual public {
         uint256 amount = 10;
         deal(address(USDC), alice, amount);
 
@@ -1086,7 +1086,7 @@ contract USTBv4 is TokenTestBase {
         vm.stopPrank();
     }
 
-    function testSubscribeNotAllowed() public {
+    function testSubscribeNotAllowed() virtual public {
         vm.warp(1726866001 + 1 days);
 
         address faker = address(123456);
@@ -1102,7 +1102,7 @@ contract USTBv4 is TokenTestBase {
         tokenV4.subscribe(usdcAmountIn, USDC);
     }
 
-    function testSubscribeHappyPath() public {
+    function testSubscribeHappyPath() virtual public {
         vm.warp(1726866001 + 1 days);
 
         uint256 usdcAmountIn = 10_000_000; // $10
@@ -1129,7 +1129,7 @@ contract USTBv4 is TokenTestBase {
         assertEq(IERC20(USDC).balanceOf(address(this)), usdcAmountIn);
     }
 
-    function testSubscribeHappyPathFee() public {
+    function testSubscribeHappyPathFee() virtual public {
         vm.warp(1726866001 + 1 days);
         tokenV4.setStablecoinConfig(USDC, address(this), 10);
 
