@@ -33,6 +33,10 @@ interface IAllowListV2 {
     /// @dev Thrown if an attempt to call `renounceOwnership` is made
     error RenounceOwnershipDisabled();
 
+    /**
+     * @notice Gets the entityId for the provided address
+     * @param addr The address to get the entityId for
+     */
     function addressEntityIds(address addr) external view returns (EntityId);
 
     /**
