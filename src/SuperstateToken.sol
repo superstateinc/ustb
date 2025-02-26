@@ -590,7 +590,10 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
      * @param stablecoin The address of the stablecoin to calculate with
      */
     function subscribe(address to, uint256 inAmount, address stablecoin) external {
-        //@TODO: update function, add support for to address
+        // check if entity ID matches
+        AllowList allowList = AllowList(address(allowListV2));
+        if (IAllowListV2.EntityId.unwrap(allowList.addressEntityIds(msg.sender)) != IAllowListV2.EntityId.unwrap(allowList.addressEntityIds(to))) revert MismatchEntityIds();
+
         if (inAmount == 0) revert BadArgs();
         _requireNotPaused();
         _requireNotAccountingPaused();
