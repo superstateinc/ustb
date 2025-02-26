@@ -5,7 +5,7 @@ import {IERC20Upgradeable} from "openzeppelin-contracts-upgradeable/interfaces/I
 import {AllowList} from "src/allowlist/AllowList.sol";
 import {IAllowListV2} from "src/interfaces/allowlist/IAllowListV2.sol";
 
-interface ISuperstateToken is IERC20Upgradeable {
+interface ISuperstateTokenV4 is IERC20Upgradeable {
     // V1 remaining
 
     /// @dev Event emitted when tokens are minted
@@ -151,7 +151,6 @@ interface ISuperstateToken is IERC20Upgradeable {
     );
 
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
-    //@TODO: update event -> SubscribeV2 add to address
     event Subscribe(
         address indexed subscriber,
         address stablecoin,
