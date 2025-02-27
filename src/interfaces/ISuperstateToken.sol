@@ -41,6 +41,9 @@ interface ISuperstateToken is IERC20Upgradeable {
     /// @dev Thrown if array length arguments aren't equal
     error InvalidArgumentLengths();
 
+    /// @dev Thrown if `to` does not share the same `entityId` as `msg.sender` during subscribe
+    error MismatchEntityIds();
+
     /**
      * @notice Returns the domain separator used in the encoding of the
      * signature for permit
@@ -151,9 +154,9 @@ interface ISuperstateToken is IERC20Upgradeable {
     );
 
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
-    //@TODO: update event -> SubscribeV2 add to address
-    event Subscribe(
+    event SubscribeV2(
         address indexed subscriber,
+        address indexed to,
         address stablecoin,
         uint256 stablecoinInAmount,
         uint256 stablecoinInAmountAfterFee,
