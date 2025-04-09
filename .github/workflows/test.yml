@@ -1,4 +1,4 @@
-name: SUPTB Test CI
+name: USTB Test CI
 
 on:
   - pull_request
@@ -21,8 +21,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       - name: Install Forge Dependencies
         run: forge install
