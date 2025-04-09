@@ -111,7 +111,7 @@ contract USTBv5 is USTBv4 {
             subscriber: alice,
             to: USTB_RECEIVER,
             stablecoin: USDC,
-            stablecoinInAmount: usdcAmountIn,
+            stablecoinInAmountBeforeFee: usdcAmountIn,
             stablecoinInAmountAfterFee: usdcAmountIn,
             superstateTokenOutAmount: ustbAmountOut
         });
@@ -141,7 +141,7 @@ contract USTBv5 is USTBv4 {
             subscriber: alice,
             to: USTB_RECEIVER,
             stablecoin: USDC,
-            stablecoinInAmount: usdcAmountIn,
+            stablecoinInAmountBeforeFee: usdcAmountIn,
             stablecoinInAmountAfterFee: usdcAmountIn - usdcAmountFee,
             superstateTokenOutAmount: ustbAmountOut
         });

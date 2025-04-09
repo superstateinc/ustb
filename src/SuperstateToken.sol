@@ -610,8 +610,8 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
             subscriber: msg.sender,
             to: to,
             stablecoin: stablecoin,
-            stablecoinInAmount: inAmount,
             stablecoinInAmountAfterFee: stablecoinInAmountAfterFee,
+            stablecoinInAmountBeforeFee: inAmount,
             superstateTokenOutAmount: superstateTokenOutAmount
         });
     }

@@ -154,12 +154,18 @@ interface ISuperstateToken is IERC20Upgradeable {
     );
 
     /// @dev Event emitted when stablecoins are used to Subscribe to a Superstate fund
+    /// @param subscriber The address of the subscriber
+    /// @param to The address of the recipient
+    /// @param stablecoin The address of the stablecoin used to subscribe
+    /// @param stablecoinInAmountAfterFee The amount of stablecoin used to subscribe, after fees are deducted
+    /// @param stablecoinInAmountBeforeFee The amount of stablecoin used to subscribe, before fees are deducted
+    /// @param superstateTokenOutAmount The amount of Superstate tokens received
     event SubscribeV2(
         address indexed subscriber,
         address indexed to,
         address stablecoin,
-        uint256 stablecoinInAmount,
         uint256 stablecoinInAmountAfterFee,
+        uint256 stablecoinInAmountBeforeFee,
         uint256 superstateTokenOutAmount
     );
 
