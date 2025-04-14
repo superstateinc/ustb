@@ -284,4 +284,19 @@ interface ISuperstateToken is IERC20Upgradeable {
      * @param _supported Whether the chain ID should be supported
      */
     function setChainIdSupport(uint256 _chainId, bool _supported) external;
+
+    /**
+     * @notice The ```subscribeTo``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
+     * @param to The address where USTB will be deposited at
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(address to, uint256 inAmount, address stablecoin) external;
+
+    /**
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(uint256 inAmount, address stablecoin) external;
 }
