@@ -284,4 +284,71 @@ interface ISuperstateToken is IERC20Upgradeable {
      * @param _supported Whether the chain ID should be supported
      */
     function setChainIdSupport(uint256 _chainId, bool _supported) external;
+
+    /**
+     * @notice The ```subscribe`` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
+     * @param to The address where USTB will be deposited at
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(address to, uint256 inAmount, address stablecoin) external;
+
+    /**
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the msg.sender depending on the current Net Asset Value per Share.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     */
+    function subscribe(uint256 inAmount, address stablecoin) external;
+
+    /**
+     * @notice The ```setOracle``` function sets the address of the AggregatorV3Interface to be used to price the SuperstateToken
+     * @dev Requires msg.sender to be the owner address
+     * @param _newOracle The address of the oracle contract to update to
+     */
+    function setOracle(address _newOracle) external;
+
+    /**
+     * @notice The ```setMaximumOracleDelay``` function sets the max oracle delay to determine if Chainlink data is stale
+     * @dev Requires msg.sender to be the owner address
+     * @param _newMaxOracleDelay The new max oracle delay
+     */
+    function setMaximumOracleDelay(uint256 _newMaxOracleDelay) external;
+
+    /**
+     * @notice The ```setStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
+     * @dev Requires msg.sender to be the owner address
+     * @param stablecoin The address of the stablecoin
+     * @param newSweepDestination The new address to sweep stablecoin subscriptions to
+     * @param newFee The new fee in basis points to charge for subscriptions in ```stablecoin```
+     */
+    function setStablecoinConfig(address stablecoin, address newSweepDestination, uint96 newFee) external;
+
+    /**
+     * @notice The ```getChainlinkPrice``` function returns the chainlink price and the timestamp of the last update
+     * @return _isBadData True if the data is stale or negative
+     * @return _updatedAt The timestamp of the last update
+     * @return _price The price
+     */
+    function getChainlinkPrice() external view returns (bool _isBadData, uint256 _updatedAt, uint256 _price);
+
+    /**
+     * @notice Calculates the fee amount based on the input amount and subscription fee
+     * @param amount The input amount to calculate fee for
+     * @param subscriptionFee The fee rate to apply
+     * @return The calculated fee amount
+     */
+    function calculateFee(uint256 amount, uint256 subscriptionFee) external pure returns (uint256);
+
+    /**
+     * @notice The ```calculateSuperstateTokenOut``` function calculates the total amount of Superstate tokens you'll receive for the inAmount of stablecoin. Treats all stablecoins as if they are always worth a dollar.
+     * @param inAmount The amount of the stablecoin in
+     * @param stablecoin The address of the stablecoin to calculate with
+     * @return superstateTokenOutAmount The amount of Superstate tokens received for inAmount of stablecoin
+     * @return stablecoinInAmountAfterFee The amount of stablecoin in after any fees
+     * @return feeOnStablecoinInAmount The amount of the stablecoin taken in fees
+     */
+    function calculateSuperstateTokenOut(uint256 inAmount, address stablecoin)
+        external
+        view
+        returns (uint256 superstateTokenOutAmount, uint256 stablecoinInAmountAfterFee, uint256 feeOnStablecoinInAmount);
 }

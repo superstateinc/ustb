@@ -500,7 +500,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice The ```updateStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
+     * @notice The ```setStablecoinConfig``` function sets the configuration fields for accepted stablecoins for onchain subscriptions
      * @dev Requires msg.sender to be the owner address
      * @param stablecoin The address of the stablecoin
      * @param newSweepDestination The new address to sweep stablecoin subscriptions to
@@ -617,7 +617,7 @@ contract SuperstateToken is ISuperstateToken, ERC20Upgradeable, PausableUpgradea
     }
 
     /**
-     * @notice The ```subscribeTo``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
+     * @notice The ```subscribe``` function takes in stablecoins and mints SuperstateToken in the proper amount for the to address depending on the current Net Asset Value per Share.
      * @param to The address where USTB will be deposited at
      * @param inAmount The amount of the stablecoin in
      * @param stablecoin The address of the stablecoin to calculate with
